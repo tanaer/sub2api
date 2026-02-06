@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
-	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2apiernal/pkg/openai"
+	"github.com/tanaer/sub2apiernal/util/urlvalidator"
 )
 
 var (

@@ -1,10 +1,10 @@
 package routes
 
 import (
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/handler"
-	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
-	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2api/internal/handler"
+	"github.com/tanaer/sub2api/internal/server/middleware"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

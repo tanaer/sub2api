@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/dgraph-io/ristretto"
+	"github.com/tanaer/sub2api/internal/config"
 )
 
 type apiKeyAuthCacheConfig struct {

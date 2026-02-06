@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
+	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
+	"github.com/tanaer/sub2apiernal/pkg/pagination"
 )
 
 // mockAccountRepoForGemini Gemini 测试用的 mock

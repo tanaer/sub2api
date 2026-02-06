@@ -9,12 +9,12 @@ import (
 
 	"github.com/google/uuid"
 
-	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/usagestats"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/suite"
+	dbent "github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2apiernal/pkg/timezone"
+	"github.com/tanaer/sub2apiernal/pkg/usagestats"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 type UsageLogRepoSuite struct {

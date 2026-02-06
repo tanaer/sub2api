@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/tanaer/sub2api/internal/pkg/response"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 // GetDashboardOverview returns vNext ops dashboard overview (raw path).

@@ -1,9 +1,9 @@
 package admin
 
 import (
-	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/tanaer/sub2api/internal/pkg/response"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 type AntigravityOAuthHandler struct {

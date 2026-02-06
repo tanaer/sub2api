@@ -9,9 +9,9 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/Wei-Shaw/sub2api/ent/group"
-	"github.com/Wei-Shaw/sub2api/ent/user"
-	"github.com/Wei-Shaw/sub2api/ent/userallowedgroup"
+	"github.com/tanaer/sub2api/ent/group"
+	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/userallowedgroup"
 )
 
 // UserAllowedGroup is the model entity for the UserAllowedGroup schema.

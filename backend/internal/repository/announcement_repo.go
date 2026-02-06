@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/ent/announcement"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/tanaer/sub2api/announcement"
+	dbent "github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 type announcementRepository struct {

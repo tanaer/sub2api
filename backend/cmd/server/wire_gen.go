@@ -8,15 +8,15 @@ package main
 
 import (
 	"context"
-	"github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/handler"
-	"github.com/Wei-Shaw/sub2api/internal/handler/admin"
-	"github.com/Wei-Shaw/sub2api/internal/repository"
-	"github.com/Wei-Shaw/sub2api/internal/server"
-	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/redis/go-redis/v9"
+	"github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2apiernal/config"
+	"github.com/tanaer/sub2apiernal/handler"
+	"github.com/tanaer/sub2apiernal/handler/admin"
+	"github.com/tanaer/sub2apiernal/repository"
+	"github.com/tanaer/sub2apiernal/server"
+	"github.com/tanaer/sub2apiernal/server/middleware"
+	"github.com/tanaer/sub2apiernal/service"
 	"log"
 	"net/http"
 	"time"
@@ -24,7 +24,7 @@ import (
 
 import (
 	_ "embed"
-	_ "github.com/Wei-Shaw/sub2api/ent/runtime"
+	_ "github.com/tanaer/sub2api/runtime"
 )
 
 // Injectors from wire.go:

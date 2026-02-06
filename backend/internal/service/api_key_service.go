@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/dgraph-io/ristretto"
+	"github.com/tanaer/sub2api/internal/config"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2api/internal/pkg/ip"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/pkg/timezone"
 	"golang.org/x/sync/singleflight"
 )
 

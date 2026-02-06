@@ -18,10 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/antigravity"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/tanaer/sub2api/internal/pkg/antigravity"
+	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
 )
 
 const (

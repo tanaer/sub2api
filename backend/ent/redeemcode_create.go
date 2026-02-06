@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/Wei-Shaw/sub2api/ent/group"
-	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
-	"github.com/Wei-Shaw/sub2api/ent/user"
+	"github.com/tanaer/sub2api/ent/group"
+	"github.com/tanaer/sub2api/redeemcode"
+	"github.com/tanaer/sub2api/user"
 )
 
 // RedeemCodeCreate is the builder for creating a RedeemCode entity.

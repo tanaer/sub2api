@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2api/internal/pkg/response"
 )
 
 func TestRecovery(t *testing.T) {

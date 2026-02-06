@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Wei-Shaw/sub2api/internal/model"
+	"github.com/tanaer/sub2api/internal/model"
 )
 
 // ErrorPassthroughRepository 定义错误透传规则的数据访问接口

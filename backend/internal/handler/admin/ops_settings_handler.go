@@ -3,9 +3,9 @@ package admin
 import (
 	"net/http"
 
-	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/tanaer/sub2api/internal/pkg/response"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 // GetEmailNotificationConfig returns Ops email notification config (DB-backed).

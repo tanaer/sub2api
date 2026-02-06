@@ -12,8 +12,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/Wei-Shaw/sub2api/ent/predicate"
-	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
+	"github.com/tanaer/sub2api/ent/predicate"
+	"github.com/tanaer/sub2api/usagecleanuptask"
 )
 
 // UsageCleanupTaskQuery is the builder for querying UsageCleanupTask entities.

@@ -8,10 +8,10 @@ import (
 	"errors"
 	"testing"
 
-	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/suite"
+	dbent "github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 type GroupRepoSuite struct {

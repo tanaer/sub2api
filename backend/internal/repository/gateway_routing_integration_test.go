@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/suite"
+	dbent "github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 // GatewayRoutingSuite 测试网关路由相关的数据库查询

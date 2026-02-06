@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
+	"github.com/tanaer/sub2api/internal/config"
 )
 
 func TestSanitizeFrontendRedirectPath(t *testing.T) {

@@ -53,6 +53,7 @@ Sub2API 是一个 AI API 网关平台，用于分发和管理 AI 产品订阅（
 
 ## 文档
 
+- 开发者文档（架构/后端/前端/排障）：`docs/README.md`
 - 依赖安全：`docs/dependency-security.md`
 
 ---

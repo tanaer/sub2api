@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/model"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/redis/go-redis/v9"
+	"github.com/tanaer/sub2api/internal/model"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 const (

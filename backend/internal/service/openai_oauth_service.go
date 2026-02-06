@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2apiernal/pkg/openai"
 )
 
 // OpenAIOAuthService handles OpenAI OAuth authentication flows

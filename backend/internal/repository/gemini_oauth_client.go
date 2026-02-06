@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
-	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2apiernal/pkg/geminicli"
+	"github.com/tanaer/sub2apiernal/service"
 
 	"github.com/imroc/req/v3"
 )

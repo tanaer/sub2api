@@ -6,12 +6,12 @@ import (
 	"errors"
 	"log"
 
-	dbent "github.com/Wei-Shaw/sub2api/ent"
-	"github.com/Wei-Shaw/sub2api/ent/apikey"
-	"github.com/Wei-Shaw/sub2api/ent/group"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
+	"github.com/tanaer/sub2api/apikey"
+	dbent "github.com/tanaer/sub2api/ent"
+	"github.com/tanaer/sub2api/group"
+	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2apiernal/service"
 )
 
 type sqlExecutor interface {

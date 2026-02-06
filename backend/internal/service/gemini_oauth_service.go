@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/httpclient"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2apiernal/pkg/geminicli"
+	"github.com/tanaer/sub2apiernal/pkg/httpclient"
 )
 
 const (

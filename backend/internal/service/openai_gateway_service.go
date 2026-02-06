@@ -19,11 +19,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
-	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
-	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"github.com/gin-gonic/gin"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2api/internal/pkg/openai"
+	"github.com/tanaer/sub2api/internal/util/responseheaders"
+	"github.com/tanaer/sub2api/internal/util/urlvalidator"
 )
 
 const (
