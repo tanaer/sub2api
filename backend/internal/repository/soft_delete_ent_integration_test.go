@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tanaer/sub2api/apikey"
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2api/schema/mixins"
-	"github.com/tanaer/sub2api/usersubscription"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/apikey"
+	"github.com/tanaer/sub2api/ent/schema/mixins"
+	"github.com/tanaer/sub2api/ent/usersubscription"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 func uniqueSoftDeleteValue(t *testing.T, prefix string) string {

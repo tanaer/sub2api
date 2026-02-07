@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 func TestSchedulerSnapshotOutboxReplay(t *testing.T) {

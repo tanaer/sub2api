@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 // mockAccountRepoForGemini Gemini 测试用的 mock

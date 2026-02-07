@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 // GatewayRoutingSuite 测试网关路由相关的数据库查询

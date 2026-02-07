@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	dbent "github.com/tanaer/sub2api/ent"
-	_ "github.com/tanaer/sub2api/runtime"
-	"github.com/tanaer/sub2apiernal/pkg/timezone"
+	_ "github.com/tanaer/sub2api/ent/runtime"
+	"github.com/tanaer/sub2api/internal/pkg/timezone"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"

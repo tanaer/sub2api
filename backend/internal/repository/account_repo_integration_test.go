@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/tanaer/sub2api/accountgroup"
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/accountgroup"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type AccountRepoSuite struct {
