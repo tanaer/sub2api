@@ -5,9 +5,9 @@ import (
 	"time"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2api/usersubscription"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/usersubscription"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type userSubscriptionRepository struct {

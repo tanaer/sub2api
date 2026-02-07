@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/tanaer/sub2api/announcementread"
 	"github.com/tanaer/sub2api/ent/announcement"
-	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/ent/announcementread"
+	"github.com/tanaer/sub2api/ent/user"
 )
 
 // AnnouncementReadCreate is the builder for creating a AnnouncementRead entity.

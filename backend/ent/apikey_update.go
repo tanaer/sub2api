@@ -13,10 +13,10 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/apikey"
-	"github.com/tanaer/sub2api/group"
-	"github.com/tanaer/sub2api/predicate"
-	"github.com/tanaer/sub2api/usagelog"
-	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/ent/group"
+	"github.com/tanaer/sub2api/ent/predicate"
+	"github.com/tanaer/sub2api/ent/usagelog"
+	"github.com/tanaer/sub2api/ent/user"
 )
 
 // APIKeyUpdate is the builder for updating APIKey entities.

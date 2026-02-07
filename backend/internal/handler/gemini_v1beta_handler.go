@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/pkg/antigravity"
-	"github.com/tanaer/sub2apiernal/pkg/ctxkey"
-	"github.com/tanaer/sub2apiernal/pkg/gemini"
-	"github.com/tanaer/sub2apiernal/pkg/googleapi"
-	"github.com/tanaer/sub2apiernal/pkg/ip"
-	"github.com/tanaer/sub2apiernal/server/middleware"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
+	"github.com/tanaer/sub2api/internal/pkg/gemini"
+	"github.com/tanaer/sub2api/internal/pkg/googleapi"
+	"github.com/tanaer/sub2api/internal/pkg/ip"
+	"github.com/tanaer/sub2api/internal/server/middleware"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

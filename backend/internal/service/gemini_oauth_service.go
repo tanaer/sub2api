@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/pkg/geminicli"
-	"github.com/tanaer/sub2apiernal/pkg/httpclient"
+	"github.com/tanaer/sub2api/internal/pkg/geminicli"
+	"github.com/tanaer/sub2api/internal/pkg/httpclient"
 )
 
 const (

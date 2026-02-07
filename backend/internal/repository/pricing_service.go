@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/pkg/httpclient"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type pricingRemoteClient struct {

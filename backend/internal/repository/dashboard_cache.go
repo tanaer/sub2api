@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 const dashboardStatsCacheKey = "dashboard:stats:v1"

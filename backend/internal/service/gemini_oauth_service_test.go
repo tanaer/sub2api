@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/pkg/geminicli"
+	"github.com/tanaer/sub2api/internal/pkg/geminicli"
 )
 
 func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {

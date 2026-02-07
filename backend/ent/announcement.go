@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/announcement"
-	"github.com/tanaer/sub2apiernal/domain"
+	"github.com/tanaer/sub2api/internal/domain"
 )
 
 // Announcement is the model entity for the Announcement schema.

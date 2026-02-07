@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/handler/dto"
-	"github.com/tanaer/sub2apiernal/pkg/response"
-	"github.com/tanaer/sub2apiernal/server/middleware"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/handler/dto"
+	"github.com/tanaer/sub2api/internal/pkg/response"
+	"github.com/tanaer/sub2api/internal/server/middleware"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

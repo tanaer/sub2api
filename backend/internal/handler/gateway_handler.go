@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/pkg/antigravity"
-	"github.com/tanaer/sub2apiernal/pkg/claude"
-	"github.com/tanaer/sub2apiernal/pkg/ctxkey"
-	pkgerrors "github.com/tanaer/sub2apiernal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/ip"
-	"github.com/tanaer/sub2apiernal/pkg/openai"
-	middleware2 "github.com/tanaer/sub2apiernal/server/middleware"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/antigravity"
+	"github.com/tanaer/sub2api/internal/pkg/claude"
+	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
+	pkgerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2api/internal/pkg/ip"
+	"github.com/tanaer/sub2api/internal/pkg/openai"
+	middleware2 "github.com/tanaer/sub2api/internal/server/middleware"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

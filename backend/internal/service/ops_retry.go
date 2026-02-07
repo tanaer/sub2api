@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 	"github.com/tanaer/sub2api/internal/pkg/ctxkey"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
 )
 
 const (

@@ -14,7 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/usagecleanuptask"
+	"github.com/tanaer/sub2api/ent/usagecleanuptask"
 )
 
 // UsageCleanupTaskUpdate is the builder for updating UsageCleanupTask entities.

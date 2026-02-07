@@ -13,7 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/errorpassthroughrule"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // ErrorPassthroughRuleUpdate is the builder for updating ErrorPassthroughRule entities.

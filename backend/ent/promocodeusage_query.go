@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/promocode"
-	"github.com/tanaer/sub2api/promocodeusage"
-	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/ent/promocode"
+	"github.com/tanaer/sub2api/ent/promocodeusage"
+	"github.com/tanaer/sub2api/ent/user"
 )
 
 // PromoCodeUsageQuery is the builder for querying PromoCodeUsage entities.

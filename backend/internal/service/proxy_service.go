@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 var (

@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2apiernal/config"
-	"github.com/tanaer/sub2apiernal/handler"
-	"github.com/tanaer/sub2apiernal/repository"
-	"github.com/tanaer/sub2apiernal/server"
-	"github.com/tanaer/sub2apiernal/server/middleware"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/config"
+	"github.com/tanaer/sub2api/internal/handler"
+	"github.com/tanaer/sub2api/internal/repository"
+	"github.com/tanaer/sub2api/internal/server"
+	"github.com/tanaer/sub2api/internal/server/middleware"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"

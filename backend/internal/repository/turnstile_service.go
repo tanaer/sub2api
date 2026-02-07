@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/pkg/httpclient"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 const turnstileVerifyURL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/pkg/httpclient"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type githubReleaseClient struct {
@@ -98,18 +98,26 @@ func (c *githubReleaseClient) DownloadFile(ctx context.Context, url, dest string
 	if err != nil {
 		return err
 	}
-	defer func() { _ = out.Close() }()
 
 	// SECURITY: Use LimitReader to enforce max download size even if Content-Length is missing/wrong
 	limited := io.LimitReader(resp.Body, maxSize+1)
-	written, err := io.Copy(out, limited)
-	if err != nil {
-		return err
+	written, copyErr := io.Copy(out, limited)
+	closeErr := out.Close()
+	if copyErr != nil {
+		_ = os.Remove(dest)
+		if closeErr != nil {
+			return fmt.Errorf("download failed: %v (also failed to close file: %v)", copyErr, closeErr)
+		}
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(dest)
+		return closeErr
 	}
 
 	// Check if we hit the limit (downloaded more than maxSize)
 	if written > maxSize {
-		_ = os.Remove(dest) // Clean up partial file (best-effort)
+		_ = os.Remove(dest)
 		return fmt.Errorf("download exceeded maximum size of %d bytes", maxSize)
 	}
 

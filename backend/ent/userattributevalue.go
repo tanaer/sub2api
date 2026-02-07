@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/user"
-	"github.com/tanaer/sub2api/userattributedefinition"
-	"github.com/tanaer/sub2api/userattributevalue"
+	"github.com/tanaer/sub2api/ent/userattributedefinition"
+	"github.com/tanaer/sub2api/ent/userattributevalue"
 )
 
 // UserAttributeValue is the model entity for the UserAttributeValue schema.

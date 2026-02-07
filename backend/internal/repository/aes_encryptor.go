@@ -10,7 +10,7 @@ import (
 	"io"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 // AESEncryptor implements SecretEncryptor using AES-256-GCM

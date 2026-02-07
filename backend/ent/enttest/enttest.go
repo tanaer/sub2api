@@ -7,10 +7,10 @@ import (
 
 	"github.com/tanaer/sub2api/ent"
 	// required by schema hooks.
-	_ "github.com/tanaer/sub2api/runtime"
+	_ "github.com/tanaer/sub2api/ent/runtime"
 
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/tanaer/sub2api/migrate"
+	"github.com/tanaer/sub2api/ent/migrate"
 )
 
 type (

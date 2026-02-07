@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/userattributedefinition"
+	"github.com/tanaer/sub2api/ent/userattributedefinition"
 )
 
 // UserAttributeDefinitionDelete is the builder for deleting a UserAttributeDefinition entity.

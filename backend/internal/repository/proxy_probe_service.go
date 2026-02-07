@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/pkg/httpclient"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/httpclient"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 func NewProxyExitInfoProber(cfg *config.Config) service.ProxyExitInfoProber {

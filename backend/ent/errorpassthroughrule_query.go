@@ -13,7 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/errorpassthroughrule"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // ErrorPassthroughRuleQuery is the builder for querying ErrorPassthroughRule entities.

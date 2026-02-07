@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2api/group"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/group"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 func ensureSimpleModeDefaultGroups(ctx context.Context, client *dbent.Client) error {

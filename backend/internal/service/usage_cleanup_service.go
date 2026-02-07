@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 const (

@@ -13,7 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/usagecleanuptask"
+	"github.com/tanaer/sub2api/ent/usagecleanuptask"
 )
 
 // UsageCleanupTaskQuery is the builder for querying UsageCleanupTask entities.

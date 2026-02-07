@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/pkg/response"
-	"github.com/tanaer/sub2apiernal/pkg/timezone"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/timezone"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

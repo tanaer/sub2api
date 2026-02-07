@@ -10,7 +10,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/tanaer/sub2api/internal/pkg/timezone"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type dashboardAggregationRepository struct {

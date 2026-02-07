@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tanaer/sub2api/internal/config"
-	"github.com/tanaer/sub2apiernal/pkg/usagestats"
+	"github.com/tanaer/sub2api/internal/pkg/usagestats"
 )
 
 type usageRepoStub struct {

@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/apikey"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // APIKeyDelete is the builder for deleting a APIKey entity.

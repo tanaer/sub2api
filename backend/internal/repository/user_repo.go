@@ -10,11 +10,11 @@ import (
 	"time"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	dbuser "github.com/tanaer/sub2api/user"
-	"github.com/tanaer/sub2api/userallowedgroup"
-	"github.com/tanaer/sub2api/usersubscription"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
-	"github.com/tanaer/sub2apiernal/service"
+	dbuser "github.com/tanaer/sub2api/ent/user"
+	"github.com/tanaer/sub2api/ent/userallowedgroup"
+	"github.com/tanaer/sub2api/ent/usersubscription"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type userRepository struct {

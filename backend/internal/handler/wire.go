@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/tanaer/sub2api/internal/handler/admin"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/service"
 
 	"github.com/google/wire"
 )

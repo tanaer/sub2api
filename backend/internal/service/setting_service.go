@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/tanaer/sub2api/internal/config"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
 )
 
 var (

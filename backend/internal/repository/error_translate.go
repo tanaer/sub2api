@@ -8,7 +8,7 @@ import (
 
 	"github.com/lib/pq"
 	dbent "github.com/tanaer/sub2api/ent"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
 )
 
 // clientFromContext 从 context 中获取事务 client，如果不存在则返回默认 client。

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	dbusagecleanuptask "github.com/tanaer/sub2api/usagecleanuptask"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
-	"github.com/tanaer/sub2apiernal/service"
+	dbusagecleanuptask "github.com/tanaer/sub2api/ent/usagecleanuptask"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type usageCleanupRepository struct {

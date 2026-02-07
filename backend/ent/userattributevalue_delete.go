@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/userattributevalue"
+	"github.com/tanaer/sub2api/ent/userattributevalue"
 )
 
 // UserAttributeValueDelete is the builder for deleting a UserAttributeValue entity.

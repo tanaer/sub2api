@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/group"
-	"github.com/tanaer/sub2api/redeemcode"
-	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/ent/redeemcode"
+	"github.com/tanaer/sub2api/ent/user"
 )
 
 // RedeemCode is the model entity for the RedeemCode schema.

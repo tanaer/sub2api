@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tanaer/sub2api/internal/model"
-	"github.com/tanaer/sub2apiernal/pkg/response"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/response"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 // ErrorPassthroughHandler 处理错误透传规则的 HTTP 请求

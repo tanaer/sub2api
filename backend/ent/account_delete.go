@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/account"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // AccountDelete is the builder for deleting a Account entity.

@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/group"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // GroupDelete is the builder for deleting a Group entity.

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/openai"
+	"github.com/tanaer/sub2api/internal/pkg/openai"
 )
 
 // OpenAIOAuthService handles OpenAI OAuth authentication flows

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/ent/schema/mixins"
-	"github.com/tanaer/sub2apiernal/domain"
+	"github.com/tanaer/sub2api/internal/domain"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"

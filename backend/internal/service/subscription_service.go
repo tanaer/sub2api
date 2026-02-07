@@ -7,7 +7,7 @@ import (
 	"time"
 
 	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 // MaxExpiresAt is the maximum allowed expiration date (year 2099)

@@ -12,9 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/predicate"
-	"github.com/tanaer/sub2api/user"
-	"github.com/tanaer/sub2api/userattributedefinition"
-	"github.com/tanaer/sub2api/userattributevalue"
+	"github.com/tanaer/sub2api/ent/user"
+	"github.com/tanaer/sub2api/ent/userattributedefinition"
+	"github.com/tanaer/sub2api/ent/userattributevalue"
 )
 
 // UserAttributeValueUpdate is the builder for updating UserAttributeValue entities.

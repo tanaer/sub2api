@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/group"
-	"github.com/tanaer/sub2api/user"
-	"github.com/tanaer/sub2api/usersubscription"
+	"github.com/tanaer/sub2api/ent/user"
+	"github.com/tanaer/sub2api/ent/usersubscription"
 )
 
 // UserSubscription is the model entity for the UserSubscription schema.

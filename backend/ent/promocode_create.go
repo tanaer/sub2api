@@ -12,7 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/promocode"
-	"github.com/tanaer/sub2api/promocodeusage"
+	"github.com/tanaer/sub2api/ent/promocodeusage"
 )
 
 // PromoCodeCreate is the builder for creating a PromoCode entity.

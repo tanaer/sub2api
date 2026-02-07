@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/config"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
 )
 
 // 错误定义

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	infraerrors "github.com/tanaer/sub2apiernal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 var (

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2api/setting"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/setting"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type settingRepository struct {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/tanaer/sub2api/announcementread"
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/announcementread"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 type announcementReadRepository struct {

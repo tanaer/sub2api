@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/promocode"
-	"github.com/tanaer/sub2api/promocodeusage"
-	"github.com/tanaer/sub2api/user"
+	"github.com/tanaer/sub2api/ent/promocodeusage"
+	"github.com/tanaer/sub2api/ent/user"
 )
 
 // PromoCodeUsage is the model entity for the PromoCodeUsage schema.

@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/tanaer/sub2api/announcementread"
 	"github.com/tanaer/sub2api/ent/announcement"
-	"github.com/tanaer/sub2api/predicate"
+	"github.com/tanaer/sub2api/ent/announcementread"
+	"github.com/tanaer/sub2api/ent/predicate"
 )
 
 // AnnouncementQuery is the builder for querying Announcement entities.

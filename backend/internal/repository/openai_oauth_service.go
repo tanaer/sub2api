@@ -8,8 +8,8 @@ import (
 
 	"github.com/imroc/req/v3"
 	infraerrors "github.com/tanaer/sub2api/internal/pkg/errors"
-	"github.com/tanaer/sub2apiernal/pkg/openai"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/internal/pkg/openai"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 // NewOpenAIOAuthClient creates a new OpenAI OAuth client

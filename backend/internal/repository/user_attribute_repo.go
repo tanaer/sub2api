@@ -4,9 +4,9 @@ import (
 	"context"
 
 	dbent "github.com/tanaer/sub2api/ent"
-	"github.com/tanaer/sub2api/userattributedefinition"
-	"github.com/tanaer/sub2api/userattributevalue"
-	"github.com/tanaer/sub2apiernal/service"
+	"github.com/tanaer/sub2api/ent/userattributedefinition"
+	"github.com/tanaer/sub2api/ent/userattributevalue"
+	"github.com/tanaer/sub2api/internal/service"
 )
 
 // UserAttributeDefinitionRepository implementation

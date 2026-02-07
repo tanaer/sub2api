@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/tanaer/sub2api/internal/domain"
-	"github.com/tanaer/sub2apiernal/pkg/pagination"
+	"github.com/tanaer/sub2api/internal/pkg/pagination"
 )
 
 type AnnouncementService struct {

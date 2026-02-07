@@ -12,10 +12,10 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/tanaer/sub2api/ent/account"
-	"github.com/tanaer/sub2api/group"
-	"github.com/tanaer/sub2api/predicate"
-	"github.com/tanaer/sub2api/proxy"
-	"github.com/tanaer/sub2api/usagelog"
+	"github.com/tanaer/sub2api/ent/group"
+	"github.com/tanaer/sub2api/ent/predicate"
+	"github.com/tanaer/sub2api/ent/proxy"
+	"github.com/tanaer/sub2api/ent/usagelog"
 )
 
 // AccountUpdate is the builder for updating Account entities.

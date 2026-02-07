@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/tanaer/sub2api/ent/account"
-	"github.com/tanaer/sub2api/proxy"
+	"github.com/tanaer/sub2api/ent/proxy"
 )
 
 // Account is the model entity for the Account schema.
