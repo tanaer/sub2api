@@ -4290,6 +4290,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
@@ -4316,6 +4317,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 						AccountName:        account.Name,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.Header.Get("x-request-id"),
+						UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 						Kind:               "signature_error",
 						Message:            extractUpstreamErrorMessage(respBody),
 						Detail: func() string {
@@ -4370,6 +4372,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 									AccountName:        account.Name,
 									UpstreamStatusCode: retryResp.StatusCode,
 									UpstreamRequestID:  retryResp.Header.Get("x-request-id"),
+									UpstreamURL:        safeUpstreamURL(retryReq.URL.String()),
 									Kind:               "signature_retry_thinking",
 									Message:            extractUpstreamErrorMessage(retryRespBody),
 									Detail: func() string {
@@ -4400,6 +4403,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 											AccountID:          account.ID,
 											AccountName:        account.Name,
 											UpstreamStatusCode: 0,
+											UpstreamURL:        safeUpstreamURL(retryReq2.URL.String()),
 											Kind:               "signature_retry_tools_request_error",
 											Message:            sanitizeUpstreamErrorMessage(retryErr2.Error()),
 										})
@@ -4439,6 +4443,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 						AccountName:        account.Name,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.Header.Get("x-request-id"),
+						UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 						Kind:               "budget_constraint_error",
 						Message:            errMsg,
 						Detail: func() string {
@@ -4530,6 +4535,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 					AccountName:        account.Name,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.Header.Get("x-request-id"),
+					UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 					Kind:               "retry",
 					Message:            extractUpstreamErrorMessage(respBody),
 					Detail: func() string {
@@ -4809,6 +4815,7 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 				Passthrough:        true,
 				Kind:               "request_error",
 				Message:            safeErr,
@@ -4878,6 +4885,7 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 					AccountName:        account.Name,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.Header.Get("x-request-id"),
+					UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 					Passthrough:        true,
 					Kind:               "retry",
 					Message:            extractUpstreamErrorMessage(respBody),
@@ -5587,6 +5595,7 @@ func (s *GatewayService) executeBedrockUpstream(
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
@@ -5623,6 +5632,7 @@ func (s *GatewayService) executeBedrockUpstream(
 					AccountID:          account.ID,
 					AccountName:        account.Name,
 					UpstreamStatusCode: resp.StatusCode,
+					UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 					Kind:               "retry",
 					Message:            extractUpstreamErrorMessage(respBody),
 					Detail: func() string {
@@ -8362,6 +8372,7 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 			AccountID:          account.ID,
 			AccountName:        account.Name,
 			UpstreamStatusCode: 0,
+			UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 			Passthrough:        true,
 			Kind:               "request_error",
 			Message:            sanitizeUpstreamErrorMessage(err.Error()),
@@ -8417,6 +8428,7 @@ func (s *GatewayService) forwardCountTokensAnthropicAPIKeyPassthrough(ctx contex
 			AccountName:        account.Name,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.Header.Get("x-request-id"),
+			UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 			Passthrough:        true,
 			Kind:               "http_error",
 			Message:            upstreamMsg,
