@@ -158,4 +158,63 @@ describe('BulkEditAccountModal', () => {
 
     expect(wrapper.find('#bulk-edit-openai-ws-mode-enabled').exists()).toBe(false)
   })
+
+  it('OpenAI 账号批量编辑可开启自动透传', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['openai'],
+      selectedTypes: ['oauth']
+    })
+
+    await wrapper.get('#bulk-edit-openai-passthrough-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-openai-passthrough-toggle').trigger('click')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      extra: {
+        openai_passthrough: true
+      }
+    })
+  })
+
+  it('OpenAI 账号批量编辑可关闭自动透传', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['openai'],
+      selectedTypes: ['apikey']
+    })
+
+    await wrapper.get('#bulk-edit-openai-passthrough-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      extra: {
+        openai_passthrough: false,
+        openai_oauth_passthrough: false
+      }
+    })
+  })
+
+  it('开启 OpenAI 自动透传时不再同时提交模型限制', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['openai'],
+      selectedTypes: ['oauth']
+    })
+
+    await wrapper.get('#bulk-edit-openai-passthrough-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-openai-passthrough-toggle').trigger('click')
+    await wrapper.get('#bulk-edit-model-restriction-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      extra: {
+        openai_passthrough: true
+      }
+    })
+    expect(wrapper.text()).toContain('admin.accounts.openai.modelRestrictionDisabledByPassthrough')
+  })
 })
