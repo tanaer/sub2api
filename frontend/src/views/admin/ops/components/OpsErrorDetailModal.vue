@@ -266,6 +266,22 @@ function formatRequestTypeLabel(type: number | null | undefined): string {
   }
 }
 
+function hasModelMapping(d: OpsErrorDetail | null): boolean {
+  if (!d) return false
+  const requested = String(d.requested_model || '').trim()
+  const upstream = String(d.upstream_model || '').trim()
+  return !!requested && !!upstream && requested !== upstream
+}
+
+function displayModel(d: OpsErrorDetail | null): string {
+  if (!d) return ''
+  const upstream = String(d.upstream_model || '').trim()
+  if (upstream) return upstream
+  const requested = String(d.requested_model || '').trim()
+  if (requested) return requested
+  return String(d.model || '').trim()
+}
+
 const correlatedUpstream = ref<OpsErrorDetail[]>([])
 const correlatedUpstreamLoading = ref(false)
 
