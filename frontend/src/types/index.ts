@@ -86,6 +86,12 @@ export interface CustomMenuItem {
   sort_order: number
 }
 
+export interface CustomEndpoint {
+  name: string
+  endpoint: string
+  description: string
+}
+
 export interface PublicSettings {
   registration_enabled: boolean
   email_verify_enabled: boolean
@@ -106,6 +112,7 @@ export interface PublicSettings {
   purchase_subscription_enabled: boolean
   purchase_subscription_url: string
   custom_menu_items: CustomMenuItem[]
+  custom_endpoints: CustomEndpoint[]
   linuxdo_oauth_enabled: boolean
   sora_client_enabled: boolean
   backend_mode_enabled: boolean
