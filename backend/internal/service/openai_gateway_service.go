@@ -1828,29 +1828,29 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	}
 
 	// 对所有请求执行模型映射（包含 Codex CLI）。
-	mappedModel := account.GetMappedModel(reqModel)
-	if mappedModel != reqModel {
-		logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Model mapping applied: %s -> %s (account: %s, isCodexCLI: %v)", reqModel, mappedModel, account.Name, isCodexCLI)
-		reqBody["model"] = mappedModel
+	billingModel := account.GetMappedModel(reqModel)
+	if billingModel != reqModel {
+		logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Model mapping applied: %s -> %s (account: %s, isCodexCLI: %v)", reqModel, billingModel, account.Name, isCodexCLI)
+		reqBody["model"] = billingModel
 		bodyModified = true
-		markPatchSet("model", mappedModel)
+		markPatchSet("model", billingModel)
 	}
+	upstreamModel := billingModel
 
 	// 针对所有 OpenAI 账号执行 Codex 模型名规范化，确保上游识别一致。
 	if model, ok := reqBody["model"].(string); ok {
-		normalizedModel := normalizeCodexModel(model)
-		if normalizedModel != "" && normalizedModel != model {
-			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Codex model normalization: %s -> %s (account: %s, type: %s, isCodexCLI: %v)",
-				model, normalizedModel, account.Name, account.Type, isCodexCLI)
-			reqBody["model"] = normalizedModel
-			mappedModel = normalizedModel
+		upstreamModel = resolveOpenAIUpstreamModel(model)
+		if upstreamModel != "" && upstreamModel != model {
+			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Upstream model resolved: %s -> %s (account: %s, type: %s, isCodexCLI: %v)",
+				model, upstreamModel, account.Name, account.Type, isCodexCLI)
+			reqBody["model"] = upstreamModel
 			bodyModified = true
-			markPatchSet("model", normalizedModel)
+			markPatchSet("model", upstreamModel)
 		}
 
 		// 移除 gpt-5.2-codex 以下的版本 verbosity 参数
 		// 确保高版本模型向低版本模型映射不报错
-		if !SupportsVerbosity(normalizedModel) {
+		if !SupportsVerbosity(upstreamModel) {
 			if text, ok := reqBody["text"].(map[string]any); ok {
 				delete(text, "verbosity")
 			}
@@ -1874,7 +1874,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			disablePatch()
 		}
 		if codexResult.NormalizedModel != "" {
-			mappedModel = codexResult.NormalizedModel
+			upstreamModel = codexResult.NormalizedModel
 		}
 		if codexResult.PromptCacheKey != "" {
 			promptCacheKey = codexResult.PromptCacheKey
@@ -1976,11 +1976,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	modelRetryChain := buildModelRetryChain(account, originalModel)
 	modelRetryIndex := 0
 	if len(modelRetryChain) > 0 {
-		reqBody, mappedModel, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])
+		reqBody, upstreamModel, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])
 		if err != nil {
 			return nil, err
 		}
-		body, mappedModel, err = applyOpenAIModelCandidateToBody(body, modelRetryChain[0])
+		body, upstreamModel, err = applyOpenAIModelCandidateToBody(body, modelRetryChain[0])
 		if err != nil {
 			return nil, err
 		}
@@ -1998,9 +1998,12 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	// 命中 WS 时仅走 WebSocket Mode；不再自动回退 HTTP。
 	if wsDecision.Transport == OpenAIUpstreamTransportResponsesWebsocketV2 {
 		for {
-			wsReqBody := make(map[string]any)
-			if err := json.Unmarshal(body, &wsReqBody); err != nil {
-				return nil, fmt.Errorf("parse openai ws request body: %w", err)
+			wsReqBody := reqBody
+			if len(reqBody) > 0 {
+				wsReqBody = make(map[string]any, len(reqBody))
+				for k, v := range reqBody {
+					wsReqBody[k] = v
+				}
 			}
 
 			_, hasPreviousResponseID := wsReqBody["previous_response_id"]
@@ -2008,7 +2011,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				"forward_start account_id=%d account_type=%s model=%s stream=%v has_previous_response_id=%v",
 				account.ID,
 				account.Type,
-				mappedModel,
+				upstreamModel,
 				reqStream,
 				hasPreviousResponseID,
 			)
@@ -2097,7 +2100,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					isCodexCLI,
 					reqStream,
 					originalModel,
-					mappedModel,
+					upstreamModel,
 					startTime,
 					attempt,
 					wsLastFailureReason,
@@ -2198,31 +2201,35 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					firstTokenMs,
 					wsAttempts,
 				)
-				wsResult.UpstreamModel = mappedModel
+				wsResult.UpstreamModel = upstreamModel
 				return wsResult, nil
 			}
 
 			if modelRetryIndex+1 < len(modelRetryChain) {
 				statusCode, _, _, upstreamMessage, ok := resolveOpenAIWSFallbackErrorResponse(wsErr)
 				if ok && shouldFallbackToNextModel(statusCode, []byte(upstreamMessage)) {
-					previousModel := mappedModel
-					nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
-					if nextErr == nil {
-						modelRetryIndex++
-						body = nextBody
-						mappedModel = nextModel
-						setOpsUpstreamRequestBody(c, body)
-						appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-							Platform:           account.Platform,
-							AccountID:          account.ID,
-							AccountName:        account.Name,
-							UpstreamStatusCode: statusCode,
-							Kind:               "model_fallback",
-							Message:            upstreamMessage,
-							Detail:             nextModel,
-						})
-						logger.LegacyPrintf("service.openai_gateway", "[OpenAI] WS model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, nextModel, account.Name, statusCode)
-						continue
+					previousModel := upstreamModel
+					nextReqBody, _, reqErr := applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[modelRetryIndex+1])
+					if reqErr == nil {
+						nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
+						if nextErr == nil {
+							modelRetryIndex++
+							reqBody = nextReqBody
+							body = nextBody
+							upstreamModel = nextModel
+							setOpsUpstreamRequestBody(c, body)
+							appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+								Platform:           account.Platform,
+								AccountID:          account.ID,
+								AccountName:        account.Name,
+								UpstreamStatusCode: statusCode,
+								Kind:               "model_fallback",
+								Message:            upstreamMessage,
+								Detail:             nextModel,
+							})
+							logger.LegacyPrintf("service.openai_gateway", "[OpenAI] WS model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, nextModel, account.Name, statusCode)
+							continue
+						}
 					}
 				}
 			}
@@ -2295,14 +2302,15 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s)", account.Name)
 			}
 			if modelRetryIndex+1 < len(modelRetryChain) && shouldFallbackToNextModel(resp.StatusCode, respBody) {
-				previousModel := mappedModel
-				reqBody, _, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[modelRetryIndex+1])
-				if err == nil {
+				previousModel := upstreamModel
+				nextReqBody, _, reqErr := applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[modelRetryIndex+1])
+				if reqErr == nil {
 					nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
 					if nextErr == nil {
 						modelRetryIndex++
+						reqBody = nextReqBody
 						body = nextBody
-						mappedModel = nextModel
+						upstreamModel = nextModel
 						setOpsUpstreamRequestBody(c, body)
 						appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 							Platform:           account.Platform,
@@ -2354,14 +2362,14 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		var usage *OpenAIUsage
 		var firstTokenMs *int
 		if reqStream {
-			streamResult, err := s.handleStreamingResponse(ctx, resp, c, account, startTime, originalModel, mappedModel)
+			streamResult, err := s.handleStreamingResponse(ctx, resp, c, account, startTime, originalModel, upstreamModel)
 			if err != nil {
 				return nil, err
 			}
 			usage = streamResult.usage
 			firstTokenMs = streamResult.firstTokenMs
 		} else {
-			usage, err = s.handleNonStreamingResponse(ctx, resp, c, account, originalModel, mappedModel)
+			usage, err = s.handleNonStreamingResponse(ctx, resp, c, account, originalModel, upstreamModel)
 			if err != nil {
 				return nil, err
 			}
@@ -2385,7 +2393,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			RequestID:       resp.Header.Get("x-request-id"),
 			Usage:           *usage,
 			Model:           originalModel,
-			UpstreamModel:   mappedModel,
+			UpstreamModel:   upstreamModel,
 			ServiceTier:     serviceTier,
 			ReasoningEffort: reasoningEffort,
 			Stream:          reqStream,
