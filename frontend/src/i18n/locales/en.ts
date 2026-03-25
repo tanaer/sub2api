@@ -2008,6 +2008,7 @@ export default {
       privacyAntigravitySet: 'Telemetry and marketing emails disabled',
       privacyAntigravityFailed: 'Privacy setting failed',
       setPrivacy: 'Set Privacy',
+      subscriptionAbnormal: 'Abnormal',
       // Capacity status tooltips
       capacity: {
         windowCost: {
