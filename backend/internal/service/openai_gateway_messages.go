@@ -40,6 +40,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 		return nil, fmt.Errorf("parse anthropic request: %w", err)
 	}
 	originalModel := anthropicReq.Model
+	applyOpenAICompatModelNormalization(&anthropicReq)
 	clientStream := anthropicReq.Stream // client's original stream preference
 	if reply := buildModelIdentityReplyForAnthropicMessages(originalModel, anthropicReq.Messages); reply != "" {
 		return writeLocalOpenAIAnthropicIdentityResponse(c, originalModel, reply, clientStream, startTime)
@@ -63,7 +64,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	}
 
 	// 3. Model mapping
-	mappedModel := resolveOpenAIForwardModel(account, originalModel, defaultMappedModel)
+	mappedModel := resolveOpenAIForwardModel(account, anthropicReq.Model, defaultMappedModel)
 	responsesReq.Model = mappedModel
 
 	logger.L().Debug("openai messages: model mapping applied",
