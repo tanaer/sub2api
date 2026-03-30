@@ -1,0 +1,25 @@
+[Unit]
+Description=AIAPI - AI API Gateway Platform
+Documentation=https://github.com/Wei-Shaw/sub2api
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=aiapi
+Group=aiapi
+WorkingDirectory=/opt/aiapi
+ExecStart=/opt/aiapi/aiapi
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aiapi
+EnvironmentFile=-/etc/aiapi/aiapi.env
+Environment=GIN_MODE=release
+Environment=DATA_DIR=/etc/aiapi
+Environment=SERVER_HOST=0.0.0.0
+Environment=SERVER_PORT=7777
+
+[Install]
+WantedBy=multi-user.target

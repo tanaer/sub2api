@@ -126,6 +126,22 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 		result.APIKeyQuotaExhausted = exhausted
 	}
 
+	if cmd.APIKeyRequestQuotaCount > 0 {
+		consumed, err := incrementUsageBillingAPIKeyRequestQuota(ctx, tx, cmd.APIKeyID, cmd.APIKeyRequestQuotaCount)
+		if err != nil {
+			return err
+		}
+		result.APIKeyRequestQuotaConsumed = consumed
+	}
+
+	if cmd.UserGroupRequestQuotaCount > 0 {
+		consumed, err := incrementUsageBillingUserGroupRequestQuota(ctx, tx, cmd.UserID, cmd.UserGroupRequestQuotaGroupID, cmd.UserGroupRequestQuotaCount)
+		if err != nil {
+			return err
+		}
+		result.UserGroupRequestQuotaConsumed = consumed
+	}
+
 	if cmd.APIKeyRateLimitCost > 0 {
 		if err := incrementUsageBillingAPIKeyRateLimit(ctx, tx, cmd.APIKeyID, cmd.APIKeyRateLimitCost); err != nil {
 			return err
@@ -213,6 +229,64 @@ func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID 
 		return false, err
 	}
 	return exhausted, nil
+}
+
+func incrementUsageBillingAPIKeyRequestQuota(ctx context.Context, tx *sql.Tx, apiKeyID int64, amount int64) (bool, error) {
+	var consumed bool
+	err := tx.QueryRowContext(ctx, `
+		UPDATE api_keys
+		SET request_quota_used = request_quota_used + $1,
+			updated_at = NOW()
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND request_quota > 0
+			AND request_quota_used < request_quota
+		RETURNING TRUE
+	`, amount, apiKeyID).Scan(&consumed)
+	if err == nil {
+		return consumed, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+
+	var exists bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM api_keys
+			WHERE id = $1 AND deleted_at IS NULL
+		)
+	`, apiKeyID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, service.ErrAPIKeyNotFound
+	}
+	return false, nil
+}
+
+func incrementUsageBillingUserGroupRequestQuota(ctx context.Context, tx *sql.Tx, userID, groupID, amount int64) (bool, error) {
+	var consumed bool
+	err := tx.QueryRowContext(ctx, `
+		UPDATE user_group_request_quotas
+		SET request_quota_used = request_quota_used + $3,
+			updated_at = NOW()
+		WHERE user_id = $1
+			AND group_id = $2
+			AND request_quota > 0
+			AND request_quota_used < request_quota
+		RETURNING TRUE
+	`, userID, groupID, amount).Scan(&consumed)
+	if err == nil {
+		return consumed, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+
+	return false, nil
 }
 
 func incrementUsageBillingAPIKeyRateLimit(ctx context.Context, tx *sql.Tx, apiKeyID int64, cost float64) error {

@@ -43,6 +43,8 @@ export interface AdminUser extends User {
   notes: string
   // 用户专属分组倍率配置 (group_id -> rate_multiplier)
   group_rates?: Record<number, number>
+  // 用户专属分组按次配额配置 (group_id -> request_quota)
+  group_request_quotas?: Record<number, number>
   // 当前并发数（仅管理员列表接口返回）
   current_concurrency?: number
   // Sora 存储配额（字节）
@@ -433,6 +435,8 @@ export interface ApiKey {
   last_used_at: string | null
   quota: number // Quota limit in USD (0 = unlimited)
   quota_used: number // Used quota amount in USD
+  request_quota: number
+  request_quota_used: number
   expires_at: string | null // Expiration time (null = never expires)
   created_at: string
   updated_at: string
@@ -968,7 +972,7 @@ export interface AdminDataImportResult {
 
 // ==================== Usage & Redeem Types ====================
 
-export type RedeemCodeType = 'balance' | 'concurrency' | 'subscription' | 'invitation'
+export type RedeemCodeType = 'balance' | 'concurrency' | 'subscription' | 'invitation' | 'group_request_quota'
 export type UsageRequestType = 'unknown' | 'sync' | 'stream' | 'ws_v2'
 
 export interface UsageLog {
@@ -1082,7 +1086,7 @@ export interface RedeemCode {
   used_at: string | null
   created_at: string
   updated_at?: string
-  group_id?: number | null // 订阅类型专用
+  group_id?: number | null // 订阅/分组次数类型专用
   validity_days?: number // 订阅类型专用
   user?: User
   group?: Group // 关联的分组
@@ -1092,7 +1096,7 @@ export interface GenerateRedeemCodesRequest {
   count: number
   type: RedeemCodeType
   value: number
-  group_id?: number | null // 订阅类型专用
+  group_id?: number | null // 订阅/分组次数类型专用
   validity_days?: number // 订阅类型专用
 }
 
@@ -1267,6 +1271,9 @@ export interface UpdateUserRequest {
   // 用户专属分组倍率配置 (group_id -> rate_multiplier | null)
   // null 表示删除该分组的专属倍率
   group_rates?: Record<number, number | null>
+  // 用户专属分组按次配额配置 (group_id -> request_quota | null)
+  // null 表示删除该分组的按次配额
+  group_request_quotas?: Record<number, number | null>
 }
 
 export interface ChangePasswordRequest {

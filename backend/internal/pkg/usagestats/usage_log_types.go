@@ -186,6 +186,16 @@ type APIKeyUsageTrendPoint struct {
 	Tokens   int64  `json:"tokens"`
 }
 
+// UserGroupRequestQuotaSummary 表示用户在某个分组下的按次配额摘要。
+type UserGroupRequestQuotaSummary struct {
+	GroupID               int64  `json:"group_id"`
+	GroupName             string `json:"group_name"`
+	Platform              string `json:"platform"`
+	RequestQuota          int64  `json:"request_quota"`
+	RequestQuotaUsed      int64  `json:"request_quota_used"`
+	RequestQuotaRemaining int64  `json:"request_quota_remaining"`
+}
+
 // UserDashboardStats 用户仪表盘统计
 type UserDashboardStats struct {
 	// API Key 统计
@@ -218,6 +228,9 @@ type UserDashboardStats struct {
 	// 性能指标
 	Rpm int64 `json:"rpm"` // 近5分钟平均每分钟请求数
 	Tpm int64 `json:"tpm"` // 近5分钟平均每分钟Token数
+
+	// 分组按次配额摘要
+	GroupRequestQuotas []UserGroupRequestQuotaSummary `json:"group_request_quotas,omitempty"`
 }
 
 // UsageLogFilters represents filters for usage log queries

@@ -71,6 +71,7 @@ type APIKeyRepository interface {
 
 	// Quota methods
 	IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error)
+	IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error)
 	UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error
 
 	// Rate limit methods
@@ -506,8 +507,31 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 		return nil, fmt.Errorf("get api key: %w", err)
 	}
 	apiKey.Key = key
+	if err := s.hydrateUserGroupRequestQuota(ctx, apiKey); err != nil {
+		return nil, fmt.Errorf("get api key: %w", err)
+	}
 	s.compileAPIKeyIPRules(apiKey)
 	return apiKey, nil
+}
+
+func (s *APIKeyService) hydrateUserGroupRequestQuota(ctx context.Context, apiKey *APIKey) error {
+	if apiKey == nil || s.userGroupRateRepo == nil || apiKey.GroupID == nil || apiKey.UserID <= 0 {
+		return nil
+	}
+
+	quota, err := s.userGroupRateRepo.GetRequestQuotaByUserAndGroup(ctx, apiKey.UserID, *apiKey.GroupID)
+	if err != nil {
+		return fmt.Errorf("get user group request quota: %w", err)
+	}
+	if quota == nil {
+		apiKey.UserGroupRequestQuota = 0
+		apiKey.UserGroupRequestQuotaUsed = 0
+		return nil
+	}
+
+	apiKey.UserGroupRequestQuota = quota.RequestQuota
+	apiKey.UserGroupRequestQuotaUsed = quota.RequestQuotaUsed
+	return nil
 }
 
 // Update 更新API Key
@@ -806,6 +830,18 @@ func (s *APIKeyService) GetUserGroupRates(ctx context.Context, userID int64) (ma
 	return rates, nil
 }
 
+// GetUserGroupRequestQuota 获取用户在指定分组下的按次配额。
+func (s *APIKeyService) GetUserGroupRequestQuota(ctx context.Context, userID, groupID int64) (*UserGroupRequestQuota, error) {
+	if s.userGroupRateRepo == nil || userID <= 0 || groupID <= 0 {
+		return nil, nil
+	}
+	quota, err := s.userGroupRateRepo.GetRequestQuotaByUserAndGroup(ctx, userID, groupID)
+	if err != nil {
+		return nil, fmt.Errorf("get user group request quota: %w", err)
+	}
+	return quota, nil
+}
+
 // CheckAPIKeyQuotaAndExpiry checks if the API key is valid for use (not expired, quota not exhausted)
 // Returns nil if valid, error if invalid
 func (s *APIKeyService) CheckAPIKeyQuotaAndExpiry(apiKey *APIKey) error {
@@ -866,6 +902,43 @@ func (s *APIKeyService) UpdateQuotaUsed(ctx context.Context, apiKeyID int64, cos
 		s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
 	}
 
+	return nil
+}
+
+// UpdateRequestQuotaUsed updates the request_quota_used field after a successful response.
+func (s *APIKeyService) UpdateRequestQuotaUsed(ctx context.Context, apiKeyID int64, amount int64) error {
+	if amount <= 0 {
+		return nil
+	}
+
+	applied, err := s.apiKeyRepo.IncrementRequestQuotaUsed(ctx, apiKeyID, amount)
+	if err != nil {
+		return fmt.Errorf("increment request quota used: %w", err)
+	}
+	if !applied {
+		return nil
+	}
+
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, apiKeyID)
+	if err != nil {
+		return nil
+	}
+	if strings.TrimSpace(apiKey.Key) != "" {
+		s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+	}
+	return nil
+}
+
+// UpdateUserGroupRequestQuotaUsed updates the request_quota_used field for a user-group quota after a successful response.
+func (s *APIKeyService) UpdateUserGroupRequestQuotaUsed(ctx context.Context, userID, groupID, amount int64) error {
+	if amount <= 0 || s.userGroupRateRepo == nil || userID <= 0 || groupID <= 0 {
+		return nil
+	}
+	_, err := s.userGroupRateRepo.IncrementRequestQuotaUsed(ctx, userID, groupID, amount)
+	if err != nil {
+		return fmt.Errorf("increment user group request quota used: %w", err)
+	}
+	s.InvalidateAuthCacheByUserID(ctx, userID)
 	return nil
 }
 

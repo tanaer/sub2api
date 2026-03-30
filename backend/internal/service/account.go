@@ -601,10 +601,10 @@ func (a *Account) GetClaudeUserID() string {
 // 用于 model_mapping 的通配符匹配
 func matchAntigravityWildcard(pattern, str string) bool {
 	if strings.HasSuffix(pattern, "*") {
-		prefix := pattern[:len(pattern)-1]
-		return strings.HasPrefix(str, prefix)
+		prefix := strings.ToLower(pattern[:len(pattern)-1])
+		return strings.HasPrefix(strings.ToLower(str), prefix)
 	}
-	return pattern == str
+	return strings.EqualFold(pattern, str)
 }
 
 // matchWildcard 通用通配符匹配（仅支持末尾 *）

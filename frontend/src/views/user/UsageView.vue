@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #actions>
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4" :class="requestQuotaSummary ? 'lg:grid-cols-5' : 'lg:grid-cols-4'">
           <!-- Total Requests -->
           <div class="card p-4">
           <div class="flex items-center gap-3">
@@ -61,6 +61,30 @@
                 {{ t('usage.actualCost') }} /
                 <span class="line-through">${{ (usageStats?.total_cost || 0).toFixed(4) }}</span>
                 {{ t('usage.standardCost') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Request Quota -->
+        <div v-if="requestQuotaSummary" class="card p-4">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-sky-100 p-2 dark:bg-sky-900/30">
+              <Icon name="shield" size="md" class="text-sky-600 dark:text-sky-400" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {{ t('keyUsage.requestQuota') }}
+              </p>
+              <p class="text-xl font-bold text-gray-900 dark:text-white">
+                {{ requestQuotaSummary.remaining.toLocaleString() }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t('keyUsage.requestQuotaRemaining') }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t('keyUsage.requestQuotaUsed') }}:
+                {{ requestQuotaSummary.used.toLocaleString() }} / {{ requestQuotaSummary.limit.toLocaleString() }}
               </p>
             </div>
           </div>
@@ -546,6 +570,31 @@ const apiKeyOptions = computed(() => {
       label: key.name
     }))
   ]
+})
+
+const selectedApiKey = computed(() => {
+  if (filters.value.api_key_id == null) return null
+  const apiKeyId = Number(filters.value.api_key_id)
+  if (!Number.isFinite(apiKeyId)) return null
+  return apiKeys.value.find((key) => key.id === apiKeyId) || null
+})
+
+const requestQuotaSummary = computed(() => {
+  const scopedKeys = selectedApiKey.value
+    ? [selectedApiKey.value]
+    : apiKeys.value.filter((key) => key.request_quota > 0 || key.request_quota_used > 0)
+
+  if (scopedKeys.length === 0) return null
+
+  const limit = scopedKeys.reduce((sum, key) => sum + (key.request_quota || 0), 0)
+  const used = scopedKeys.reduce((sum, key) => sum + (key.request_quota_used || 0), 0)
+  if (limit <= 0 && used <= 0) return null
+
+  return {
+    limit,
+    used,
+    remaining: Math.max(limit - used, 0),
+  }
 })
 
 // Helper function to format date in local timezone

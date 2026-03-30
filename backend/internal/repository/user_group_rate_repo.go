@@ -229,3 +229,125 @@ func (r *userGroupRateRepository) DeleteByUserID(ctx context.Context, userID int
 	_, err := r.sql.ExecContext(ctx, `DELETE FROM user_group_rate_multipliers WHERE user_id = $1`, userID)
 	return err
 }
+
+// GetRequestQuotasByUserID 获取用户的所有分组按次配额配置。
+func (r *userGroupRateRepository) GetRequestQuotasByUserID(ctx context.Context, userID int64) (map[int64]int64, error) {
+	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(ctx, `
+		SELECT group_id, request_quota
+		FROM user_group_request_quotas
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[int64]int64)
+	for rows.Next() {
+		var groupID int64
+		var requestQuota int64
+		if err := rows.Scan(&groupID, &requestQuota); err != nil {
+			return nil, err
+		}
+		result[groupID] = requestQuota
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetRequestQuotaByUserAndGroup 获取用户在指定分组下的按次配额状态。
+func (r *userGroupRateRepository) GetRequestQuotaByUserAndGroup(ctx context.Context, userID, groupID int64) (*service.UserGroupRequestQuota, error) {
+	quota := &service.UserGroupRequestQuota{}
+	err := scanSingleRow(ctx, sqlExecutorFromContext(ctx, r.sql), `
+		SELECT request_quota, request_quota_used
+		FROM user_group_request_quotas
+		WHERE user_id = $1 AND group_id = $2
+	`, []any{userID, groupID}, &quota.RequestQuota, &quota.RequestQuotaUsed)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return quota, nil
+}
+
+// SyncUserGroupRequestQuotas 同步用户的分组按次配额配置。
+func (r *userGroupRateRepository) SyncUserGroupRequestQuotas(ctx context.Context, userID int64, quotas map[int64]*int64) error {
+	sqlq := sqlExecutorFromContext(ctx, r.sql)
+	if len(quotas) == 0 {
+		_, err := sqlq.ExecContext(ctx, `DELETE FROM user_group_request_quotas WHERE user_id = $1`, userID)
+		return err
+	}
+
+	var toDelete []int64
+	upsertGroupIDs := make([]int64, 0, len(quotas))
+	upsertRequestQuotas := make([]int64, 0, len(quotas))
+	for groupID, quota := range quotas {
+		if quota == nil || *quota <= 0 {
+			toDelete = append(toDelete, groupID)
+			continue
+		}
+		upsertGroupIDs = append(upsertGroupIDs, groupID)
+		upsertRequestQuotas = append(upsertRequestQuotas, *quota)
+	}
+
+	if len(toDelete) > 0 {
+		if _, err := sqlq.ExecContext(ctx, `
+			DELETE FROM user_group_request_quotas
+			WHERE user_id = $1 AND group_id = ANY($2)
+		`, userID, pq.Array(toDelete)); err != nil {
+			return err
+		}
+	}
+
+	if len(upsertGroupIDs) == 0 {
+		return nil
+	}
+
+	now := time.Now()
+	_, err := sqlq.ExecContext(ctx, `
+		INSERT INTO user_group_request_quotas (user_id, group_id, request_quota, created_at, updated_at)
+		SELECT
+			$1::bigint,
+			data.group_id,
+			data.request_quota,
+			$2::timestamptz,
+			$2::timestamptz
+		FROM unnest($3::bigint[], $4::bigint[]) AS data(group_id, request_quota)
+		ON CONFLICT (user_id, group_id)
+		DO UPDATE SET
+			request_quota = EXCLUDED.request_quota,
+			updated_at = EXCLUDED.updated_at
+	`, userID, now, pq.Array(upsertGroupIDs), pq.Array(upsertRequestQuotas))
+	return err
+}
+
+// IncrementRequestQuotaUsed 原子增加用户分组按次配额的已用次数。
+func (r *userGroupRateRepository) IncrementRequestQuotaUsed(ctx context.Context, userID, groupID, amount int64) (bool, error) {
+	if amount <= 0 {
+		return false, nil
+	}
+
+	var applied bool
+	err := scanSingleRow(ctx, sqlExecutorFromContext(ctx, r.sql), `
+		UPDATE user_group_request_quotas
+		SET
+			request_quota_used = request_quota_used + $3,
+			updated_at = NOW()
+		WHERE user_id = $1
+			AND group_id = $2
+			AND request_quota > 0
+			AND request_quota_used < request_quota
+		RETURNING TRUE
+	`, []any{userID, groupID, amount}, &applied)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return applied, nil
+}

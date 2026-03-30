@@ -27,6 +27,12 @@ type AdminUpdateAPIKeyGroupRequest struct {
 	GroupID *int64 `json:"group_id"` // nil=不修改, 0=解绑, >0=绑定到目标分组
 }
 
+// AdminUpdateAPIKeyRequestQuotaRequest represents the request to update an API key's request quota.
+type AdminUpdateAPIKeyRequestQuotaRequest struct {
+	RequestQuota          *int64 `json:"request_quota"`
+	ResetRequestQuotaUsed bool   `json:"reset_request_quota_used"`
+}
+
 // UpdateGroup handles updating an API key's group binding
 // PUT /api/v1/admin/api-keys/:id
 func (h *AdminAPIKeyHandler) UpdateGroup(c *gin.Context) {
@@ -60,4 +66,28 @@ func (h *AdminAPIKeyHandler) UpdateGroup(c *gin.Context) {
 		GrantedGroupName:       result.GrantedGroupName,
 	}
 	response.Success(c, resp)
+}
+
+// UpdateRequestQuota handles updating an API key's request-count quota.
+// PUT /api/v1/admin/api-keys/:id/request-quota
+func (h *AdminAPIKeyHandler) UpdateRequestQuota(c *gin.Context) {
+	keyID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid API key ID")
+		return
+	}
+
+	var req AdminUpdateAPIKeyRequestQuotaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	apiKey, err := h.adminService.AdminUpdateAPIKeyRequestQuota(c.Request.Context(), keyID, req.RequestQuota, req.ResetRequestQuotaUsed)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, dto.APIKeyFromService(apiKey))
 }

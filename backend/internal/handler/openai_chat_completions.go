@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
@@ -15,6 +16,17 @@ import (
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
+
+func resolveChatCompletionsSelectionErrorMessage(apiKey *service.APIKey, selectionErr error) string {
+	if apiKey != nil &&
+		apiKey.Group != nil &&
+		apiKey.Group.Platform == service.PlatformAnthropic &&
+		selectionErr != nil &&
+		strings.Contains(strings.ToLower(selectionErr.Error()), "no available openai accounts") {
+		return "This group is configured for Anthropic messages. /v1/chat/completions is unavailable for this group; use /v1/messages instead."
+	}
+	return "Service temporarily unavailable"
+}
 
 // ChatCompletions handles OpenAI Chat Completions API requests.
 // POST /v1/chat/completions
@@ -151,7 +163,13 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 					}
 				}
 				if err != nil {
-					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable", streamStarted)
+					h.handleStreamingAwareError(
+						c,
+						http.StatusServiceUnavailable,
+						"api_error",
+						resolveChatCompletionsSelectionErrorMessage(apiKey, err),
+						streamStarted,
+					)
 					return
 				}
 			} else {

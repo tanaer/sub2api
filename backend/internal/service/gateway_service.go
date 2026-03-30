@@ -6325,41 +6325,50 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	var errType, errMsg string
 	var statusCode int
 
-	switch resp.StatusCode {
-	case 400:
-		c.Data(http.StatusBadRequest, "application/json", body)
-		summary := upstreamMsg
-		if summary == "" {
-			summary = truncateForLog(body, 512)
+	if IsUpstreamBillingIssue(resp.StatusCode, body) {
+		statusCode = http.StatusForbidden
+		errType = "billing_error"
+		errMsg = upstreamMsg
+		if errMsg == "" {
+			errMsg = "Upstream insufficient balance or billing issue"
 		}
-		if summary == "" {
-			return nil, fmt.Errorf("upstream error: %d", resp.StatusCode)
+	} else {
+		switch resp.StatusCode {
+		case 400:
+			c.Data(http.StatusBadRequest, "application/json", body)
+			summary := upstreamMsg
+			if summary == "" {
+				summary = truncateForLog(body, 512)
+			}
+			if summary == "" {
+				return nil, fmt.Errorf("upstream error: %d", resp.StatusCode)
+			}
+			return nil, fmt.Errorf("upstream error: %d message=%s", resp.StatusCode, summary)
+		case 401:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream authentication failed, please contact administrator"
+		case 403:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream access forbidden, please contact administrator"
+		case 429:
+			statusCode = http.StatusTooManyRequests
+			errType = "rate_limit_error"
+			errMsg = "Upstream rate limit exceeded, please retry later"
+		case 529:
+			statusCode = http.StatusServiceUnavailable
+			errType = "overloaded_error"
+			errMsg = "Upstream service overloaded, please retry later"
+		case 500, 502, 503, 504:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream service temporarily unavailable"
+		default:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream request failed"
 		}
-		return nil, fmt.Errorf("upstream error: %d message=%s", resp.StatusCode, summary)
-	case 401:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream authentication failed, please contact administrator"
-	case 403:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream access forbidden, please contact administrator"
-	case 429:
-		statusCode = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		errMsg = "Upstream rate limit exceeded, please retry later"
-	case 529:
-		statusCode = http.StatusServiceUnavailable
-		errType = "overloaded_error"
-		errMsg = "Upstream service overloaded, please retry later"
-	case 500, 502, 503, 504:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream service temporarily unavailable"
-	default:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream request failed"
 	}
 
 	// 返回自定义错误响应
@@ -7200,11 +7209,16 @@ type RecordUsageInput struct {
 // APIKeyQuotaUpdater defines the interface for updating API Key quota and rate limit usage
 type APIKeyQuotaUpdater interface {
 	UpdateQuotaUsed(ctx context.Context, apiKeyID int64, cost float64) error
+	UpdateRequestQuotaUsed(ctx context.Context, apiKeyID int64, amount int64) error
 	UpdateRateLimitUsage(ctx context.Context, apiKeyID int64, cost float64) error
 }
 
 type apiKeyAuthCacheInvalidator interface {
 	InvalidateAuthCacheByKey(ctx context.Context, key string)
+}
+
+type userGroupRequestQuotaUpdater interface {
+	UpdateUserGroupRequestQuotaUsed(ctx context.Context, userID, groupID, amount int64) error
 }
 
 type usageLogBestEffortWriter interface {
@@ -7224,6 +7238,18 @@ type postUsageBillingParams struct {
 	APIKeyService         APIKeyQuotaUpdater
 }
 
+func (p *postUsageBillingParams) usesRequestQuotaBilling() bool {
+	return p != nil && p.APIKey != nil && p.APIKey.HasRemainingEffectiveRequestQuota()
+}
+
+func (p *postUsageBillingParams) usesUserGroupRequestQuotaBilling() bool {
+	return p != nil && p.APIKey != nil && p.APIKey.EffectiveRequestQuotaSource() == "user_group" && p.APIKey.HasRemainingEffectiveRequestQuota()
+}
+
+func (p *postUsageBillingParams) usesAPIKeyRequestQuotaBilling() bool {
+	return p != nil && p.APIKey != nil && p.APIKey.EffectiveRequestQuotaSource() == "api_key" && p.APIKey.HasRemainingEffectiveRequestQuota()
+}
+
 // postUsageBilling 统一处理使用量记录后的扣费逻辑：
 //   - 订阅/余额扣费
 //   - API Key 配额更新
@@ -7234,43 +7260,59 @@ func postUsageBilling(ctx context.Context, p *postUsageBillingParams, deps *bill
 	defer cancel()
 
 	cost := p.Cost
+	useRequestQuotaBilling := p.usesRequestQuotaBilling()
 
-	// 1. 订阅 / 余额扣费
-	if p.IsSubscriptionBill {
-		if cost.TotalCost > 0 {
-			if err := deps.userSubRepo.IncrementUsage(billingCtx, p.Subscription.ID, cost.TotalCost); err != nil {
-				slog.Error("increment subscription usage failed", "subscription_id", p.Subscription.ID, "error", err)
+	// 1. 按次扣费优先，成功返回时只扣 1 次
+	if useRequestQuotaBilling {
+		if p.usesUserGroupRequestQuotaBilling() {
+			if updater, ok := any(p.APIKeyService).(userGroupRequestQuotaUpdater); ok && p.APIKey.GroupID != nil {
+				if err := updater.UpdateUserGroupRequestQuotaUsed(billingCtx, p.User.ID, *p.APIKey.GroupID, 1); err != nil {
+					slog.Error("update user group request quota failed", "user_id", p.User.ID, "group_id", *p.APIKey.GroupID, "error", err)
+				}
 			}
-			deps.billingCacheService.QueueUpdateSubscriptionUsage(p.User.ID, *p.APIKey.GroupID, cost.TotalCost)
+		} else if p.APIKeyService != nil {
+			if err := p.APIKeyService.UpdateRequestQuotaUsed(billingCtx, p.APIKey.ID, 1); err != nil {
+				slog.Error("update api key request quota failed", "api_key_id", p.APIKey.ID, "error", err)
+			}
 		}
 	} else {
-		if cost.ActualCost > 0 {
-			if err := deps.userRepo.DeductBalance(billingCtx, p.User.ID, cost.ActualCost); err != nil {
-				slog.Error("deduct balance failed", "user_id", p.User.ID, "error", err)
+		// 2. 订阅 / 余额扣费
+		if p.IsSubscriptionBill {
+			if cost.TotalCost > 0 {
+				if err := deps.userSubRepo.IncrementUsage(billingCtx, p.Subscription.ID, cost.TotalCost); err != nil {
+					slog.Error("increment subscription usage failed", "subscription_id", p.Subscription.ID, "error", err)
+				}
+				deps.billingCacheService.QueueUpdateSubscriptionUsage(p.User.ID, *p.APIKey.GroupID, cost.TotalCost)
 			}
-			deps.billingCacheService.QueueDeductBalance(p.User.ID, cost.ActualCost)
+		} else {
+			if cost.ActualCost > 0 {
+				if err := deps.userRepo.DeductBalance(billingCtx, p.User.ID, cost.ActualCost); err != nil {
+					slog.Error("deduct balance failed", "user_id", p.User.ID, "error", err)
+				}
+				deps.billingCacheService.QueueDeductBalance(p.User.ID, cost.ActualCost)
+			}
 		}
-	}
 
-	// 2. API Key 配额
-	if cost.ActualCost > 0 && p.APIKey.Quota > 0 && p.APIKeyService != nil {
-		if err := p.APIKeyService.UpdateQuotaUsed(billingCtx, p.APIKey.ID, cost.ActualCost); err != nil {
-			slog.Error("update api key quota failed", "api_key_id", p.APIKey.ID, "error", err)
+		// 3. API Key 配额
+		if cost.ActualCost > 0 && p.APIKey.Quota > 0 && p.APIKeyService != nil {
+			if err := p.APIKeyService.UpdateQuotaUsed(billingCtx, p.APIKey.ID, cost.ActualCost); err != nil {
+				slog.Error("update api key quota failed", "api_key_id", p.APIKey.ID, "error", err)
+			}
 		}
-	}
 
-	// 3. API Key 限速用量
-	if cost.ActualCost > 0 && p.APIKey.HasRateLimits() && p.APIKeyService != nil {
-		if err := p.APIKeyService.UpdateRateLimitUsage(billingCtx, p.APIKey.ID, cost.ActualCost); err != nil {
-			slog.Error("update api key rate limit usage failed", "api_key_id", p.APIKey.ID, "error", err)
+		// 4. API Key 限速用量
+		if cost.ActualCost > 0 && p.APIKey.HasRateLimits() && p.APIKeyService != nil {
+			if err := p.APIKeyService.UpdateRateLimitUsage(billingCtx, p.APIKey.ID, cost.ActualCost); err != nil {
+				slog.Error("update api key rate limit usage failed", "api_key_id", p.APIKey.ID, "error", err)
+			}
 		}
-	}
 
-	// 4. 账号配额用量（账号口径：TotalCost × 账号计费倍率）
-	if cost.TotalCost > 0 && p.Account.IsAPIKeyOrBedrock() && p.Account.HasAnyQuotaLimit() {
-		accountCost := cost.TotalCost * p.AccountRateMultiplier
-		if err := deps.accountRepo.IncrementQuotaUsed(billingCtx, p.Account.ID, accountCost); err != nil {
-			slog.Error("increment account quota used failed", "account_id", p.Account.ID, "cost", accountCost, "error", err)
+		// 5. 账号配额用量（账号口径：TotalCost × 账号计费倍率）
+		if cost.TotalCost > 0 && p.Account.IsAPIKeyOrBedrock() && p.Account.HasAnyQuotaLimit() {
+			accountCost := cost.TotalCost * p.AccountRateMultiplier
+			if err := deps.accountRepo.IncrementQuotaUsed(billingCtx, p.Account.ID, accountCost); err != nil {
+				slog.Error("increment account quota used failed", "account_id", p.Account.ID, "cost", accountCost, "error", err)
+			}
 		}
 	}
 
@@ -7349,14 +7391,28 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		cmd.BalanceCost = p.Cost.ActualCost
 	}
 
-	if p.Cost.ActualCost > 0 && p.APIKey.Quota > 0 && p.APIKeyService != nil {
-		cmd.APIKeyQuotaCost = p.Cost.ActualCost
-	}
-	if p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits() && p.APIKeyService != nil {
-		cmd.APIKeyRateLimitCost = p.Cost.ActualCost
-	}
-	if p.Cost.TotalCost > 0 && p.Account.IsAPIKeyOrBedrock() && p.Account.HasAnyQuotaLimit() {
-		cmd.AccountQuotaCost = p.Cost.TotalCost * p.AccountRateMultiplier
+	if p.usesRequestQuotaBilling() {
+		cmd.BalanceCost = 0
+		cmd.SubscriptionCost = 0
+		cmd.APIKeyQuotaCost = 0
+		cmd.APIKeyRateLimitCost = 0
+		cmd.AccountQuotaCost = 0
+		if p.usesUserGroupRequestQuotaBilling() && p.APIKey.GroupID != nil {
+			cmd.UserGroupRequestQuotaGroupID = *p.APIKey.GroupID
+			cmd.UserGroupRequestQuotaCount = 1
+		} else {
+			cmd.APIKeyRequestQuotaCount = 1
+		}
+	} else {
+		if p.Cost.ActualCost > 0 && p.APIKey.Quota > 0 && p.APIKeyService != nil {
+			cmd.APIKeyQuotaCost = p.Cost.ActualCost
+		}
+		if p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits() && p.APIKeyService != nil {
+			cmd.APIKeyRateLimitCost = p.Cost.ActualCost
+		}
+		if p.Cost.TotalCost > 0 && p.Account.IsAPIKeyOrBedrock() && p.Account.HasAnyQuotaLimit() {
+			cmd.AccountQuotaCost = p.Cost.TotalCost * p.AccountRateMultiplier
+		}
 	}
 
 	cmd.Normalize()
@@ -7387,7 +7443,7 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		return false, nil
 	}
 
-	if result.APIKeyQuotaExhausted {
+	if result.APIKeyQuotaExhausted || result.APIKeyRequestQuotaConsumed {
 		if invalidator, ok := p.APIKeyService.(apiKeyAuthCacheInvalidator); ok && p.APIKey != nil && p.APIKey.Key != "" {
 			invalidator.InvalidateAuthCacheByKey(billingCtx, p.APIKey.Key)
 		}
@@ -7399,6 +7455,11 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 
 func finalizePostUsageBilling(p *postUsageBillingParams, deps *billingDeps) {
 	if p == nil || p.Cost == nil || deps == nil {
+		return
+	}
+
+	if p.usesRequestQuotaBilling() {
+		deps.deferredService.ScheduleLastUsedUpdate(p.Account.ID)
 		return
 	}
 

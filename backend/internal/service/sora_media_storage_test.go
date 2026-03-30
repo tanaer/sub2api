@@ -69,6 +69,23 @@ func TestSoraMediaStorage_FallbackToUpstream(t *testing.T) {
 	require.Equal(t, []string{url}, urls)
 }
 
+func TestSoraMediaStorage_DefaultRootUsesDataDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DATA_DIR", tmpDir)
+
+	storage := NewSoraMediaStorage(&config.Config{
+		Sora: config.SoraConfig{
+			Storage: config.SoraStorageConfig{
+				Type: "local",
+			},
+		},
+	})
+
+	require.Equal(t, filepath.Join(tmpDir, "sora"), storage.Root())
+	require.Equal(t, filepath.Join(tmpDir, "sora", "image"), storage.ImageRoot())
+	require.Equal(t, filepath.Join(tmpDir, "sora", "video"), storage.VideoRoot())
+}
+
 func TestSoraMediaStorage_MaxDownloadBytes(t *testing.T) {
 	tmpDir := t.TempDir()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

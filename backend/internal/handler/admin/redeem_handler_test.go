@@ -48,6 +48,21 @@ func postCreateAndRedeemValidation(t *testing.T, handler *RedeemHandler, body an
 	return w.Code
 }
 
+func postGenerateValidation(t *testing.T, handler *RedeemHandler, body any) int {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	jsonBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+	c.Request, _ = http.NewRequest(http.MethodPost, "/api/v1/admin/redeem-codes/generate", bytes.NewReader(jsonBytes))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Generate(c)
+	return w.Code
+}
+
 func TestCreateAndRedeem_TypeDefaultsToBalance(t *testing.T) {
 	// 不传 type 字段时应默认 balance，不触发 subscription 校验。
 	// 验证通过后进入 service 层会 panic（返回 0），说明默认值生效。
@@ -132,4 +147,108 @@ func TestCreateAndRedeem_BalanceIgnoresSubscriptionFields(t *testing.T) {
 
 	assert.NotEqual(t, http.StatusBadRequest, code,
 		"balance type should not require group_id or validity_days")
+}
+
+func TestGenerate_GroupRequestQuotaRequiresGroupID(t *testing.T) {
+	h := &RedeemHandler{
+		adminService: newStubAdminService(),
+	}
+	code := postGenerateValidation(t, h, map[string]any{
+		"count": 1,
+		"type":  "group_request_quota",
+		"value": 5,
+	})
+
+	assert.Equal(t, http.StatusBadRequest, code)
+}
+
+func TestGenerate_GroupRequestQuotaRequiresWholePositiveValue(t *testing.T) {
+	h := &RedeemHandler{
+		adminService: newStubAdminService(),
+	}
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "zero", value: 0},
+		{name: "fraction", value: 1.5},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			code := postGenerateValidation(t, h, map[string]any{
+				"count":    1,
+				"type":     "group_request_quota",
+				"group_id": 5,
+				"value":    tc.value,
+			})
+			assert.Equal(t, http.StatusBadRequest, code)
+		})
+	}
+}
+
+func TestGenerate_GroupRequestQuotaValidParamsPassValidation(t *testing.T) {
+	h := &RedeemHandler{
+		adminService: newStubAdminService(),
+	}
+	code := postGenerateValidation(t, h, map[string]any{
+		"count":    2,
+		"type":     "group_request_quota",
+		"group_id": 5,
+		"value":    8,
+	})
+
+	assert.Equal(t, http.StatusOK, code)
+}
+
+func TestCreateAndRedeem_GroupRequestQuotaRequiresGroupID(t *testing.T) {
+	h := newCreateAndRedeemHandler()
+	code := postCreateAndRedeemValidation(t, h, map[string]any{
+		"code":    "test-group-rq-no-group",
+		"type":    "group_request_quota",
+		"value":   5,
+		"user_id": 1,
+	})
+
+	assert.Equal(t, http.StatusBadRequest, code)
+}
+
+func TestCreateAndRedeem_GroupRequestQuotaRequiresWholePositiveValue(t *testing.T) {
+	h := newCreateAndRedeemHandler()
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "zero", value: 0},
+		{name: "fraction", value: 2.5},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			code := postCreateAndRedeemValidation(t, h, map[string]any{
+				"code":     "test-group-rq-bad-" + tc.name,
+				"type":     "group_request_quota",
+				"value":    tc.value,
+				"user_id":  1,
+				"group_id": 5,
+			})
+			assert.Equal(t, http.StatusBadRequest, code)
+		})
+	}
+}
+
+func TestCreateAndRedeem_GroupRequestQuotaValidParamsPassValidation(t *testing.T) {
+	h := newCreateAndRedeemHandler()
+	code := postCreateAndRedeemValidation(t, h, map[string]any{
+		"code":     "test-group-rq-valid",
+		"type":     "group_request_quota",
+		"value":    12,
+		"user_id":  1,
+		"group_id": 5,
+	})
+
+	assert.NotEqual(t, http.StatusBadRequest, code,
+		"valid group_request_quota params should pass validation")
 }

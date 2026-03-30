@@ -44,4 +44,6 @@ type UserGroupRateRepository interface {
 
 	// DeleteByUserID 删除指定用户的所有专属倍率（用户删除时调用）
 	DeleteByUserID(ctx context.Context, userID int64) error
+
+	UserGroupRequestQuotaRepository
 }

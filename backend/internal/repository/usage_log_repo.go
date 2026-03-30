@@ -2375,6 +2375,45 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 	stats.Rpm = rpm
 	stats.Tpm = tpm
 
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT
+			g.id,
+			g.name,
+			g.platform,
+			ugq.request_quota,
+			ugq.request_quota_used
+		FROM user_group_request_quotas ugq
+		JOIN groups g ON g.id = ugq.group_id
+		WHERE ugq.user_id = $1
+			AND g.deleted_at IS NULL
+		ORDER BY g.name ASC, g.id ASC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var item usagestats.UserGroupRequestQuotaSummary
+		if err := rows.Scan(
+			&item.GroupID,
+			&item.GroupName,
+			&item.Platform,
+			&item.RequestQuota,
+			&item.RequestQuotaUsed,
+		); err != nil {
+			return nil, err
+		}
+		item.RequestQuotaRemaining = item.RequestQuota - item.RequestQuotaUsed
+		if item.RequestQuotaRemaining < 0 {
+			item.RequestQuotaRemaining = 0
+		}
+		stats.GroupRequestQuotas = append(stats.GroupRequestQuotas, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return stats, nil
 }
 

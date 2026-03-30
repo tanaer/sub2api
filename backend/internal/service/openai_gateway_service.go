@@ -3072,27 +3072,36 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	var errType, errMsg string
 	var statusCode int
 
-	switch resp.StatusCode {
-	case 401:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream authentication failed, please contact administrator"
-	case 402:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream payment required: insufficient balance or billing issue"
-	case 403:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream access forbidden, please contact administrator"
-	case 429:
-		statusCode = http.StatusTooManyRequests
-		errType = "rate_limit_error"
-		errMsg = "Upstream rate limit exceeded, please retry later"
-	default:
-		statusCode = http.StatusBadGateway
-		errType = "upstream_error"
-		errMsg = "Upstream request failed"
+	if IsUpstreamBillingIssue(resp.StatusCode, body) {
+		statusCode = http.StatusForbidden
+		errType = "billing_error"
+		errMsg = upstreamMsg
+		if errMsg == "" {
+			errMsg = "Upstream insufficient balance or billing issue"
+		}
+	} else {
+		switch resp.StatusCode {
+		case 401:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream authentication failed, please contact administrator"
+		case 402:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream payment required: insufficient balance or billing issue"
+		case 403:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream access forbidden, please contact administrator"
+		case 429:
+			statusCode = http.StatusTooManyRequests
+			errType = "rate_limit_error"
+			errMsg = "Upstream rate limit exceeded, please retry later"
+		default:
+			statusCode = http.StatusBadGateway
+			errType = "upstream_error"
+			errMsg = "Upstream request failed"
+		}
 	}
 
 	c.JSON(statusCode, gin.H{
@@ -3207,7 +3216,11 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 
 	// Map status code to error type and write response
 	errType := "api_error"
+	respStatusCode := resp.StatusCode
 	switch {
+	case IsUpstreamBillingIssue(resp.StatusCode, body):
+		respStatusCode = http.StatusForbidden
+		errType = "billing_error"
 	case resp.StatusCode == 400:
 		errType = "invalid_request_error"
 	case resp.StatusCode == 404:
@@ -3218,7 +3231,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		errType = "api_error"
 	}
 
-	writeError(c, resp.StatusCode, errType, upstreamMsg)
+	writeError(c, respStatusCode, errType, upstreamMsg)
 	return nil, fmt.Errorf("upstream error: %d %s", resp.StatusCode, upstreamMsg)
 }
 

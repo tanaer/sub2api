@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -513,6 +514,15 @@ func TestSoraHandler_StreamForcing(t *testing.T) {
 	// 测试 3：无 stream 字段时 gjson 返回 false（零值）
 	body3 := []byte(`{"model":"sora","messages":[{"role":"user","content":"test"}]}`)
 	require.False(t, gjson.GetBytes(body3, "stream").Bool())
+}
+
+func TestNewSoraGatewayHandler_DefaultMediaRootUsesDataDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DATA_DIR", tmpDir)
+
+	handler := NewSoraGatewayHandler(nil, nil, nil, nil, nil, &config.Config{})
+
+	require.Equal(t, filepath.Join(tmpDir, "sora"), handler.soraMediaRoot)
 }
 
 // TestSoraHandler_ValidationExtraction 验证 sora handler 中 gjson 字段校验逻辑

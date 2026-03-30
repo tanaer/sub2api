@@ -96,7 +96,7 @@
                   {{ t('redeem.redeemSuccess') }}
                 </h3>
                 <div class="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                  <p>{{ redeemResult.message }}</p>
+                  <p>{{ getRedeemResultMessage(redeemResult) }}</p>
                   <div class="mt-3 space-y-1">
                     <p v-if="redeemResult.type === 'balance'" class="font-medium">
                       {{ t('redeem.added') }}: ${{ redeemResult.value.toFixed(2) }}
@@ -107,12 +107,17 @@
                     </p>
                     <p v-else-if="redeemResult.type === 'subscription'" class="font-medium">
                       {{ t('redeem.subscriptionAssigned') }}
-                      <span v-if="redeemResult.group_name"> - {{ redeemResult.group_name }}</span>
+                      <span v-if="redeemResult.group?.name"> - {{ redeemResult.group.name }}</span>
                       <span v-if="redeemResult.validity_days">
                         ({{
                           t('redeem.subscriptionDays', { days: redeemResult.validity_days })
                         }})</span
                       >
+                    </p>
+                    <p v-else-if="isGroupRequestQuotaType(redeemResult.type)" class="font-medium">
+                      {{ t('redeem.groupRequestQuotaAdded') }}
+                      <span v-if="redeemResult.group?.name"> - {{ redeemResult.group.name }}</span>
+                      <span> (+{{ redeemResult.value }}{{ t('redeem.times') }})</span>
                     </p>
                     <p v-if="redeemResult.new_balance !== undefined">
                       {{ t('redeem.newBalance') }}:
@@ -347,7 +352,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useSubscriptionStore } from '@/stores/subscriptions'
-import { redeemAPI, authAPI, type RedeemHistoryItem } from '@/api'
+import { redeemAPI, authAPI, type RedeemHistoryItem, type RedeemResult } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
@@ -361,15 +366,7 @@ const user = computed(() => authStore.user)
 
 const redeemCode = ref('')
 const submitting = ref(false)
-const redeemResult = ref<{
-  message: string
-  type: string
-  value: number
-  new_balance?: number
-  new_concurrency?: number
-  group_name?: string
-  validity_days?: number
-} | null>(null)
+const redeemResult = ref<RedeemResult | null>(null)
 const errorMessage = ref('')
 
 // History data
@@ -384,6 +381,10 @@ const isBalanceType = (type: string) => {
 
 const isSubscriptionType = (type: string) => {
   return type === 'subscription'
+}
+
+const isGroupRequestQuotaType = (type: string) => {
+  return type === 'group_request_quota'
 }
 
 const isAdminAdjustment = (type: string) => {
@@ -401,6 +402,8 @@ const getHistoryItemTitle = (item: RedeemHistoryItem) => {
     return item.value >= 0 ? t('redeem.concurrencyAddedAdmin') : t('redeem.concurrencyReducedAdmin')
   } else if (item.type === 'subscription') {
     return t('redeem.subscriptionAssigned')
+  } else if (isGroupRequestQuotaType(item.type)) {
+    return t('redeem.groupRequestQuotaAddedRedeem')
   }
   return t('common.unknown')
 }
@@ -414,10 +417,33 @@ const formatHistoryValue = (item: RedeemHistoryItem) => {
     const days = item.validity_days || Math.round(item.value)
     const groupName = item.group?.name || ''
     return groupName ? `${days}${t('redeem.days')} - ${groupName}` : `${days}${t('redeem.days')}`
+  } else if (isGroupRequestQuotaType(item.type)) {
+    const groupName = item.group?.name || ''
+    return groupName ? `+${item.value}${t('redeem.times')} - ${groupName}` : `+${item.value}${t('redeem.times')}`
   } else {
     const sign = item.value >= 0 ? '+' : ''
     return `${sign}${item.value} ${t('redeem.requests')}`
   }
+}
+
+const getRedeemResultMessage = (result: RedeemResult) => {
+  if (result.type === 'balance') {
+    return t('redeem.balanceAddedRedeem')
+  }
+  if (result.type === 'concurrency') {
+    return t('redeem.concurrencyAddedRedeem')
+  }
+  if (result.type === 'subscription') {
+    return result.group?.name
+      ? t('redeem.subscriptionAssignedDesc', { groupName: result.group.name })
+      : t('redeem.subscriptionAssigned')
+  }
+  if (isGroupRequestQuotaType(result.type)) {
+    return result.group?.name
+      ? t('redeem.groupRequestQuotaAddedDesc', { groupName: result.group.name, count: result.value })
+      : t('redeem.groupRequestQuotaAdded')
+  }
+  return t('redeem.codeRedeemSuccess')
 }
 
 const fetchHistory = async () => {

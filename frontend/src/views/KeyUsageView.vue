@@ -187,6 +187,10 @@
                 <svg v-else-if="ring.iconType === 'calendar'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
+                <!-- Count icon -->
+                <svg v-else-if="ring.iconType === 'count'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>
+                </svg>
                 <!-- Dollar icon -->
                 <svg v-else class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
@@ -372,7 +376,7 @@ const appStore = useAppStore()
 
 // ==================== Site Settings (same as HomeView) ====================
 
-const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'Sub2API')
+const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'AIAPI')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
@@ -465,7 +469,7 @@ interface RingItem {
   pct: number
   amount: string
   isBalance?: boolean
-  iconType: 'clock' | 'calendar' | 'dollar'
+  iconType: 'clock' | 'calendar' | 'dollar' | 'count'
   resetAt?: string | null
 }
 
@@ -540,6 +544,15 @@ const ringItems = computed<RingItem[]>(() => {
       const pct = data.quota.limit > 0 ? Math.min(Math.round((data.quota.used / data.quota.limit) * 100), 100) : 0
       items.push({ title: t('keyUsage.totalQuota'), pct, amount: `${usd(data.quota.used)} / ${usd(data.quota.limit)}`, iconType: 'dollar' })
     }
+    if (data.request_quota) {
+      const pct = data.request_quota.limit > 0 ? Math.min(Math.round((data.request_quota.used / data.request_quota.limit) * 100), 100) : 0
+      items.push({
+        title: t('keyUsage.requestQuota'),
+        pct,
+        amount: `${fmtNum(data.request_quota.used)} / ${fmtNum(data.request_quota.limit)}`,
+        iconType: 'count',
+      })
+    }
     if (data.rate_limits) {
       const windowLabels: Record<string, string> = { '5h': t('keyUsage.limit5h'), '1d': t('keyUsage.limitDaily'), '7d': t('keyUsage.limit7d') }
       const windowIcons: Record<string, 'clock' | 'calendar'> = { '5h': 'clock', '1d': 'calendar', '7d': 'calendar' }
@@ -610,6 +623,19 @@ const detailRows = computed<DetailRow[]>(() => {
   const ICON_CHECK = '<polyline points="20 6 9 17 4 12"/>'
 
   if (data.mode === 'quota_limited') {
+    if (data.request_quota) {
+      const remainColor = data.request_quota.remaining <= 0 ? 'text-rose-500'
+        : data.request_quota.remaining <= 5 ? 'text-amber-500'
+        : 'text-emerald-500'
+      rows.push({
+        iconBg: 'bg-sky-500/10', iconColor: 'text-sky-500', iconSvg: ICON_SHIELD,
+        label: t('keyUsage.requestQuotaRemaining'), value: fmtNum(data.request_quota.remaining), valueClass: remainColor,
+      })
+      rows.push({
+        iconBg: 'bg-sky-500/10', iconColor: 'text-sky-500', iconSvg: ICON_CHECK,
+        label: t('keyUsage.requestQuotaUsed'), value: fmtNum(data.request_quota.used), valueClass: '',
+      })
+    }
     if (data.quota) {
       const remainColor = data.quota.remaining <= 0 ? 'text-rose-500'
         : data.quota.remaining < data.quota.limit * 0.1 ? 'text-amber-500'

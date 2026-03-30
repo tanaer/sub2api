@@ -65,6 +65,8 @@ func (r *redeemCodeRepository) CreateBatch(ctx context.Context, codes []service.
 func (r *redeemCodeRepository) GetByID(ctx context.Context, id int64) (*service.RedeemCode, error) {
 	m, err := r.client.RedeemCode.Query().
 		Where(redeemcode.IDEQ(id)).
+		WithUser().
+		WithGroup().
 		Only(ctx)
 	if err != nil {
 		if dbent.IsNotFound(err) {
@@ -78,6 +80,8 @@ func (r *redeemCodeRepository) GetByID(ctx context.Context, id int64) (*service.
 func (r *redeemCodeRepository) GetByCode(ctx context.Context, code string) (*service.RedeemCode, error) {
 	m, err := r.client.RedeemCode.Query().
 		Where(redeemcode.CodeEQ(code)).
+		WithUser().
+		WithGroup().
 		Only(ctx)
 	if err != nil {
 		if dbent.IsNotFound(err) {

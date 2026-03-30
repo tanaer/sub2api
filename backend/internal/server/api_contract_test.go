@@ -458,14 +458,14 @@ func TestAPIContracts(t *testing.T) {
 					service.SettingKeySMTPUsername: "user",
 					service.SettingKeySMTPPassword: "secret",
 					service.SettingKeySMTPFrom:     "no-reply@example.com",
-					service.SettingKeySMTPFromName: "Sub2API",
+					service.SettingKeySMTPFromName: "AIAPI",
 					service.SettingKeySMTPUseTLS:   "true",
 
 					service.SettingKeyTurnstileEnabled:   "true",
 					service.SettingKeyTurnstileSiteKey:   "site-key",
 					service.SettingKeyTurnstileSecretKey: "secret-key",
 
-					service.SettingKeySiteName:     "Sub2API",
+					service.SettingKeySiteName:     "AIAPI",
 					service.SettingKeySiteLogo:     "",
 					service.SettingKeySiteSubtitle: "Subtitle",
 					service.SettingKeyAPIBaseURL:   "https://api.example.com",
@@ -501,7 +501,7 @@ func TestAPIContracts(t *testing.T) {
 					"smtp_username": "user",
 					"smtp_password_configured": true,
 					"smtp_from_email": "no-reply@example.com",
-					"smtp_from_name": "Sub2API",
+					"smtp_from_name": "AIAPI",
 					"smtp_use_tls": true,
 					"turnstile_enabled": true,
 					"turnstile_site_key": "site-key",
@@ -514,7 +514,7 @@ func TestAPIContracts(t *testing.T) {
 						"ops_realtime_monitoring_enabled": true,
 						"ops_query_mode_default": "auto",
 						"ops_metrics_interval_seconds": 60,
-						"site_name": "Sub2API",
+						"site_name": "AIAPI",
 						"site_logo": "",
 						"site_subtitle": "Subtitle",
 						"api_base_url": "https://api.example.com",
@@ -642,7 +642,7 @@ func newContractDeps(t *testing.T) *contractDeps {
 	subscriptionService := service.NewSubscriptionService(groupRepo, userSubRepo, nil, nil, cfg)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 
-	redeemService := service.NewRedeemService(redeemRepo, userRepo, subscriptionService, nil, nil, nil, nil)
+	redeemService := service.NewRedeemService(redeemRepo, userRepo, subscriptionService, nil, nil, nil, nil, nil)
 	redeemHandler := handler.NewRedeemHandler(redeemService)
 
 	settingRepo := newStubSettingRepo()
@@ -1544,6 +1544,10 @@ func (r *stubApiKeyRepo) ListKeysByGroupID(ctx context.Context, groupID int64) (
 
 func (r *stubApiKeyRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
 	return 0, errors.New("not implemented")
+}
+
+func (r *stubApiKeyRepo) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	return false, errors.New("not implemented")
 }
 
 func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {

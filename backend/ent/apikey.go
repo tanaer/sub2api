@@ -46,6 +46,10 @@ type APIKey struct {
 	Quota float64 `json:"quota,omitempty"`
 	// Used quota amount in USD
 	QuotaUsed float64 `json:"quota_used,omitempty"`
+	// Request-count quota for this API key (0 = disabled)
+	RequestQuota int64 `json:"request_quota,omitempty"`
+	// Used request count for this API key
+	RequestQuotaUsed int64 `json:"request_quota_used,omitempty"`
 	// Expiration time for this API key (null = never expires)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	// Rate limit in USD per 5 hours (0 = unlimited)
@@ -125,7 +129,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
-		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
+		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldRequestQuota, apikey.FieldRequestQuotaUsed:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -236,6 +240,18 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field quota_used", values[i])
 			} else if value.Valid {
 				_m.QuotaUsed = value.Float64
+			}
+		case apikey.FieldRequestQuota:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field request_quota", values[i])
+			} else if value.Valid {
+				_m.RequestQuota = value.Int64
+			}
+		case apikey.FieldRequestQuotaUsed:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field request_quota_used", values[i])
+			} else if value.Valid {
+				_m.RequestQuotaUsed = value.Int64
 			}
 		case apikey.FieldExpiresAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -396,6 +412,12 @@ func (_m *APIKey) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("quota_used=")
 	builder.WriteString(fmt.Sprintf("%v", _m.QuotaUsed))
+	builder.WriteString(", ")
+	builder.WriteString("request_quota=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestQuota))
+	builder.WriteString(", ")
+	builder.WriteString("request_quota_used=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestQuotaUsed))
 	builder.WriteString(", ")
 	if v := _m.ExpiresAt; v != nil {
 		builder.WriteString("expires_at=")

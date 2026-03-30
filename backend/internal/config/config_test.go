@@ -362,8 +362,8 @@ func TestLoadDefaultDashboardCacheConfig(t *testing.T) {
 	if !cfg.Dashboard.Enabled {
 		t.Fatalf("Dashboard.Enabled = false, want true")
 	}
-	if cfg.Dashboard.KeyPrefix != "sub2api:" {
-		t.Fatalf("Dashboard.KeyPrefix = %q, want %q", cfg.Dashboard.KeyPrefix, "sub2api:")
+	if cfg.Dashboard.KeyPrefix != "aiapi:" {
+		t.Fatalf("Dashboard.KeyPrefix = %q, want %q", cfg.Dashboard.KeyPrefix, "aiapi:")
 	}
 	if cfg.Dashboard.StatsFreshTTLSeconds != 15 {
 		t.Fatalf("Dashboard.StatsFreshTTLSeconds = %d, want 15", cfg.Dashboard.StatsFreshTTLSeconds)
@@ -373,6 +373,22 @@ func TestLoadDefaultDashboardCacheConfig(t *testing.T) {
 	}
 	if cfg.Dashboard.StatsRefreshTimeoutSeconds != 30 {
 		t.Fatalf("Dashboard.StatsRefreshTimeoutSeconds = %d, want 30", cfg.Dashboard.StatsRefreshTimeoutSeconds)
+	}
+}
+
+func TestLoadDefaultBrandingConfig(t *testing.T) {
+	resetViperWithJWTSecret(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.Log.ServiceName != "aiapi" {
+		t.Fatalf("Log.ServiceName = %q, want %q", cfg.Log.ServiceName, "aiapi")
+	}
+	if cfg.Database.DBName != "aiapi" {
+		t.Fatalf("Database.DBName = %q, want %q", cfg.Database.DBName, "aiapi")
 	}
 }
 
@@ -567,7 +583,7 @@ func TestConfigAddressHelpers(t *testing.T) {
 		Port:     5432,
 		User:     "postgres",
 		Password: "",
-		DBName:   "sub2api",
+		DBName:   "aiapi",
 		SSLMode:  "disable",
 	}
 	if !strings.Contains(dbCfg.DSN(), "password=") {

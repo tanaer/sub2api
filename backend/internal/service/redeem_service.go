@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -80,6 +81,7 @@ type RedeemService struct {
 	billingCacheService  *BillingCacheService
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
+	userGroupRateRepo    UserGroupRateRepository
 }
 
 // NewRedeemService 创建兑换码服务实例
@@ -91,6 +93,7 @@ func NewRedeemService(
 	billingCacheService *BillingCacheService,
 	entClient *dbent.Client,
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
+	userGroupRateRepo UserGroupRateRepository,
 ) *RedeemService {
 	return &RedeemService{
 		redeemRepo:           redeemRepo,
@@ -100,7 +103,19 @@ func NewRedeemService(
 		billingCacheService:  billingCacheService,
 		entClient:            entClient,
 		authCacheInvalidator: authCacheInvalidator,
+		userGroupRateRepo:    userGroupRateRepo,
 	}
+}
+
+// requestQuotaUnitsFromValue 将兑换码 value 解析为按次配额的整数次数。
+func requestQuotaUnitsFromValue(value float64) (int64, bool) {
+	if value <= 0 {
+		return 0, false
+	}
+	if math.Trunc(value) != value || value > math.MaxInt64 {
+		return 0, false
+	}
+	return int64(value), true
 }
 
 // GenerateRandomCode 生成随机兑换码
@@ -190,6 +205,14 @@ func (s *RedeemService) CreateCode(ctx context.Context, code *RedeemCode) error 
 	}
 	if code.Type != RedeemTypeInvitation && code.Value <= 0 {
 		return errors.New("value must be greater than 0")
+	}
+	if code.Type == RedeemTypeGroupRequestQuota {
+		if code.GroupID == nil {
+			return errors.New("group_id is required for group_request_quota type")
+		}
+		if _, ok := requestQuotaUnitsFromValue(code.Value); !ok {
+			return errors.New("value must be a positive integer for group_request_quota type")
+		}
 	}
 	if code.Status == "" {
 		code.Status = StatusUnused
@@ -286,6 +309,17 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	if redeemCode.Type == RedeemTypeSubscription && redeemCode.GroupID == nil {
 		return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
 	}
+	if redeemCode.Type == RedeemTypeGroupRequestQuota {
+		if redeemCode.GroupID == nil {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid group request quota redeem code: missing group_id")
+		}
+		if _, ok := requestQuotaUnitsFromValue(redeemCode.Value); !ok {
+			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid group request quota redeem code: value must be a positive integer")
+		}
+		if s.userGroupRateRepo == nil {
+			return nil, fmt.Errorf("user group request quota repository not configured")
+		}
+	}
 
 	// 获取用户信息
 	user, err := s.userRepo.GetByID(ctx, userID)
@@ -341,6 +375,26 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		})
 		if err != nil {
 			return nil, fmt.Errorf("assign or extend subscription: %w", err)
+		}
+
+	case RedeemTypeGroupRequestQuota:
+		groupID := *redeemCode.GroupID
+		addedQuota, _ := requestQuotaUnitsFromValue(redeemCode.Value)
+		if err := s.userRepo.AddGroupToAllowedGroups(txCtx, userID, groupID); err != nil {
+			return nil, fmt.Errorf("add group to user allowed groups: %w", err)
+		}
+		existingQuota, err := s.userGroupRateRepo.GetRequestQuotaByUserAndGroup(txCtx, userID, groupID)
+		if err != nil {
+			return nil, fmt.Errorf("get user group request quota: %w", err)
+		}
+		totalQuota := addedQuota
+		if existingQuota != nil {
+			totalQuota += existingQuota.RequestQuota
+		}
+		if err := s.userGroupRateRepo.SyncUserGroupRequestQuotas(txCtx, userID, map[int64]*int64{
+			groupID: &totalQuota,
+		}); err != nil {
+			return nil, fmt.Errorf("sync user group request quota: %w", err)
 		}
 
 	default:
@@ -400,6 +454,10 @@ func (s *RedeemService) invalidateRedeemCaches(ctx context.Context, userID int64
 				defer cancel()
 				_ = s.billingCacheService.InvalidateSubscription(cacheCtx, userID, groupID)
 			}()
+		}
+	case RedeemTypeGroupRequestQuota:
+		if s.authCacheInvalidator != nil {
+			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 		}
 	}
 }

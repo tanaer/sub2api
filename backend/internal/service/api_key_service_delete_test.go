@@ -128,6 +128,10 @@ func (s *apiKeyRepoStub) IncrementQuotaUsed(ctx context.Context, id int64, amoun
 	panic("unexpected IncrementQuotaUsed call")
 }
 
+func (s *apiKeyRepoStub) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
+}
+
 func (s *apiKeyRepoStub) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	s.touchedIDs = append(s.touchedIDs, id)
 	s.touchedUsedAts = append(s.touchedUsedAts, usedAt)

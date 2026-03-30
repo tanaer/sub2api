@@ -1,6 +1,6 @@
 <template>
   <BaseDialog :show="show" :title="t('admin.users.groupConfig')" width="wide" @close="$emit('close')">
-    <div v-if="user" class="space-y-6">
+      <div v-if="user" class="space-y-6">
       <!-- 用户信息头部 -->
       <div class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary-50 to-primary-100 p-5 dark:from-primary-900/30 dark:to-primary-800/20">
         <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-dark-700">
@@ -77,16 +77,32 @@
 
                 <!-- 专属倍率输入 -->
                 <div class="flex flex-shrink-0 items-center gap-3">
-                  <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.customRate') }}</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    :value="config.customRate ?? ''"
-                    @input="updateCustomRate(config.groupId, ($event.target as HTMLInputElement).value)"
-                    :placeholder="String(config.defaultRate)"
-                    class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
-                  />
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="flex items-center gap-3">
+                      <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.customRate') }}</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        :value="config.customRate ?? ''"
+                        @input="updateCustomRate(config.groupId, ($event.target as HTMLInputElement).value)"
+                        :placeholder="String(config.defaultRate)"
+                        class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
+                      />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.requestQuota') }}</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        :value="config.requestQuota ?? ''"
+                        @input="updateRequestQuota(config.groupId, ($event.target as HTMLInputElement).value)"
+                        placeholder="0"
+                        class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -135,16 +151,32 @@
 
                 <!-- 专属倍率输入 -->
                 <div class="flex flex-shrink-0 items-center gap-3">
-                  <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.customRate') }}</label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    :value="config.customRate ?? ''"
-                    @input="updateCustomRate(config.groupId, ($event.target as HTMLInputElement).value)"
-                    :placeholder="String(config.defaultRate)"
-                    class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
-                  />
+                  <div class="flex flex-col items-end gap-2">
+                    <div class="flex items-center gap-3">
+                      <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.customRate') }}</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        :value="config.customRate ?? ''"
+                        @input="updateCustomRate(config.groupId, ($event.target as HTMLInputElement).value)"
+                        :placeholder="String(config.defaultRate)"
+                        class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
+                      />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <label class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('admin.users.requestQuota') }}</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        :value="config.requestQuota ?? ''"
+                        @input="updateRequestQuota(config.groupId, ($event.target as HTMLInputElement).value)"
+                        placeholder="0"
+                        class="hide-spinner w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -194,6 +226,7 @@ interface GroupRateConfig {
   isExclusive: boolean
   defaultRate: number
   customRate: number | null
+  requestQuota: number | null
   isSelected: boolean
 }
 
@@ -205,6 +238,7 @@ const appStore = useAppStore()
 const groups = ref<Group[]>([])
 const groupConfigs = ref<GroupRateConfig[]>([])
 const originalGroupRates = ref<Record<number, number>>({}) // 记录原始专属倍率，用于检测删除
+const originalGroupRequestQuotas = ref<Record<number, number>>({})
 const loading = ref(false)
 const submitting = ref(false)
 
@@ -227,16 +261,21 @@ watch(
 const load = async () => {
   loading.value = true
   try {
-    const res = await adminAPI.groups.list(1, 1000)
+    const [detail, res] = await Promise.all([
+      adminAPI.users.getById(props.user!.id),
+      adminAPI.groups.list(1, 1000)
+    ])
     // 只显示标准类型且活跃的分组
     groups.value = res.items.filter((g) => g.subscription_type === 'standard' && g.status === 'active')
 
     // 初始化配置
-    const userAllowedGroups = props.user?.allowed_groups || []
-    const userGroupRates = props.user?.group_rates || {}
+    const userAllowedGroups = detail.allowed_groups || []
+    const userGroupRates = detail.group_rates || {}
+    const userGroupRequestQuotas = detail.group_request_quotas || {}
 
     // 保存原始专属倍率，用于检测删除操作
     originalGroupRates.value = { ...userGroupRates }
+    originalGroupRequestQuotas.value = { ...userGroupRequestQuotas }
 
     groupConfigs.value = groups.value.map((g) => ({
       groupId: g.id,
@@ -245,6 +284,7 @@ const load = async () => {
       isExclusive: g.is_exclusive,
       defaultRate: g.rate_multiplier,
       customRate: userGroupRates[g.id] ?? null,
+      requestQuota: userGroupRequestQuotas[g.id] ?? null,
       // 专属分组：检查是否在 allowed_groups 中
       // 公开分组：始终选中
       isSelected: g.is_exclusive ? userAllowedGroups.includes(g.id) : true,
@@ -275,6 +315,17 @@ const updateCustomRate = (groupId: number, value: string) => {
   }
 }
 
+const updateRequestQuota = (groupId: number, value: string) => {
+  const config = groupConfigs.value.find((c) => c.groupId === groupId)
+  if (!config) return
+  if (value === '' || value === null || value === undefined) {
+    config.requestQuota = null
+    return
+  }
+  const numValue = Number.parseInt(value, 10)
+  config.requestQuota = Number.isNaN(numValue) || numValue < 0 ? null : numValue
+}
+
 const handleSave = async () => {
   if (!props.user) return
   submitting.value = true
@@ -287,8 +338,10 @@ const handleSave = async () => {
     // - 有新专属倍率: 设置为该值
     // - 原本有专属倍率但现在被清空: 设置为 null（表示删除）
     const groupRates: Record<number, number | null> = {}
+    const groupRequestQuotas: Record<number, number | null> = {}
     for (const c of groupConfigs.value) {
       const hadOriginalRate = originalGroupRates.value[c.groupId] !== undefined
+      const hadOriginalRequestQuota = originalGroupRequestQuotas.value[c.groupId] !== undefined
 
       if (c.customRate !== null) {
         // 有专属倍率
@@ -297,11 +350,18 @@ const handleSave = async () => {
         // 原本有专属倍率，现在被清空，需要显式删除
         groupRates[c.groupId] = null
       }
+
+      if (c.requestQuota !== null && c.requestQuota > 0) {
+        groupRequestQuotas[c.groupId] = c.requestQuota
+      } else if (hadOriginalRequestQuota) {
+        groupRequestQuotas[c.groupId] = null
+      }
     }
 
     await adminAPI.users.update(props.user.id, {
       allowed_groups: allowedGroups,
       group_rates: Object.keys(groupRates).length > 0 ? groupRates : undefined,
+      group_request_quotas: Object.keys(groupRequestQuotas).length > 0 ? groupRequestQuotas : undefined,
     })
 
     appStore.showSuccess(t('admin.users.groupConfigUpdated'))

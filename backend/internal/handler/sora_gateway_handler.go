@@ -57,7 +57,7 @@ func NewSoraGatewayHandler(
 	streamMode := "force"
 	soraTLSEnabled := true
 	signKey := ""
-	mediaRoot := "/app/data/sora"
+	mediaRoot := config.ResolveSoraStorageRoot("")
 	if cfg != nil {
 		pingInterval = time.Duration(cfg.Concurrency.PingInterval) * time.Second
 		if cfg.Gateway.MaxAccountSwitches > 0 {
@@ -68,9 +68,7 @@ func NewSoraGatewayHandler(
 		}
 		soraTLSEnabled = !cfg.Sora.Client.DisableTLSFingerprint
 		signKey = strings.TrimSpace(cfg.Gateway.SoraMediaSigningKey)
-		if root := strings.TrimSpace(cfg.Sora.Storage.LocalPath); root != "" {
-			mediaRoot = root
-		}
+		mediaRoot = config.ResolveSoraStorageRoot(cfg.Sora.Storage.LocalPath)
 	}
 	return &SoraGatewayHandler{
 		gatewayService:        gatewayService,

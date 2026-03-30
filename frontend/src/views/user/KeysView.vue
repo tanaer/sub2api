@@ -158,6 +158,44 @@
                   />
                 </div>
               </div>
+              <div v-if="row.request_quota > 0 || row.request_quota_used > 0" class="mt-1.5">
+                <div class="text-gray-500 dark:text-gray-400">
+                  {{ t('keyUsage.requestQuota') }}
+                </div>
+                <div class="mt-0.5 flex items-center gap-1.5">
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaUsed') }}:</span>
+                  <span :class="[
+                    'font-medium',
+                    row.request_quota > 0 && row.request_quota_used >= row.request_quota ? 'text-red-500' :
+                    row.request_quota > 0 && row.request_quota_used >= row.request_quota * 0.8 ? 'text-yellow-500' :
+                    'text-gray-900 dark:text-white'
+                  ]">
+                    {{ row.request_quota_used?.toLocaleString() || '0' }} / {{ row.request_quota?.toLocaleString() || '0' }}
+                  </span>
+                </div>
+                <div class="mt-0.5 flex items-center gap-1.5">
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaRemaining') }}:</span>
+                  <span :class="[
+                    'font-medium',
+                    getRemainingRequestQuota(row) <= 0 ? 'text-red-500' :
+                    getRemainingRequestQuota(row) <= 5 ? 'text-yellow-500' :
+                    'text-gray-900 dark:text-white'
+                  ]">
+                    {{ getRemainingRequestQuota(row).toLocaleString() }}
+                  </span>
+                </div>
+                <div v-if="row.request_quota > 0" class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                  <div
+                    :class="[
+                      'h-full rounded-full transition-all',
+                      row.request_quota_used >= row.request_quota ? 'bg-red-500' :
+                      row.request_quota_used >= row.request_quota * 0.8 ? 'bg-yellow-500' :
+                      'bg-sky-500'
+                    ]"
+                    :style="{ width: Math.min((row.request_quota_used / row.request_quota) * 100, 100) + '%' }"
+                  />
+                </div>
+              </div>
             </div>
           </template>
 
@@ -1245,6 +1283,10 @@ const maskKey = (key: string): string => {
   return `${key.slice(0, 8)}...${key.slice(-4)}`
 }
 
+const getRemainingRequestQuota = (key: ApiKey) => {
+  return Math.max((key.request_quota || 0) - (key.request_quota_used || 0), 0)
+}
+
 const copyToClipboard = async (text: string, keyId: number) => {
   const success = await clipboardCopy(text, t('keys.copied'))
   if (success) {
@@ -1713,7 +1755,7 @@ const executeCcsImport = (row: ApiKey, clientType: 'claude' | 'gemini') => {
       };
     }
   })`
-  const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
+  const providerName = (publicSettings.value?.site_name || 'AIAPI').trim() || 'AIAPI'
 
   const params = new URLSearchParams({
     resource: 'provider',

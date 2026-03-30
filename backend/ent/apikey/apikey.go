@@ -41,6 +41,10 @@ const (
 	FieldQuota = "quota"
 	// FieldQuotaUsed holds the string denoting the quota_used field in the database.
 	FieldQuotaUsed = "quota_used"
+	// FieldRequestQuota holds the string denoting the request_quota field in the database.
+	FieldRequestQuota = "request_quota"
+	// FieldRequestQuotaUsed holds the string denoting the request_quota_used field in the database.
+	FieldRequestQuotaUsed = "request_quota_used"
 	// FieldExpiresAt holds the string denoting the expires_at field in the database.
 	FieldExpiresAt = "expires_at"
 	// FieldRateLimit5h holds the string denoting the rate_limit_5h field in the database.
@@ -108,6 +112,8 @@ var Columns = []string{
 	FieldIPBlacklist,
 	FieldQuota,
 	FieldQuotaUsed,
+	FieldRequestQuota,
+	FieldRequestQuotaUsed,
 	FieldExpiresAt,
 	FieldRateLimit5h,
 	FieldRateLimit1d,
@@ -156,6 +162,10 @@ var (
 	DefaultQuota float64
 	// DefaultQuotaUsed holds the default value on creation for the "quota_used" field.
 	DefaultQuotaUsed float64
+	// DefaultRequestQuota holds the default value on creation for the "request_quota" field.
+	DefaultRequestQuota int64
+	// DefaultRequestQuotaUsed holds the default value on creation for the "request_quota_used" field.
+	DefaultRequestQuotaUsed int64
 	// DefaultRateLimit5h holds the default value on creation for the "rate_limit_5h" field.
 	DefaultRateLimit5h float64
 	// DefaultRateLimit1d holds the default value on creation for the "rate_limit_1d" field.
@@ -231,6 +241,16 @@ func ByQuota(opts ...sql.OrderTermOption) OrderOption {
 // ByQuotaUsed orders the results by the quota_used field.
 func ByQuotaUsed(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldQuotaUsed, opts...).ToFunc()
+}
+
+// ByRequestQuota orders the results by the request_quota field.
+func ByRequestQuota(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestQuota, opts...).ToFunc()
+}
+
+// ByRequestQuotaUsed orders the results by the request_quota_used field.
+func ByRequestQuotaUsed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestQuotaUsed, opts...).ToFunc()
 }
 
 // ByExpiresAt orders the results by the expires_at field.

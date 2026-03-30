@@ -83,18 +83,28 @@ func (s *openAIRecordUsageSubRepoStub) IncrementUsage(ctx context.Context, id in
 }
 
 type openAIRecordUsageAPIKeyQuotaStub struct {
-	quotaCalls          int
-	rateLimitCalls      int
-	err                 error
-	lastAmount          float64
-	lastQuotaCtxErr     error
-	lastRateLimitCtxErr error
+	quotaCalls             int
+	requestQuotaCalls      int
+	rateLimitCalls         int
+	err                    error
+	lastAmount             float64
+	lastRequestCount       int64
+	lastQuotaCtxErr        error
+	lastRequestQuotaCtxErr error
+	lastRateLimitCtxErr    error
 }
 
 func (s *openAIRecordUsageAPIKeyQuotaStub) UpdateQuotaUsed(ctx context.Context, apiKeyID int64, cost float64) error {
 	s.quotaCalls++
 	s.lastAmount = cost
 	s.lastQuotaCtxErr = ctx.Err()
+	return s.err
+}
+
+func (s *openAIRecordUsageAPIKeyQuotaStub) UpdateRequestQuotaUsed(ctx context.Context, apiKeyID int64, amount int64) error {
+	s.requestQuotaCalls++
+	s.lastRequestCount = amount
+	s.lastRequestQuotaCtxErr = ctx.Err()
 	return s.err
 }
 

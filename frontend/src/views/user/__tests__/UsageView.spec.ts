@@ -20,6 +20,9 @@ const messages: Record<string, string> = {
   'admin.usage.outputCost': 'Output Cost',
   'admin.usage.cacheCreationCost': 'Cache Creation Cost',
   'admin.usage.cacheReadCost': 'Cache Read Cost',
+  'keyUsage.requestQuota': 'Request Quota',
+  'keyUsage.requestQuotaRemaining': 'Remaining Requests',
+  'keyUsage.requestQuotaUsed': 'Used Requests',
   'usage.inputTokenPrice': 'Input price',
   'usage.outputTokenPrice': 'Output price',
   'usage.perMillionTokens': '/ 1M tokens',
@@ -262,5 +265,57 @@ describe('user UsageView tooltip', () => {
     window.URL.createObjectURL = originalCreateObjectURL
     window.URL.revokeObjectURL = originalRevokeObjectURL
     clickSpy.mockRestore()
+  })
+
+  it('shows request quota summary for the selected api key', async () => {
+    query.mockResolvedValue({
+      items: [],
+      total: 0,
+      pages: 0,
+    })
+    getStatsByDateRange.mockResolvedValue({
+      total_requests: 0,
+      total_tokens: 0,
+      total_cost: 0,
+      avg_duration_ms: 0,
+    })
+    list.mockResolvedValue({
+      items: [
+        {
+          id: 101,
+          name: 'quota-key',
+          request_quota: 10,
+          request_quota_used: 3,
+        },
+      ],
+    })
+
+    const wrapper = mount(UsageView, {
+      global: {
+        stubs: {
+          AppLayout: AppLayoutStub,
+          TablePageLayout: TablePageLayoutStub,
+          Pagination: true,
+          EmptyState: true,
+          Select: true,
+          DateRangePicker: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const setupState = (wrapper.vm as any).$?.setupState
+    setupState.filters.api_key_id = 101
+    await nextTick()
+
+    const text = wrapper.text()
+    expect(text).toContain('Request Quota')
+    expect(text).toContain('Remaining Requests')
+    expect(text).toContain('7')
+    expect(text).toContain('Used Requests')
+    expect(text).toContain('3 / 10')
   })
 })

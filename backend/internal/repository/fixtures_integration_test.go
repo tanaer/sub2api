@@ -268,6 +268,12 @@ func mustCreateApiKey(t *testing.T, client *dbent.Client, k *service.APIKey) *se
 	if k.QuotaUsed != 0 {
 		create.SetQuotaUsed(k.QuotaUsed)
 	}
+	if k.RequestQuota != 0 {
+		create.SetRequestQuota(k.RequestQuota)
+	}
+	if k.RequestQuotaUsed != 0 {
+		create.SetRequestQuotaUsed(k.RequestQuotaUsed)
+	}
 	if k.RateLimit5h != 0 {
 		create.SetRateLimit5h(k.RateLimit5h)
 	}

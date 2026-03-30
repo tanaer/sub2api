@@ -232,6 +232,48 @@ func (_u *APIKeyUpdate) AddQuotaUsed(v float64) *APIKeyUpdate {
 	return _u
 }
 
+// SetRequestQuota sets the "request_quota" field.
+func (_u *APIKeyUpdate) SetRequestQuota(v int64) *APIKeyUpdate {
+	_u.mutation.ResetRequestQuota()
+	_u.mutation.SetRequestQuota(v)
+	return _u
+}
+
+// SetNillableRequestQuota sets the "request_quota" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableRequestQuota(v *int64) *APIKeyUpdate {
+	if v != nil {
+		_u.SetRequestQuota(*v)
+	}
+	return _u
+}
+
+// AddRequestQuota adds value to the "request_quota" field.
+func (_u *APIKeyUpdate) AddRequestQuota(v int64) *APIKeyUpdate {
+	_u.mutation.AddRequestQuota(v)
+	return _u
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (_u *APIKeyUpdate) SetRequestQuotaUsed(v int64) *APIKeyUpdate {
+	_u.mutation.ResetRequestQuotaUsed()
+	_u.mutation.SetRequestQuotaUsed(v)
+	return _u
+}
+
+// SetNillableRequestQuotaUsed sets the "request_quota_used" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableRequestQuotaUsed(v *int64) *APIKeyUpdate {
+	if v != nil {
+		_u.SetRequestQuotaUsed(*v)
+	}
+	return _u
+}
+
+// AddRequestQuotaUsed adds value to the "request_quota_used" field.
+func (_u *APIKeyUpdate) AddRequestQuotaUsed(v int64) *APIKeyUpdate {
+	_u.mutation.AddRequestQuotaUsed(v)
+	return _u
+}
+
 // SetExpiresAt sets the "expires_at" field.
 func (_u *APIKeyUpdate) SetExpiresAt(v time.Time) *APIKeyUpdate {
 	_u.mutation.SetExpiresAt(v)
@@ -636,6 +678,18 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedQuotaUsed(); ok {
 		_spec.AddField(apikey.FieldQuotaUsed, field.TypeFloat64, value)
 	}
+	if value, ok := _u.mutation.RequestQuota(); ok {
+		_spec.SetField(apikey.FieldRequestQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestQuota(); ok {
+		_spec.AddField(apikey.FieldRequestQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.RequestQuotaUsed(); ok {
+		_spec.SetField(apikey.FieldRequestQuotaUsed, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestQuotaUsed(); ok {
+		_spec.AddField(apikey.FieldRequestQuotaUsed, field.TypeInt64, value)
+	}
 	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(apikey.FieldExpiresAt, field.TypeTime, value)
 	}
@@ -1016,6 +1070,48 @@ func (_u *APIKeyUpdateOne) SetNillableQuotaUsed(v *float64) *APIKeyUpdateOne {
 // AddQuotaUsed adds value to the "quota_used" field.
 func (_u *APIKeyUpdateOne) AddQuotaUsed(v float64) *APIKeyUpdateOne {
 	_u.mutation.AddQuotaUsed(v)
+	return _u
+}
+
+// SetRequestQuota sets the "request_quota" field.
+func (_u *APIKeyUpdateOne) SetRequestQuota(v int64) *APIKeyUpdateOne {
+	_u.mutation.ResetRequestQuota()
+	_u.mutation.SetRequestQuota(v)
+	return _u
+}
+
+// SetNillableRequestQuota sets the "request_quota" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableRequestQuota(v *int64) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetRequestQuota(*v)
+	}
+	return _u
+}
+
+// AddRequestQuota adds value to the "request_quota" field.
+func (_u *APIKeyUpdateOne) AddRequestQuota(v int64) *APIKeyUpdateOne {
+	_u.mutation.AddRequestQuota(v)
+	return _u
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (_u *APIKeyUpdateOne) SetRequestQuotaUsed(v int64) *APIKeyUpdateOne {
+	_u.mutation.ResetRequestQuotaUsed()
+	_u.mutation.SetRequestQuotaUsed(v)
+	return _u
+}
+
+// SetNillableRequestQuotaUsed sets the "request_quota_used" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableRequestQuotaUsed(v *int64) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetRequestQuotaUsed(*v)
+	}
+	return _u
+}
+
+// AddRequestQuotaUsed adds value to the "request_quota_used" field.
+func (_u *APIKeyUpdateOne) AddRequestQuotaUsed(v int64) *APIKeyUpdateOne {
+	_u.mutation.AddRequestQuotaUsed(v)
 	return _u
 }
 
@@ -1452,6 +1548,18 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if value, ok := _u.mutation.AddedQuotaUsed(); ok {
 		_spec.AddField(apikey.FieldQuotaUsed, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.RequestQuota(); ok {
+		_spec.SetField(apikey.FieldRequestQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestQuota(); ok {
+		_spec.AddField(apikey.FieldRequestQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.RequestQuotaUsed(); ok {
+		_spec.SetField(apikey.FieldRequestQuotaUsed, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedRequestQuotaUsed(); ok {
+		_spec.AddField(apikey.FieldRequestQuotaUsed, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(apikey.FieldExpiresAt, field.TypeTime, value)

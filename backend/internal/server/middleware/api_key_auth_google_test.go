@@ -89,6 +89,9 @@ func (f fakeAPIKeyRepo) ListKeysByGroupID(ctx context.Context, groupID int64) ([
 func (f fakeAPIKeyRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
 	return 0, errors.New("not implemented")
 }
+func (f fakeAPIKeyRepo) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	return false, errors.New("not implemented")
+}
 func (f fakeAPIKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	if f.updateLastUsed != nil {
 		return f.updateLastUsed(ctx, id, usedAt)

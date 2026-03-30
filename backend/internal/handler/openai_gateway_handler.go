@@ -809,7 +809,7 @@ func (h *OpenAIGatewayHandler) anthropicStreamingAwareError(c *gin.Context, stat
 
 // handleAnthropicFailoverExhausted maps upstream failover errors to Anthropic format.
 func (h *OpenAIGatewayHandler) handleAnthropicFailoverExhausted(c *gin.Context, failoverErr *service.UpstreamFailoverError, streamStarted bool) {
-	status, errType, errMsg := h.mapUpstreamError(failoverErr.StatusCode)
+	status, errType, errMsg := h.mapUpstreamError(failoverErr.StatusCode, failoverErr.ResponseBody)
 	h.anthropicStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
 
@@ -1450,18 +1450,25 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 	service.SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
 
 	// 使用默认的错误映射
-	status, errType, errMsg := h.mapUpstreamError(statusCode)
+	status, errType, errMsg := h.mapUpstreamError(statusCode, responseBody)
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
 
 // handleFailoverExhaustedSimple 简化版本，用于没有响应体的情况
 func (h *OpenAIGatewayHandler) handleFailoverExhaustedSimple(c *gin.Context, statusCode int, streamStarted bool) {
-	status, errType, errMsg := h.mapUpstreamError(statusCode)
+	status, errType, errMsg := h.mapUpstreamError(statusCode, nil)
 	service.SetOpsUpstreamError(c, statusCode, errMsg, "")
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
 
-func (h *OpenAIGatewayHandler) mapUpstreamError(statusCode int) (int, string, string) {
+func (h *OpenAIGatewayHandler) mapUpstreamError(statusCode int, responseBody []byte) (int, string, string) {
+	if service.IsUpstreamBillingIssue(statusCode, responseBody) {
+		msg := strings.TrimSpace(service.ExtractUpstreamErrorMessage(responseBody))
+		if msg == "" {
+			msg = "Upstream insufficient balance or billing issue"
+		}
+		return http.StatusForbidden, "billing_error", msg
+	}
 	switch statusCode {
 	case 401:
 		return http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"

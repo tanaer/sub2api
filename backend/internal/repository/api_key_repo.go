@@ -43,6 +43,8 @@ func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) erro
 		SetNillableLastUsedAt(key.LastUsedAt).
 		SetQuota(key.Quota).
 		SetQuotaUsed(key.QuotaUsed).
+		SetRequestQuota(key.RequestQuota).
+		SetRequestQuotaUsed(key.RequestQuotaUsed).
 		SetNillableExpiresAt(key.ExpiresAt).
 		SetRateLimit5h(key.RateLimit5h).
 		SetRateLimit1d(key.RateLimit1d).
@@ -126,6 +128,8 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 			apikey.FieldIPBlacklist,
 			apikey.FieldQuota,
 			apikey.FieldQuotaUsed,
+			apikey.FieldRequestQuota,
+			apikey.FieldRequestQuotaUsed,
 			apikey.FieldExpiresAt,
 			apikey.FieldRateLimit5h,
 			apikey.FieldRateLimit1d,
@@ -193,6 +197,8 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 		SetStatus(key.Status).
 		SetQuota(key.Quota).
 		SetQuotaUsed(key.QuotaUsed).
+		SetRequestQuota(key.RequestQuota).
+		SetRequestQuotaUsed(key.RequestQuotaUsed).
 		SetRateLimit5h(key.RateLimit5h).
 		SetRateLimit1d(key.RateLimit1d).
 		SetRateLimit7d(key.RateLimit7d).
@@ -462,6 +468,40 @@ func (r *apiKeyRepository) IncrementQuotaUsed(ctx context.Context, id int64, amo
 	return updated.QuotaUsed, nil
 }
 
+// IncrementRequestQuotaUsed atomically increments request_quota_used when request quota is still available.
+func (r *apiKeyRepository) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	var applied bool
+	if err := scanSingleRow(ctx, r.sql, `
+		UPDATE api_keys
+		SET request_quota_used = request_quota_used + $1,
+			updated_at = NOW()
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND request_quota > 0
+			AND request_quota_used < request_quota
+		RETURNING TRUE
+	`, []any{amount, id}, &applied); err == nil {
+		return applied, nil
+	} else if err != sql.ErrNoRows {
+		return false, err
+	}
+
+	var exists bool
+	if err := scanSingleRow(ctx, r.sql, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM api_keys
+			WHERE id = $1 AND deleted_at IS NULL
+		)
+	`, []any{id}, &exists); err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, service.ErrAPIKeyNotFound
+	}
+	return false, nil
+}
+
 // IncrementQuotaUsedAndGetState atomically increments quota_used, conditionally marks the key
 // as quota_exhausted, and returns the latest quota state in one round trip.
 func (r *apiKeyRepository) IncrementQuotaUsedAndGetState(ctx context.Context, id int64, amount float64) (*service.APIKeyQuotaUsageState, error) {
@@ -566,29 +606,31 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 		return nil
 	}
 	out := &service.APIKey{
-		ID:            m.ID,
-		UserID:        m.UserID,
-		Key:           m.Key,
-		Name:          m.Name,
-		Status:        m.Status,
-		IPWhitelist:   m.IPWhitelist,
-		IPBlacklist:   m.IPBlacklist,
-		LastUsedAt:    m.LastUsedAt,
-		CreatedAt:     m.CreatedAt,
-		UpdatedAt:     m.UpdatedAt,
-		GroupID:       m.GroupID,
-		Quota:         m.Quota,
-		QuotaUsed:     m.QuotaUsed,
-		ExpiresAt:     m.ExpiresAt,
-		RateLimit5h:   m.RateLimit5h,
-		RateLimit1d:   m.RateLimit1d,
-		RateLimit7d:   m.RateLimit7d,
-		Usage5h:       m.Usage5h,
-		Usage1d:       m.Usage1d,
-		Usage7d:       m.Usage7d,
-		Window5hStart: m.Window5hStart,
-		Window1dStart: m.Window1dStart,
-		Window7dStart: m.Window7dStart,
+		ID:               m.ID,
+		UserID:           m.UserID,
+		Key:              m.Key,
+		Name:             m.Name,
+		Status:           m.Status,
+		IPWhitelist:      m.IPWhitelist,
+		IPBlacklist:      m.IPBlacklist,
+		LastUsedAt:       m.LastUsedAt,
+		CreatedAt:        m.CreatedAt,
+		UpdatedAt:        m.UpdatedAt,
+		GroupID:          m.GroupID,
+		Quota:            m.Quota,
+		QuotaUsed:        m.QuotaUsed,
+		RequestQuota:     m.RequestQuota,
+		RequestQuotaUsed: m.RequestQuotaUsed,
+		ExpiresAt:        m.ExpiresAt,
+		RateLimit5h:      m.RateLimit5h,
+		RateLimit1d:      m.RateLimit1d,
+		RateLimit7d:      m.RateLimit7d,
+		Usage5h:          m.Usage5h,
+		Usage1d:          m.Usage1d,
+		Usage7d:          m.Usage7d,
+		Window5hStart:    m.Window5hStart,
+		Window1dStart:    m.Window1dStart,
+		Window7dStart:    m.Window7dStart,
 	}
 	if m.Edges.User != nil {
 		out.User = userEntityToService(m.Edges.User)

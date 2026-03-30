@@ -84,6 +84,22 @@ func (s *userGroupRateRepoStubForListUsers) DeleteByUserID(_ context.Context, us
 	panic("unexpected DeleteByUserID call")
 }
 
+func (s *userGroupRateRepoStubForListUsers) GetRequestQuotasByUserID(_ context.Context, _ int64) (map[int64]int64, error) {
+	panic("unexpected GetRequestQuotasByUserID call")
+}
+
+func (s *userGroupRateRepoStubForListUsers) GetRequestQuotaByUserAndGroup(_ context.Context, _, _ int64) (*UserGroupRequestQuota, error) {
+	panic("unexpected GetRequestQuotaByUserAndGroup call")
+}
+
+func (s *userGroupRateRepoStubForListUsers) SyncUserGroupRequestQuotas(_ context.Context, _ int64, _ map[int64]*int64) error {
+	panic("unexpected SyncUserGroupRequestQuotas call")
+}
+
+func (s *userGroupRateRepoStubForListUsers) IncrementRequestQuotaUsed(_ context.Context, _, _, _ int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
+}
+
 func TestAdminService_ListUsers_BatchRateFallbackToSingle(t *testing.T) {
 	userRepo := &userRepoStubForListUsers{
 		users: []User{

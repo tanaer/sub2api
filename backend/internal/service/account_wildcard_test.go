@@ -172,6 +172,16 @@ func TestAccountIsModelSupported(t *testing.T) {
 			requestedModel: "claude-opus-4-5",
 			expected:       false,
 		},
+		{
+			name: "exact match supported case insensitively",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-5": "GLM-5",
+				},
+			},
+			requestedModel: "glm-5",
+			expected:       true,
+		},
 
 		// 通配符匹配
 		{
@@ -193,6 +203,16 @@ func TestAccountIsModelSupported(t *testing.T) {
 			},
 			requestedModel: "gemini-3-flash",
 			expected:       false,
+		},
+		{
+			name: "wildcard match supported case insensitively",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-*": "GLM-5",
+				},
+			},
+			requestedModel: "glm-5-turbo",
+			expected:       true,
 		},
 	}
 
@@ -235,6 +255,16 @@ func TestAccountGetMappedModel(t *testing.T) {
 			requestedModel: "claude-sonnet-4-5",
 			expected:       "target-model",
 		},
+		{
+			name: "exact match case insensitive",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-5": "GLM-5",
+				},
+			},
+			requestedModel: "glm-5",
+			expected:       "GLM-5",
+		},
 
 		// 通配符匹配（最长优先）
 		{
@@ -247,6 +277,16 @@ func TestAccountGetMappedModel(t *testing.T) {
 			},
 			requestedModel: "claude-sonnet-4-5",
 			expected:       "claude-sonnet-mapped",
+		},
+		{
+			name: "wildcard case insensitive",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-*": "GLM-5-Turbo",
+				},
+			},
+			requestedModel: "glm-5-flash",
+			expected:       "GLM-5-Turbo",
 		},
 
 		// 无匹配返回原始模型
@@ -322,6 +362,28 @@ func TestAccountResolveMappedModel(t *testing.T) {
 			requestedModel: "gpt-5.4",
 			expectedModel:  "gpt-5.4",
 			expectedMatch:  false,
+		},
+		{
+			name: "exact mapping reports matched case insensitively",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-5": "GLM-5",
+				},
+			},
+			requestedModel: "glm-5",
+			expectedModel:  "GLM-5",
+			expectedMatch:  true,
+		},
+		{
+			name: "wildcard mapping reports matched case insensitively",
+			credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"GLM-*": "GLM-5-Turbo",
+				},
+			},
+			requestedModel: "glm-5-flash",
+			expectedModel:  "GLM-5-Turbo",
+			expectedMatch:  true,
 		},
 	}
 

@@ -35,6 +35,8 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 
 	// api_keys: key length should be 128
 	requireColumn(t, tx, "api_keys", "key", "character varying", 128, false)
+	requireColumn(t, tx, "api_keys", "request_quota", "bigint", 0, false)
+	requireColumn(t, tx, "api_keys", "request_quota_used", "bigint", 0, false)
 
 	// redeem_codes: subscription fields
 	requireColumn(t, tx, "redeem_codes", "group_id", "bigint", 0, true)
@@ -73,6 +75,13 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	var uagRegclass sql.NullString
 	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT to_regclass('public.user_allowed_groups')").Scan(&uagRegclass))
 	require.True(t, uagRegclass.Valid, "expected user_allowed_groups table to exist")
+
+	// user_group_request_quotas table should exist
+	var ugrqRegclass sql.NullString
+	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT to_regclass('public.user_group_request_quotas')").Scan(&ugrqRegclass))
+	require.True(t, ugrqRegclass.Valid, "expected user_group_request_quotas table to exist")
+	requireColumn(t, tx, "user_group_request_quotas", "request_quota", "bigint", 0, false)
+	requireColumn(t, tx, "user_group_request_quotas", "request_quota_used", "bigint", 0, false)
 
 	// user_subscriptions: deleted_at for soft delete support (migration 012)
 	requireColumn(t, tx, "user_subscriptions", "deleted_at", "timestamp with time zone", 0, true)

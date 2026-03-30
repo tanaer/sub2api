@@ -37,6 +37,14 @@ export interface UserDashboardStats {
   average_duration_ms: number
   rpm: number // 近5分钟平均每分钟请求数
   tpm: number // 近5分钟平均每分钟Token数
+  group_request_quotas?: Array<{
+    group_id: number
+    group_name: string
+    platform: string
+    request_quota: number
+    request_quota_used: number
+    request_quota_remaining: number
+  }>
 }
 
 export interface TrendParams {

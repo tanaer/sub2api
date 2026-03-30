@@ -19,10 +19,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	soraStorageDefaultRoot = "/app/data/sora"
-)
-
 // SoraMediaStorage 负责下载并落地 Sora 媒体
 type SoraMediaStorage struct {
 	cfg                *config.Config
@@ -80,16 +76,7 @@ func (s *SoraMediaStorage) refreshConfig() {
 	if s == nil || s.cfg == nil {
 		return
 	}
-	root := strings.TrimSpace(s.cfg.Sora.Storage.LocalPath)
-	if root == "" {
-		root = soraStorageDefaultRoot
-	}
-	root = filepath.Clean(root)
-	if !filepath.IsAbs(root) {
-		if absRoot, err := filepath.Abs(root); err == nil {
-			root = absRoot
-		}
-	}
+	root := config.ResolveSoraStorageRoot(s.cfg.Sora.Storage.LocalPath)
 	s.root = root
 	s.imageRoot = filepath.Join(root, "image")
 	s.videoRoot = filepath.Join(root, "video")

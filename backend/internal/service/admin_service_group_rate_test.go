@@ -57,6 +57,22 @@ func (s *userGroupRateRepoStubForGroupRate) DeleteByUserID(_ context.Context, _ 
 	panic("unexpected DeleteByUserID call")
 }
 
+func (s *userGroupRateRepoStubForGroupRate) GetRequestQuotasByUserID(_ context.Context, _ int64) (map[int64]int64, error) {
+	panic("unexpected GetRequestQuotasByUserID call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) GetRequestQuotaByUserAndGroup(_ context.Context, _, _ int64) (*UserGroupRequestQuota, error) {
+	panic("unexpected GetRequestQuotaByUserAndGroup call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) SyncUserGroupRequestQuotas(_ context.Context, _ int64, _ map[int64]*int64) error {
+	panic("unexpected SyncUserGroupRequestQuotas call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) IncrementRequestQuotaUsed(_ context.Context, _, _, _ int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
+}
+
 func TestAdminService_GetGroupRateMultipliers(t *testing.T) {
 	t.Run("returns entries for group", func(t *testing.T) {
 		repo := &userGroupRateRepoStubForGroupRate{

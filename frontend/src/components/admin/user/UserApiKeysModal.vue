@@ -40,6 +40,35 @@
             </div>
             <div class="flex items-center gap-1"><span>{{ t('admin.users.columns.created') }}: {{ formatDateTime(key.created_at) }}</span></div>
           </div>
+          <div class="mt-4 rounded-lg border border-gray-200/80 bg-gray-50/80 p-3 dark:border-dark-600 dark:bg-dark-700/40">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div class="min-w-0 flex-1">
+                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-dark-300">{{ t('admin.users.requestQuota') }}</label>
+                <input
+                  v-model="requestQuotaDrafts[key.id]"
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="input w-full"
+                  :disabled="updatingKeyIds.has(key.id)"
+                  placeholder="0"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.users.requestQuotaHint') }}</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn btn-primary btn-sm" :disabled="updatingKeyIds.has(key.id)" @click="saveRequestQuota(key)">
+                  {{ t('admin.users.saveRequestQuota') }}
+                </button>
+                <button class="btn btn-secondary btn-sm" :disabled="updatingKeyIds.has(key.id)" @click="resetRequestQuotaUsed(key)">
+                  {{ t('admin.users.resetRequestQuotaUsed') }}
+                </button>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-dark-400">
+              <span>{{ t('admin.users.requestQuotaUsed') }}: {{ key.request_quota_used }}</span>
+              <span>{{ t('admin.users.requestQuotaRemaining') }}: {{ getRemainingRequestQuota(key) }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -117,6 +146,7 @@ const apiKeys = ref<ApiKey[]>([])
 const allGroups = ref<AdminGroup[]>([])
 const loading = ref(false)
 const updatingKeyIds = ref(new Set<number>())
+const requestQuotaDrafts = ref<Record<number, string>>({})
 const groupSelectorKeyId = ref<number | null>(null)
 const dropdownPosition = ref<{ top: number; left: number } | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
@@ -152,11 +182,20 @@ const load = async () => {
   try {
     const res = await adminAPI.users.getUserApiKeys(props.user.id)
     apiKeys.value = res.items || []
+    syncRequestQuotaDrafts()
   } catch (error) {
     console.error('Failed to load API keys:', error)
   } finally {
     loading.value = false
   }
+}
+
+const syncRequestQuotaDrafts = () => {
+  const nextDrafts: Record<number, string> = {}
+  for (const key of apiKeys.value) {
+    nextDrafts[key.id] = key.request_quota > 0 ? String(key.request_quota) : ''
+  }
+  requestQuotaDrafts.value = nextDrafts
 }
 
 const loadGroups = async () => {
@@ -213,6 +252,51 @@ const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
     }
   } catch (error: any) {
     appStore.showError(error?.message || t('admin.users.groupChangeFailed'))
+  } finally {
+    updatingKeyIds.value.delete(key.id)
+  }
+}
+
+const getRemainingRequestQuota = (key: ApiKey) => {
+  return Math.max((key.request_quota || 0) - (key.request_quota_used || 0), 0)
+}
+
+const saveRequestQuota = async (key: ApiKey) => {
+  const rawValue = requestQuotaDrafts.value[key.id]?.trim() || '0'
+  const parsedValue = Number.parseInt(rawValue, 10)
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    appStore.showError(t('admin.users.requestQuotaInvalid'))
+    return
+  }
+
+  updatingKeyIds.value.add(key.id)
+  try {
+    const updatedKey = await adminAPI.apiKeys.updateApiKeyRequestQuota(key.id, parsedValue, false)
+    const idx = apiKeys.value.findIndex((item) => item.id === key.id)
+    if (idx !== -1) {
+      apiKeys.value[idx] = updatedKey
+    }
+    requestQuotaDrafts.value[key.id] = updatedKey.request_quota > 0 ? String(updatedKey.request_quota) : ''
+    appStore.showSuccess(t('admin.users.requestQuotaSaved'))
+  } catch (error: any) {
+    appStore.showError(error?.message || t('admin.users.requestQuotaSaveFailed'))
+  } finally {
+    updatingKeyIds.value.delete(key.id)
+  }
+}
+
+const resetRequestQuotaUsed = async (key: ApiKey) => {
+  updatingKeyIds.value.add(key.id)
+  try {
+    const updatedKey = await adminAPI.apiKeys.updateApiKeyRequestQuota(key.id, null, true)
+    const idx = apiKeys.value.findIndex((item) => item.id === key.id)
+    if (idx !== -1) {
+      apiKeys.value[idx] = updatedKey
+    }
+    requestQuotaDrafts.value[key.id] = updatedKey.request_quota > 0 ? String(updatedKey.request_quota) : ''
+    appStore.showSuccess(t('admin.users.requestQuotaUsedReset'))
+  } catch (error: any) {
+    appStore.showError(error?.message || t('admin.users.requestQuotaSaveFailed'))
   } finally {
     updatingKeyIds.value.delete(key.id)
   }

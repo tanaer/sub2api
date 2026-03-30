@@ -25,6 +25,10 @@ type User struct {
 	// map[groupID]rateMultiplier
 	GroupRates map[int64]float64
 
+	// GroupRequestQuotas 用户专属分组按次配额配置
+	// map[groupID]requestQuota
+	GroupRequestQuotas map[int64]int64
+
 	// Sora 存储配额
 	SoraStorageQuotaBytes int64 // 用户级 Sora 存储配额（0 表示使用分组或系统默认值）
 	SoraStorageUsedBytes  int64 // Sora 存储已用量

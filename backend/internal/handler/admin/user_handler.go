@@ -58,6 +58,7 @@ type UpdateUserRequest struct {
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]*rate，nil 表示删除该分组的专属倍率
 	GroupRates            map[int64]*float64 `json:"group_rates"`
+	GroupRequestQuotas    map[int64]*int64   `json:"group_request_quotas"`
 	SoraStorageQuotaBytes *int64             `json:"sora_storage_quota_bytes"`
 }
 
@@ -225,6 +226,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		Status:                req.Status,
 		AllowedGroups:         req.AllowedGroups,
 		GroupRates:            req.GroupRates,
+		GroupRequestQuotas:    req.GroupRequestQuotas,
 		SoraStorageQuotaBytes: req.SoraStorageQuotaBytes,
 	})
 	if err != nil {

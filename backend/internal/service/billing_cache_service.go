@@ -646,14 +646,17 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 
 	// 判断计费模式
 	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
+	useRequestQuotaBilling := apiKey != nil && apiKey.HasRemainingEffectiveRequestQuota()
 
-	if isSubscriptionMode {
-		if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
-			return err
-		}
-	} else {
-		if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {
-			return err
+	if !useRequestQuotaBilling {
+		if isSubscriptionMode {
+			if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
+				return err
+			}
+		} else {
+			if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -919,8 +919,8 @@ func (h *GatewayHandler) Usage(c *gin.Context) {
 		}
 	}
 
-	// 判断模式: key 有总额度或速率限制 → quota_limited，否则 → unrestricted
-	isQuotaLimited := apiKey.Quota > 0 || apiKey.HasRateLimits()
+	// 判断模式: key 有总额度、有效按次配额或速率限制 → quota_limited，否则 → unrestricted
+	isQuotaLimited := apiKey.Quota > 0 || apiKey.HasEffectiveRequestQuota() || apiKey.HasRateLimits()
 
 	if isQuotaLimited {
 		h.usageQuotaLimited(c, ctx, apiKey, usageData, modelStats)
@@ -1004,6 +1004,17 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 		}
 		resp["remaining"] = remaining
 		resp["unit"] = "USD"
+	}
+
+	// 按次配额信息
+	if apiKey.HasEffectiveRequestQuota() {
+		resp["request_quota"] = gin.H{
+			"source":    apiKey.EffectiveRequestQuotaSource(),
+			"limit":     apiKey.GetEffectiveRequestQuota(),
+			"used":      apiKey.GetEffectiveRequestQuotaUsed(),
+			"remaining": apiKey.GetEffectiveRemainingRequestQuota(),
+			"unit":      "requests",
+		}
 	}
 
 	// 速率限制信息（从 DB 获取实时用量）
@@ -1224,18 +1235,25 @@ func (h *GatewayHandler) handleFailoverExhausted(c *gin.Context, failoverErr *se
 	service.SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
 
 	// 使用默认的错误映射
-	status, errType, errMsg := h.mapUpstreamError(statusCode)
+	status, errType, errMsg := h.mapUpstreamError(statusCode, responseBody)
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
 
 // handleFailoverExhaustedSimple 简化版本，用于没有响应体的情况
 func (h *GatewayHandler) handleFailoverExhaustedSimple(c *gin.Context, statusCode int, streamStarted bool) {
-	status, errType, errMsg := h.mapUpstreamError(statusCode)
+	status, errType, errMsg := h.mapUpstreamError(statusCode, nil)
 	service.SetOpsUpstreamError(c, statusCode, errMsg, "")
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
 
-func (h *GatewayHandler) mapUpstreamError(statusCode int) (int, string, string) {
+func (h *GatewayHandler) mapUpstreamError(statusCode int, responseBody []byte) (int, string, string) {
+	if service.IsUpstreamBillingIssue(statusCode, responseBody) {
+		msg := strings.TrimSpace(service.ExtractUpstreamErrorMessage(responseBody))
+		if msg == "" {
+			msg = "Upstream insufficient balance or billing issue"
+		}
+		return http.StatusForbidden, "billing_error", msg
+	}
 	switch statusCode {
 	case 401:
 		return http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"

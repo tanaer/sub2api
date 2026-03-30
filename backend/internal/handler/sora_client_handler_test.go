@@ -1046,6 +1046,9 @@ func (r *stubAPIKeyRepoForHandler) ListKeysByGroupID(context.Context, int64) ([]
 func (r *stubAPIKeyRepoForHandler) IncrementQuotaUsed(_ context.Context, _ int64, _ float64) (float64, error) {
 	return 0, nil
 }
+func (r *stubAPIKeyRepoForHandler) IncrementRequestQuotaUsed(_ context.Context, _ int64, _ int64) (bool, error) {
+	return false, nil
+}
 func (r *stubAPIKeyRepoForHandler) UpdateLastUsed(context.Context, int64, time.Time) error {
 	return nil
 }

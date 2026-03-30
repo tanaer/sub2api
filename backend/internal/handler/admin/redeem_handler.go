@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -34,9 +35,9 @@ func NewRedeemHandler(adminService service.AdminService, redeemService *service.
 // GenerateRedeemCodesRequest represents generate redeem codes request
 type GenerateRedeemCodesRequest struct {
 	Count        int     `json:"count" binding:"required,min=1,max=100"`
-	Type         string  `json:"type" binding:"required,oneof=balance concurrency subscription invitation"`
+	Type         string  `json:"type" binding:"required,oneof=balance concurrency subscription invitation group_request_quota"`
 	Value        float64 `json:"value" binding:"min=0"`
-	GroupID      *int64  `json:"group_id"`                                    // 订阅类型必填
+	GroupID      *int64  `json:"group_id"`                                    // 订阅/分组次数类型必填
 	ValidityDays int     `json:"validity_days" binding:"omitempty,max=36500"` // 订阅类型使用，默认30天，最大100年
 }
 
@@ -44,12 +45,36 @@ type GenerateRedeemCodesRequest struct {
 // Type 为 omitempty 而非 required 是为了向后兼容旧版调用方（不传 type 时默认 balance）。
 type CreateAndRedeemCodeRequest struct {
 	Code         string  `json:"code" binding:"required,min=3,max=128"`
-	Type         string  `json:"type" binding:"omitempty,oneof=balance concurrency subscription invitation"` // 不传时默认 balance（向后兼容）
+	Type         string  `json:"type" binding:"omitempty,oneof=balance concurrency subscription invitation group_request_quota"` // 不传时默认 balance（向后兼容）
 	Value        float64 `json:"value" binding:"required,gt=0"`
 	UserID       int64   `json:"user_id" binding:"required,gt=0"`
-	GroupID      *int64  `json:"group_id"`                                    // subscription 类型必填
+	GroupID      *int64  `json:"group_id"`                                    // subscription / group_request_quota 类型必填
 	ValidityDays int     `json:"validity_days" binding:"omitempty,max=36500"` // subscription 类型必填，>0
 	Notes        string  `json:"notes"`
+}
+
+func isWholePositiveNumber(value float64) bool {
+	return value > 0 && math.Trunc(value) == value
+}
+
+func validateRedeemCodeTypeRequirements(codeType string, value float64, groupID *int64, validityDays int, requireSubscriptionDays bool) error {
+	switch codeType {
+	case service.RedeemTypeSubscription:
+		if groupID == nil {
+			return errors.New("group_id is required for subscription type")
+		}
+		if requireSubscriptionDays && validityDays <= 0 {
+			return errors.New("validity_days must be greater than 0 for subscription type")
+		}
+	case service.RedeemTypeGroupRequestQuota:
+		if groupID == nil {
+			return errors.New("group_id is required for group_request_quota type")
+		}
+		if !isWholePositiveNumber(value) {
+			return errors.New("value must be a positive integer for group_request_quota type")
+		}
+	}
+	return nil
 }
 
 // List handles listing all redeem codes with pagination
@@ -104,6 +129,10 @@ func (h *RedeemHandler) Generate(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
+	if err := validateRedeemCodeTypeRequirements(req.Type, req.Value, req.GroupID, req.ValidityDays, false); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	executeAdminIdempotentJSON(c, "admin.redeem_codes.generate", req, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
 		codes, execErr := h.adminService.GenerateRedeemCodes(ctx, &service.GenerateRedeemCodesInput{
@@ -144,16 +173,9 @@ func (h *RedeemHandler) CreateAndRedeem(c *gin.Context) {
 	if req.Type == "" {
 		req.Type = "balance"
 	}
-
-	if req.Type == "subscription" {
-		if req.GroupID == nil {
-			response.BadRequest(c, "group_id is required for subscription type")
-			return
-		}
-		if req.ValidityDays <= 0 {
-			response.BadRequest(c, "validity_days must be greater than 0 for subscription type")
-			return
-		}
+	if err := validateRedeemCodeTypeRequirements(req.Type, req.Value, req.GroupID, req.ValidityDays, true); err != nil {
+		response.BadRequest(c, err.Error())
+		return
 	}
 
 	executeAdminIdempotentJSON(c, "admin.redeem_codes.create_and_redeem", req, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {

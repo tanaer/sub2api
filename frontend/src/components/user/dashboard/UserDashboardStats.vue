@@ -131,6 +131,50 @@
       </div>
     </div>
   </div>
+
+  <div v-if="stats?.group_request_quotas?.length" class="card p-4">
+    <div class="mb-4 flex items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.groupRequestQuota') }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('dashboard.groupRequestQuotaHint') }}</p>
+      </div>
+      <div class="rounded-lg bg-cyan-100 p-2 dark:bg-cyan-900/30">
+        <Icon name="grid" size="md" class="text-cyan-600 dark:text-cyan-400" :stroke-width="2" />
+      </div>
+    </div>
+
+    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        v-for="groupQuota in stats.group_request_quotas"
+        :key="groupQuota.group_id"
+        class="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-dark-600 dark:bg-dark-800/70"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ groupQuota.group_name }}</p>
+            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ groupQuota.platform }}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuota') }}</p>
+            <p class="text-sm font-semibold text-cyan-600 dark:text-cyan-400">{{ groupQuota.request_quota }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-white px-3 py-2 dark:bg-dark-700/80">
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaUsed') }}</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ groupQuota.request_quota_used }}</p>
+          </div>
+          <div class="rounded-lg bg-white px-3 py-2 dark:bg-dark-700/80">
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaRemaining') }}</p>
+            <p class="text-lg font-semibold" :class="groupQuota.request_quota_remaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'">
+              {{ groupQuota.request_quota_remaining }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

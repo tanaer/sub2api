@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 const (
 	RunModeStandard = "standard"
 	RunModeSimple   = "simple"
+	defaultDataDir  = "/app/data"
 )
 
 // 使用量记录队列溢出策略
@@ -964,6 +966,29 @@ func NormalizeRunMode(value string) string {
 	}
 }
 
+// ResolveDataDir 返回运行时数据目录。
+func ResolveDataDir() string {
+	if dataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); dataDir != "" {
+		return filepath.Clean(dataDir)
+	}
+	return defaultDataDir
+}
+
+// ResolveSoraStorageRoot 返回 Sora 本地存储根目录。
+func ResolveSoraStorageRoot(localPath string) string {
+	root := strings.TrimSpace(localPath)
+	if root == "" {
+		root = filepath.Join(ResolveDataDir(), "sora")
+	}
+	root = filepath.Clean(root)
+	if !filepath.IsAbs(root) {
+		if absRoot, err := filepath.Abs(root); err == nil {
+			root = absRoot
+		}
+	}
+	return root
+}
+
 // Load 读取并校验完整配置（要求 jwt.secret 已显式提供）。
 func Load() (*Config, error) {
 	return load(false)
@@ -986,7 +1011,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		viper.AddConfigPath(dataDir)
 	}
 	// 2. Docker data directory
-	viper.AddConfigPath("/app/data")
+	viper.AddConfigPath(defaultDataDir)
 	// 3. Current directory
 	viper.AddConfigPath(".")
 	// 4. Config subdirectory
@@ -1129,7 +1154,7 @@ func setDefaults() {
 	// Log
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.format", "console")
-	viper.SetDefault("log.service_name", "sub2api")
+	viper.SetDefault("log.service_name", "aiapi")
 	viper.SetDefault("log.env", "production")
 	viper.SetDefault("log.caller", true)
 	viper.SetDefault("log.stacktrace_level", "error")
@@ -1207,7 +1232,7 @@ func setDefaults() {
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.user", "postgres")
 	viper.SetDefault("database.password", "postgres")
-	viper.SetDefault("database.dbname", "sub2api")
+	viper.SetDefault("database.dbname", "aiapi")
 	viper.SetDefault("database.sslmode", "prefer")
 	viper.SetDefault("database.max_open_conns", 256)
 	viper.SetDefault("database.max_idle_conns", 128)
@@ -1290,7 +1315,7 @@ func setDefaults() {
 
 	// Dashboard cache
 	viper.SetDefault("dashboard_cache.enabled", true)
-	viper.SetDefault("dashboard_cache.key_prefix", "sub2api:")
+	viper.SetDefault("dashboard_cache.key_prefix", "aiapi:")
 	viper.SetDefault("dashboard_cache.stats_fresh_ttl_seconds", 15)
 	viper.SetDefault("dashboard_cache.stats_ttl_seconds", 30)
 	viper.SetDefault("dashboard_cache.stats_refresh_timeout_seconds", 30)

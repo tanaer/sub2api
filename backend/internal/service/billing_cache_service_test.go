@@ -14,10 +14,12 @@ import (
 type billingCacheWorkerStub struct {
 	balanceUpdates      int64
 	subscriptionUpdates int64
+	balanceReads        int64
 }
 
 func (b *billingCacheWorkerStub) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
-	return 0, errors.New("not implemented")
+	atomic.AddInt64(&b.balanceReads, 1)
+	return 0, nil
 }
 
 func (b *billingCacheWorkerStub) SetUserBalance(ctx context.Context, userID int64, balance float64) error {
@@ -101,4 +103,25 @@ func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 		amount: 1,
 	})
 	require.False(t, enqueued)
+}
+
+func TestBillingCacheServiceCheckBillingEligibility_AllowsRequestQuotaWithoutBalance(t *testing.T) {
+	cache := &billingCacheWorkerStub{}
+	svc := NewBillingCacheService(cache, nil, nil, nil, &config.Config{})
+	t.Cleanup(svc.Stop)
+
+	err := svc.CheckBillingEligibility(context.Background(), &User{
+		ID:      100,
+		Balance: 0,
+	}, &APIKey{
+		ID:                        200,
+		UserGroupRequestQuota:     10000,
+		UserGroupRequestQuotaUsed: 0,
+	}, &Group{
+		ID:               300,
+		SubscriptionType: SubscriptionTypeStandard,
+	}, nil)
+
+	require.NoError(t, err)
+	require.Zero(t, atomic.LoadInt64(&cache.balanceReads))
 }

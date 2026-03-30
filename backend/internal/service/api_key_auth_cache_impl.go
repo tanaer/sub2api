@@ -173,6 +173,9 @@ func (s *APIKeyService) loadAuthCacheEntry(ctx context.Context, key, cacheKey st
 		return nil, fmt.Errorf("get api key: %w", err)
 	}
 	apiKey.Key = key
+	if err := s.hydrateUserGroupRequestQuota(ctx, apiKey); err != nil {
+		return nil, fmt.Errorf("get api key: %w", err)
+	}
 	snapshot := s.snapshotFromAPIKey(apiKey)
 	if snapshot == nil {
 		return nil, fmt.Errorf("get api key: %w", ErrAPIKeyNotFound)
@@ -200,18 +203,22 @@ func (s *APIKeyService) snapshotFromAPIKey(apiKey *APIKey) *APIKeyAuthSnapshot {
 		return nil
 	}
 	snapshot := &APIKeyAuthSnapshot{
-		APIKeyID:    apiKey.ID,
-		UserID:      apiKey.UserID,
-		GroupID:     apiKey.GroupID,
-		Status:      apiKey.Status,
-		IPWhitelist: apiKey.IPWhitelist,
-		IPBlacklist: apiKey.IPBlacklist,
-		Quota:       apiKey.Quota,
-		QuotaUsed:   apiKey.QuotaUsed,
-		ExpiresAt:   apiKey.ExpiresAt,
-		RateLimit5h: apiKey.RateLimit5h,
-		RateLimit1d: apiKey.RateLimit1d,
-		RateLimit7d: apiKey.RateLimit7d,
+		APIKeyID:                  apiKey.ID,
+		UserID:                    apiKey.UserID,
+		GroupID:                   apiKey.GroupID,
+		Status:                    apiKey.Status,
+		IPWhitelist:               apiKey.IPWhitelist,
+		IPBlacklist:               apiKey.IPBlacklist,
+		Quota:                     apiKey.Quota,
+		QuotaUsed:                 apiKey.QuotaUsed,
+		RequestQuota:              apiKey.RequestQuota,
+		RequestQuotaUsed:          apiKey.RequestQuotaUsed,
+		UserGroupRequestQuota:     apiKey.UserGroupRequestQuota,
+		UserGroupRequestQuotaUsed: apiKey.UserGroupRequestQuotaUsed,
+		ExpiresAt:                 apiKey.ExpiresAt,
+		RateLimit5h:               apiKey.RateLimit5h,
+		RateLimit1d:               apiKey.RateLimit1d,
+		RateLimit7d:               apiKey.RateLimit7d,
 		User: APIKeyAuthUserSnapshot{
 			ID:          apiKey.User.ID,
 			Status:      apiKey.User.Status,
@@ -257,19 +264,23 @@ func (s *APIKeyService) snapshotToAPIKey(key string, snapshot *APIKeyAuthSnapsho
 		return nil
 	}
 	apiKey := &APIKey{
-		ID:          snapshot.APIKeyID,
-		UserID:      snapshot.UserID,
-		GroupID:     snapshot.GroupID,
-		Key:         key,
-		Status:      snapshot.Status,
-		IPWhitelist: snapshot.IPWhitelist,
-		IPBlacklist: snapshot.IPBlacklist,
-		Quota:       snapshot.Quota,
-		QuotaUsed:   snapshot.QuotaUsed,
-		ExpiresAt:   snapshot.ExpiresAt,
-		RateLimit5h: snapshot.RateLimit5h,
-		RateLimit1d: snapshot.RateLimit1d,
-		RateLimit7d: snapshot.RateLimit7d,
+		ID:                        snapshot.APIKeyID,
+		UserID:                    snapshot.UserID,
+		GroupID:                   snapshot.GroupID,
+		Key:                       key,
+		Status:                    snapshot.Status,
+		IPWhitelist:               snapshot.IPWhitelist,
+		IPBlacklist:               snapshot.IPBlacklist,
+		Quota:                     snapshot.Quota,
+		QuotaUsed:                 snapshot.QuotaUsed,
+		RequestQuota:              snapshot.RequestQuota,
+		RequestQuotaUsed:          snapshot.RequestQuotaUsed,
+		UserGroupRequestQuota:     snapshot.UserGroupRequestQuota,
+		UserGroupRequestQuotaUsed: snapshot.UserGroupRequestQuotaUsed,
+		ExpiresAt:                 snapshot.ExpiresAt,
+		RateLimit5h:               snapshot.RateLimit5h,
+		RateLimit1d:               snapshot.RateLimit1d,
+		RateLimit7d:               snapshot.RateLimit7d,
 		User: &User{
 			ID:          snapshot.User.ID,
 			Status:      snapshot.User.Status,

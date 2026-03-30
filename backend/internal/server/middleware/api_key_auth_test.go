@@ -585,6 +585,10 @@ func (r *stubApiKeyRepo) IncrementQuotaUsed(ctx context.Context, id int64, amoun
 	return 0, errors.New("not implemented")
 }
 
+func (r *stubApiKeyRepo) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
 func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	if r.updateLastUsed != nil {
 		return r.updateLastUsed(ctx, id, usedAt)

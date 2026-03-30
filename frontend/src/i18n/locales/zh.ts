@@ -142,6 +142,7 @@ export default {
     walletBalance: '钱包余额',
     // Ring card titles
     totalQuota: '总额度',
+    requestQuota: '按次配额',
     limit5h: '5 小时限额',
     limitDaily: '日限额',
     limit7d: '7 天限额',
@@ -149,6 +150,8 @@ export default {
     limitMonthly: '月限额',
     // Detail rows
     remainingQuota: '剩余额度',
+    requestQuotaRemaining: '剩余次数',
+    requestQuotaUsed: '已使用次数',
     expiresAt: '过期时间',
     todayExpires: '(今日到期)',
     daysLeft: '({days} 天)',
@@ -182,8 +185,8 @@ export default {
 
   // Setup Wizard
   setup: {
-    title: 'Sub2API 安装向导',
-    description: '配置您的 Sub2API 实例',
+    title: 'AIAPI 安装向导',
+    description: '配置您的 AIAPI 实例',
     database: {
       title: '数据库配置',
       description: '连接到您的 PostgreSQL 数据库',
@@ -488,6 +491,8 @@ export default {
     todayTokens: '今日 Token',
     totalTokens: '累计 Token',
     cacheToday: '今日缓存',
+    groupRequestQuota: '分组按次配额',
+    groupRequestQuotaHint: '查看每个分组的已用次数和剩余次数',
     performance: '性能指标',
     avgResponse: '平均响应',
     averageTime: '平均时间',
@@ -772,7 +777,7 @@ export default {
   // Redeem
   redeem: {
     title: '兑换码',
-    description: '输入兑换码以充值余额或增加并发数',
+    description: '输入兑换码以充值余额、增加并发数或兑换分组次数',
     currentBalance: '当前余额',
     concurrency: '并发数',
     requests: '请求',
@@ -789,9 +794,9 @@ export default {
     newConcurrency: '新并发数',
     aboutCodes: '关于兑换码',
     codeRule1: '每个兑换码只能使用一次',
-    codeRule2: '兑换码可以增加余额、并发数或试用权限',
+    codeRule2: '兑换码可以增加余额、并发数、分组次数或试用权限',
     codeRule3: '如有兑换问题，请联系客服',
-    codeRule4: '余额和并发数即时更新',
+    codeRule4: '余额、并发数和分组次数即时更新',
     recentActivity: '最近活动',
     historyWillAppear: '您的兑换历史将显示在这里',
     balanceAddedRedeem: '余额充值（兑换）',
@@ -800,11 +805,15 @@ export default {
     concurrencyAddedRedeem: '并发增加（兑换）',
     concurrencyAddedAdmin: '并发增加（管理员）',
     concurrencyReducedAdmin: '并发减少（管理员）',
+    groupRequestQuotaAddedRedeem: '分组次数增加（兑换）',
+    groupRequestQuotaAdded: '分组次数已增加',
+    groupRequestQuotaAddedDesc: '您已获得 {groupName} 分组 {count} 次可用次数',
     adminAdjustment: '管理员调整',
     subscriptionAssigned: '订阅已分配',
     subscriptionAssignedDesc: '您已获得 {groupName} 的访问权限',
     subscriptionDays: '{days} 天',
     days: '天',
+    times: '次',
     codeRedeemSuccess: '兑换成功！',
     failedToRedeem: '兑换失败，请检查兑换码后重试。',
     subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
@@ -1099,7 +1108,7 @@ export default {
         step1: {
           title: '创建 R2 存储桶',
           line1: '登录 Cloudflare Dashboard (dash.cloudflare.com)，左侧菜单选择「R2 对象存储」',
-          line2: '点击「创建存储桶」，输入名称（如 sub2api-backups），选择区域',
+          line2: '点击「创建存储桶」，输入名称（如 aiapi-backups），选择区域',
           line3: '点击创建完成'
         },
         step2: {
@@ -1371,6 +1380,16 @@ export default {
       noApiKeys: '此用户暂无 API 密钥',
       group: '分组',
       none: '无',
+      requestQuota: '按次配额',
+      requestQuotaHint: '设置为 0 表示关闭按次计费',
+      saveRequestQuota: '保存次数',
+      resetRequestQuotaUsed: '重置已用',
+      requestQuotaUsed: '已使用次数',
+      requestQuotaRemaining: '剩余次数',
+      requestQuotaSaved: '按次配额已更新',
+      requestQuotaUsedReset: '已使用次数已重置',
+      requestQuotaSaveFailed: '按次配额更新失败',
+      requestQuotaInvalid: '请输入大于等于 0 的整数次数',
       groupChangedSuccess: '分组修改成功',
       groupChangedWithGrant: '分组修改成功，已自动为用户添加「{group}」分组权限',
       groupChangeFailed: '分组修改失败',
@@ -1441,7 +1460,7 @@ export default {
       failedToUpdateAllowedGroups: '更新允许分组失败',
       // 用户分组配置
       groupConfig: '用户分组配置',
-      groupConfigHint: '为用户 {email} 配置专属分组倍率（覆盖分组默认倍率）',
+      groupConfigHint: '为用户 {email} 配置专属分组倍率和按次配额（覆盖分组默认倍率）',
       exclusiveGroups: '专属分组',
       publicGroups: '公开分组（默认可用）',
       defaultRate: '默认倍率',
@@ -2101,7 +2120,7 @@ export default {
         antigravityOauth: 'Antigravity OAuth',
         antigravityApikey: '通过 Base URL + API Key 连接',
         soraApiKey: 'API Key / 上游透传',
-        soraApiKeyHint: '连接另一个 Sub2API 或兼容 API',
+        soraApiKeyHint: '连接另一个 AIAPI 或兼容 API',
         soraBaseUrlRequired: 'Sora apikey 账号必须设置上游地址（Base URL）',
         soraBaseUrlInvalidScheme: 'Base URL 必须以 http:// 或 https:// 开头',
         upstream: '对接上游',
@@ -2368,7 +2387,7 @@ export default {
       poolMode: '池模式',
       poolModeHint: '上游为账号池时启用，错误不标记本地账号状态',
       poolModeInfo:
-        '启用后，上游 429/403/401 错误将自动重试而不标记账号限流或错误，适用于上游指向另一个 sub2api 实例的场景。',
+        '启用后，上游 429/403/401 错误将自动重试而不标记账号限流或错误，适用于上游指向另一个 AIAPI 实例的场景。',
       poolModeRetryCount: '同账号重试次数',
       poolModeRetryCountHint: '仅在池模式下生效。0 表示不原地重试；默认 {default}，最大 {max}。',
       customErrorCodes: '自定义错误码',
@@ -2860,7 +2879,7 @@ export default {
       geminiImageTestMode: '模式：Gemini 生图测试',
       geminiImagePreview: '生成结果：',
       geminiImageReceived: '已收到第 {count} 张测试图片',
-      soraUpstreamBaseUrlHint: '上游 Sora 服务地址（另一个 Sub2API 实例或兼容 API）',
+      soraUpstreamBaseUrlHint: '上游 Sora 服务地址（另一个 AIAPI 实例或兼容 API）',
       soraTestHint: 'Sora 测试将执行连通性与能力检测（/backend/me、订阅信息、Sora2 邀请码与剩余额度）。',
       soraTestTarget: '检测目标：Sora 账号能力',
       soraTestMode: '模式：连通性 + 能力探测',
@@ -3139,6 +3158,7 @@ export default {
         balance: '余额',
         concurrency: '并发数',
         subscription: '订阅',
+        group_request_quota: '分组次数',
         invitation: '邀请码',
         // 管理员在用户管理页面调整余额/并发时产生的记录
         admin_balance: '余额（管理员）',
@@ -3148,6 +3168,7 @@ export default {
       balance: '余额',
       concurrency: '并发数',
       subscription: '订阅',
+      groupRequestQuota: '分组次数',
       invitation: '邀请码',
       invitationHint: '邀请码用于限制用户注册，使用后自动标记为已使用。',
       allTypes: '全部类型',
@@ -3165,6 +3186,8 @@ export default {
       codesCreated: '已创建 {count} 个兑换码',
       codeType: '类型',
       amount: '金额 ($)',
+      requestQuotaCount: '次数',
+      requestTimes: '次',
       value: '面值',
       count: '数量',
       generate: '生成',
@@ -3179,9 +3202,9 @@ export default {
       failedToDeleteUnused: '删除未使用的兑换码失败',
       failedToCopy: '复制失败',
       selectGroup: '选择分组',
-      selectGroupPlaceholder: '选择订阅分组',
+      selectGroupPlaceholder: '选择分组',
       validityDays: '有效天数',
-      groupRequired: '请选择订阅分组',
+      groupRequired: '请选择分组',
       days: '天',
       status: {
         unused: '未使用',
@@ -3218,7 +3241,7 @@ export default {
       deleteCode: '删除',
       deleteConfirmMessage: '确定要删除此兑换码吗？',
       noCodes: '暂无兑换码',
-      noCodesDescription: '生成兑换码以向用户分发余额或并发数。',
+      noCodesDescription: '生成兑换码以向用户分发余额、并发数、订阅或分组次数。',
       codesGeneratedSuccess: '兑换码生成成功，共 {count} 个',
       codeDisabledSuccess: '兑换码已禁用',
       codeEnabledSuccess: '兑换码已启用',
@@ -4261,7 +4284,7 @@ export default {
       },
       linuxdo: {
         title: 'LinuxDo Connect 登录',
-        description: '配置 LinuxDo Connect OAuth，用于 Sub2API 用户登录',
+        description: '配置 LinuxDo Connect OAuth，用于 AIAPI 用户登录',
         enable: '启用 LinuxDo 登录',
         enableHint: '在登录/注册页面显示 LinuxDo 登录入口',
         clientId: 'Client ID',
@@ -4317,7 +4340,7 @@ export default {
           '禁用用户注册、公开页面和自助服务功能。仅管理员可以登录和管理平台。',
         siteName: '站点名称',
         siteNameHint: '显示在邮件和页面标题中',
-        siteNamePlaceholder: 'Sub2API',
+        siteNamePlaceholder: 'AIAPI',
         siteSubtitle: '站点副标题',
         siteSubtitleHint: '显示在登录和注册页面',
         siteSubtitlePlaceholder: '订阅转 API 转换平台',
@@ -4406,7 +4429,7 @@ export default {
         fromEmail: '发件人邮箱',
         fromEmailPlaceholder: "noreply{'@'}example.com",
         fromName: '发件人名称',
-        fromNamePlaceholder: 'Sub2API',
+        fromNamePlaceholder: 'AIAPI',
         useTls: '使用 TLS',
         useTlsHint: '为 SMTP 连接启用 TLS 加密'
       },
@@ -4826,16 +4849,16 @@ export default {
     // Admin tour steps
     admin: {
       welcome: {
-        title: '👋 欢迎使用 Sub2API',
+        title: '👋 欢迎使用 AIAPI',
         description:
-          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">Sub2API 是一个强大的 AI 服务中转平台，让您轻松管理和分发 AI 服务。</p><p style="margin-bottom: 12px;"><b>🎯 核心功能：</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>📦 <b>分组管理</b> - 创建不同的服务套餐（VIP、免费试用等）</li><li>🔗 <b>账号池</b> - 连接多个上游 AI 服务商账号</li><li>🔑 <b>密钥分发</b> - 为用户生成独立的 API Key</li><li>💰 <b>计费管理</b> - 灵活的费率和配额控制</li></ul><p style="color: #10b981; font-weight: 600;">接下来，我们将用 3 分钟带您完成首次配置 →</p></div>',
+          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">AIAPI 是一个强大的 AI 服务中转平台，让您轻松管理和分发 AI 服务。</p><p style="margin-bottom: 12px;"><b>🎯 核心功能：</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>📦 <b>分组管理</b> - 创建不同的服务套餐（VIP、免费试用等）</li><li>🔗 <b>账号池</b> - 连接多个上游 AI 服务商账号</li><li>🔑 <b>密钥分发</b> - 为用户生成独立的 API Key</li><li>💰 <b>计费管理</b> - 灵活的费率和配额控制</li></ul><p style="color: #10b981; font-weight: 600;">接下来，我们将用 3 分钟带您完成首次配置 →</p></div>',
         nextBtn: '开始配置 🚀',
         prevBtn: '跳过'
       },
       groupManage: {
         title: '📦 第一步：分组管理',
         description:
-          '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;"><b>什么是分组？</b></p><p style="margin-bottom: 12px;">分组是 Sub2API 的核心概念，它就像一个"服务套餐"：</p><ul style="margin-left: 20px; margin-bottom: 12px; font-size: 13px;"><li>🎯 每个分组可以包含多个上游账号</li><li>💰 每个分组有独立的计费倍率</li><li>👥 可以设置为公开或专属分组</li></ul><p style="margin-top: 12px; padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px;"><b>💡 示例：</b>您可以创建"VIP专线"（高倍率）和"免费试用"（低倍率）两个分组</p><p style="margin-top: 16px; color: #10b981; font-weight: 600;">👉 点击左侧的"分组管理"开始</p></div>'
+          '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;"><b>什么是分组？</b></p><p style="margin-bottom: 12px;">分组是 AIAPI 的核心概念，它就像一个"服务套餐"：</p><ul style="margin-left: 20px; margin-bottom: 12px; font-size: 13px;"><li>🎯 每个分组可以包含多个上游账号</li><li>💰 每个分组有独立的计费倍率</li><li>👥 可以设置为公开或专属分组</li></ul><p style="margin-top: 12px; padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px;"><b>💡 示例：</b>您可以创建"VIP专线"（高倍率）和"免费试用"（低倍率）两个分组</p><p style="margin-top: 16px; color: #10b981; font-weight: 600;">👉 点击左侧的"分组管理"开始</p></div>'
       },
       createGroup: {
         title: '➕ 创建新分组',
@@ -4947,9 +4970,9 @@ export default {
     // User tour steps
     user: {
       welcome: {
-        title: '👋 欢迎使用 Sub2API',
+        title: '👋 欢迎使用 AIAPI',
         description:
-          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">您好！欢迎来到 Sub2API AI 服务平台。</p><p style="margin-bottom: 12px;"><b>🎯 快速开始：</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>🔑 创建 API 密钥</li><li>📋 复制密钥到您的应用</li><li>🚀 开始使用 AI 服务</li></ul><p style="color: #10b981; font-weight: 600;">只需 1 分钟，让我们开始吧 →</p></div>',
+          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">您好！欢迎来到 AIAPI AI 服务平台。</p><p style="margin-bottom: 12px;"><b>🎯 快速开始：</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>🔑 创建 API 密钥</li><li>📋 复制密钥到您的应用</li><li>🚀 开始使用 AI 服务</li></ul><p style="color: #10b981; font-weight: 600;">只需 1 分钟，让我们开始吧 →</p></div>',
         nextBtn: '开始 🚀',
         prevBtn: '跳过'
       },

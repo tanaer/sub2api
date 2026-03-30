@@ -106,6 +106,10 @@ func (s *authRepoStub) IncrementQuotaUsed(ctx context.Context, id int64, amount 
 	panic("unexpected IncrementQuotaUsed call")
 }
 
+func (s *authRepoStub) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
+}
+
 func (s *authRepoStub) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	panic("unexpected UpdateLastUsed call")
 }
@@ -123,6 +127,7 @@ type authCacheStub struct {
 	getAuthCache   func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error)
 	setAuthKeys    []string
 	deleteAuthKeys []string
+	lastEntry      *APIKeyAuthCacheEntry
 }
 
 func (s *authCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
@@ -154,6 +159,7 @@ func (s *authCacheStub) GetAuthCache(ctx context.Context, key string) (*APIKeyAu
 
 func (s *authCacheStub) SetAuthCache(ctx context.Context, key string, entry *APIKeyAuthCacheEntry, ttl time.Duration) error {
 	s.setAuthKeys = append(s.setAuthKeys, key)
+	s.lastEntry = entry
 	return nil
 }
 
@@ -168,6 +174,60 @@ func (s *authCacheStub) PublishAuthCacheInvalidation(ctx context.Context, cacheK
 
 func (s *authCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(cacheKey string)) error {
 	return nil
+}
+
+type authUserGroupRateRepoStub struct {
+	requestQuota *UserGroupRequestQuota
+	calls        int
+}
+
+func (s *authUserGroupRateRepoStub) GetByUserID(ctx context.Context, userID int64) (map[int64]float64, error) {
+	panic("unexpected GetByUserID call")
+}
+
+func (s *authUserGroupRateRepoStub) GetByUserAndGroup(ctx context.Context, userID, groupID int64) (*float64, error) {
+	panic("unexpected GetByUserAndGroup call")
+}
+
+func (s *authUserGroupRateRepoStub) GetByGroupID(ctx context.Context, groupID int64) ([]UserGroupRateEntry, error) {
+	panic("unexpected GetByGroupID call")
+}
+
+func (s *authUserGroupRateRepoStub) SyncUserGroupRates(ctx context.Context, userID int64, rates map[int64]*float64) error {
+	panic("unexpected SyncUserGroupRates call")
+}
+
+func (s *authUserGroupRateRepoStub) SyncGroupRateMultipliers(ctx context.Context, groupID int64, entries []GroupRateMultiplierInput) error {
+	panic("unexpected SyncGroupRateMultipliers call")
+}
+
+func (s *authUserGroupRateRepoStub) DeleteByGroupID(ctx context.Context, groupID int64) error {
+	panic("unexpected DeleteByGroupID call")
+}
+
+func (s *authUserGroupRateRepoStub) DeleteByUserID(ctx context.Context, userID int64) error {
+	panic("unexpected DeleteByUserID call")
+}
+
+func (s *authUserGroupRateRepoStub) GetRequestQuotasByUserID(ctx context.Context, userID int64) (map[int64]int64, error) {
+	panic("unexpected GetRequestQuotasByUserID call")
+}
+
+func (s *authUserGroupRateRepoStub) GetRequestQuotaByUserAndGroup(ctx context.Context, userID, groupID int64) (*UserGroupRequestQuota, error) {
+	s.calls++
+	if s.requestQuota == nil {
+		return nil, nil
+	}
+	clone := *s.requestQuota
+	return &clone, nil
+}
+
+func (s *authUserGroupRateRepoStub) SyncUserGroupRequestQuotas(ctx context.Context, userID int64, quotas map[int64]*int64) error {
+	panic("unexpected SyncUserGroupRequestQuotas call")
+}
+
+func (s *authUserGroupRateRepoStub) IncrementRequestQuotaUsed(ctx context.Context, userID, groupID, amount int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
 }
 
 func TestAPIKeyService_GetByKey_UsesL2Cache(t *testing.T) {
@@ -246,6 +306,68 @@ func TestAPIKeyService_GetByKey_NegativeCache(t *testing.T) {
 
 	_, err := svc.GetByKey(context.Background(), "missing")
 	require.ErrorIs(t, err, ErrAPIKeyNotFound)
+}
+
+func TestAPIKeyService_GetByKey_HydratesAndCachesUserGroupRequestQuota(t *testing.T) {
+	cache := &authCacheStub{}
+	repoCalls := 0
+	groupID := int64(9)
+	repo := &authRepoStub{
+		getByKeyForAuth: func(ctx context.Context, key string) (*APIKey, error) {
+			repoCalls++
+			return &APIKey{
+				ID:      5,
+				UserID:  6,
+				GroupID: &groupID,
+				Status:  StatusActive,
+				User: &User{
+					ID:          6,
+					Status:      StatusActive,
+					Role:        RoleUser,
+					Balance:     0,
+					Concurrency: 2,
+				},
+				Group: &Group{
+					ID:               groupID,
+					Name:             "g",
+					Platform:         PlatformAnthropic,
+					Status:           StatusActive,
+					SubscriptionType: SubscriptionTypeStandard,
+				},
+			}, nil
+		},
+	}
+	groupQuotaRepo := &authUserGroupRateRepoStub{
+		requestQuota: &UserGroupRequestQuota{
+			RequestQuota:     10,
+			RequestQuotaUsed: 3,
+		},
+	}
+	cfg := &config.Config{
+		APIKeyAuth: config.APIKeyAuthCacheConfig{
+			L2TTLSeconds:       60,
+			NegativeTTLSeconds: 30,
+		},
+	}
+	svc := NewAPIKeyService(repo, nil, nil, nil, groupQuotaRepo, cache, cfg)
+
+	apiKey, err := svc.GetByKey(context.Background(), "k-has-group-quota")
+	require.NoError(t, err)
+	require.Equal(t, int64(10), apiKey.UserGroupRequestQuota)
+	require.Equal(t, int64(3), apiKey.UserGroupRequestQuotaUsed)
+	require.Equal(t, 1, groupQuotaRepo.calls)
+	require.NotNil(t, cache.lastEntry)
+
+	cache.getAuthCache = func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error) {
+		return cache.lastEntry, nil
+	}
+
+	apiKey, err = svc.GetByKey(context.Background(), "k-has-group-quota")
+	require.NoError(t, err)
+	require.Equal(t, int64(10), apiKey.UserGroupRequestQuota)
+	require.Equal(t, int64(3), apiKey.UserGroupRequestQuotaUsed)
+	require.Equal(t, 1, repoCalls)
+	require.Equal(t, 1, groupQuotaRepo.calls)
 }
 
 func TestAPIKeyService_GetByKey_CacheMissStoresL2(t *testing.T) {

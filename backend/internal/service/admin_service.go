@@ -49,6 +49,7 @@ type AdminService interface {
 
 	// API Key management (admin)
 	AdminUpdateAPIKeyGroupID(ctx context.Context, keyID int64, groupID *int64) (*AdminUpdateAPIKeyGroupIDResult, error)
+	AdminUpdateAPIKeyRequestQuota(ctx context.Context, keyID int64, requestQuota *int64, resetRequestQuotaUsed bool) (*APIKey, error)
 
 	// ReplaceUserGroup 替换用户的专属分组：授予新分组权限、迁移 Key、移除旧分组权限
 	ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error)
@@ -118,7 +119,10 @@ type UpdateUserInput struct {
 	AllowedGroups *[]int64 // 使用指针区分"未提供"和"设置为空数组"
 	// GroupRates 用户专属分组倍率配置
 	// map[groupID]*rate，nil 表示删除该分组的专属倍率
-	GroupRates            map[int64]*float64
+	GroupRates map[int64]*float64
+	// GroupRequestQuotas 用户专属分组按次配额配置
+	// map[groupID]*requestQuota，nil 表示删除该分组的按次配额
+	GroupRequestQuotas    map[int64]*int64
 	SoraStorageQuotaBytes *int64
 }
 
@@ -310,7 +314,7 @@ type GenerateRedeemCodesInput struct {
 	Count        int
 	Type         string
 	Value        float64
-	GroupID      *int64 // 订阅类型专用：关联的分组ID
+	GroupID      *int64 // 订阅/分组次数类型专用：关联的分组ID
 	ValidityDays int    // 订阅类型专用：有效天数
 }
 
@@ -558,6 +562,14 @@ func (s *adminServiceImpl) GetUser(ctx context.Context, id int64) (*User, error)
 			user.GroupRates = rates
 		}
 	}
+	if s.userGroupRateRepo != nil {
+		requestQuotas, err := s.userGroupRateRepo.GetRequestQuotasByUserID(ctx, id)
+		if err != nil {
+			logger.LegacyPrintf("service.admin", "failed to load user group request quotas: user_id=%d err=%v", id, err)
+		} else {
+			user.GroupRequestQuotas = requestQuotas
+		}
+	}
 	return user, nil
 }
 
@@ -658,8 +670,15 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 		}
 	}
 
+	// 同步用户专属分组按次配额
+	if input.GroupRequestQuotas != nil && s.userGroupRateRepo != nil {
+		if err := s.userGroupRateRepo.SyncUserGroupRequestQuotas(ctx, user.ID, input.GroupRequestQuotas); err != nil {
+			logger.LegacyPrintf("service.admin", "failed to sync user group request quotas: user_id=%d err=%v", user.ID, err)
+		}
+	}
+
 	if s.authCacheInvalidator != nil {
-		if user.Concurrency != oldConcurrency || user.Status != oldStatus || user.Role != oldRole {
+		if user.Concurrency != oldConcurrency || user.Status != oldStatus || user.Role != oldRole || input.GroupRequestQuotas != nil {
 			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, user.ID)
 		}
 	}
@@ -1385,6 +1404,36 @@ func (s *adminServiceImpl) AdminUpdateAPIKeyGroupID(ctx context.Context, keyID i
 	return result, nil
 }
 
+// AdminUpdateAPIKeyRequestQuota 管理员修改 API Key 的按次配额。
+func (s *adminServiceImpl) AdminUpdateAPIKeyRequestQuota(ctx context.Context, keyID int64, requestQuota *int64, resetRequestQuotaUsed bool) (*APIKey, error) {
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		return nil, err
+	}
+
+	if requestQuota == nil && !resetRequestQuotaUsed {
+		return apiKey, nil
+	}
+	if requestQuota != nil && *requestQuota < 0 {
+		return nil, infraerrors.BadRequest("INVALID_REQUEST_QUOTA", "request_quota must be non-negative")
+	}
+
+	if requestQuota != nil {
+		apiKey.RequestQuota = *requestQuota
+	}
+	if resetRequestQuotaUsed {
+		apiKey.RequestQuotaUsed = 0
+	}
+
+	if err := s.apiKeyRepo.Update(ctx, apiKey); err != nil {
+		return nil, err
+	}
+	if s.authCacheInvalidator != nil && strings.TrimSpace(apiKey.Key) != "" {
+		s.authCacheInvalidator.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+	}
+	return apiKey, nil
+}
+
 // ReplaceUserGroup 替换用户的专属分组
 func (s *adminServiceImpl) ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error) {
 	if oldGroupID == newGroupID {
@@ -2054,6 +2103,17 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 			return nil, errors.New("group must be subscription type")
 		}
 	}
+	if input.Type == RedeemTypeGroupRequestQuota {
+		if input.GroupID == nil {
+			return nil, errors.New("group_id is required for group_request_quota type")
+		}
+		if _, ok := requestQuotaUnitsFromValue(input.Value); !ok {
+			return nil, errors.New("value must be a positive integer for group_request_quota type")
+		}
+		if _, err := s.groupRepo.GetByID(ctx, *input.GroupID); err != nil {
+			return nil, fmt.Errorf("group not found: %w", err)
+		}
+	}
 
 	codes := make([]RedeemCode, 0, input.Count)
 	for i := 0; i < input.Count; i++ {
@@ -2067,9 +2127,11 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 			Value:  input.Value,
 			Status: StatusUnused,
 		}
-		// 订阅类型专用字段
-		if input.Type == RedeemTypeSubscription {
+		// 订阅/分组次数类型专用字段
+		if input.Type == RedeemTypeSubscription || input.Type == RedeemTypeGroupRequestQuota {
 			code.GroupID = input.GroupID
+		}
+		if input.Type == RedeemTypeSubscription {
 			code.ValidityDays = input.ValidityDays
 			if code.ValidityDays <= 0 {
 				code.ValidityDays = 30 // 默认30天

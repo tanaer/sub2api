@@ -437,6 +437,22 @@ func (s *stubAdminService) AdminUpdateAPIKeyGroupID(ctx context.Context, keyID i
 	return nil, service.ErrAPIKeyNotFound
 }
 
+func (s *stubAdminService) AdminUpdateAPIKeyRequestQuota(ctx context.Context, keyID int64, requestQuota *int64, resetRequestQuotaUsed bool) (*service.APIKey, error) {
+	for i := range s.apiKeys {
+		if s.apiKeys[i].ID == keyID {
+			k := s.apiKeys[i]
+			if requestQuota != nil {
+				k.RequestQuota = *requestQuota
+			}
+			if resetRequestQuotaUsed {
+				k.RequestQuotaUsed = 0
+			}
+			return &k, nil
+		}
+	}
+	return nil, service.ErrAPIKeyNotFound
+}
+
 func (s *stubAdminService) ResetAccountQuota(ctx context.Context, id int64) error {
 	return nil
 }

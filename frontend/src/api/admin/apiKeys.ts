@@ -26,8 +26,24 @@ export async function updateApiKeyGroup(id: number, groupId: number | null): Pro
   return data
 }
 
+export async function updateApiKeyRequestQuota(
+  id: number,
+  requestQuota: number | null,
+  resetRequestQuotaUsed = false
+): Promise<ApiKey> {
+  const payload: Record<string, number | boolean> = {
+    reset_request_quota_used: resetRequestQuotaUsed
+  }
+  if (requestQuota !== null) {
+    payload.request_quota = requestQuota
+  }
+  const { data } = await apiClient.put<ApiKey>(`/admin/api-keys/${id}/request-quota`, payload)
+  return data
+}
+
 export const apiKeysAPI = {
-  updateApiKeyGroup
+  updateApiKeyGroup,
+  updateApiKeyRequestQuota
 }
 
 export default apiKeysAPI
