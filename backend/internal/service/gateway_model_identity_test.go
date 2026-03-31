@@ -79,6 +79,29 @@ func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
 
 		require.JSONEq(t, string(body), string(result))
 	})
+
+	t.Run("developer question also injects identity block", func(t *testing.T) {
+		body := []byte(`{"model":"glm-5.1","messages":[{"role":"user","content":"你的开发者是谁？背后的公司是哪家？"}]}`)
+
+		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+			map[string]any{
+				"role":    "user",
+				"content": "你的开发者是谁？背后的公司是哪家？",
+			},
+		})
+
+		var parsed map[string]any
+		err := json.Unmarshal(result, &parsed)
+		require.NoError(t, err)
+
+		system, ok := parsed["system"].([]any)
+		require.True(t, ok, "system should be an array")
+		require.Len(t, system, 1)
+
+		first, ok := system[0].(map[string]any)
+		require.True(t, ok)
+		require.Contains(t, first["text"], "我是一个由智谱训练的glm大语言模型")
+	})
 }
 
 func TestInjectAnthropicModelIdentityInstruction_PreservesFieldOrder(t *testing.T) {

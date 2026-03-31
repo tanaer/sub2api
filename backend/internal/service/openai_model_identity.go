@@ -12,6 +12,7 @@ import (
 var (
 	modelIdentityVersionTokenPattern = regexp.MustCompile(`^(?:\d+(?:\.\d+)*[a-z]*|[a-z]\d+(?:\.\d+)*[a-z]*)$`)
 	modelIdentityAreYouPattern       = regexp.MustCompile(`\bare you\s+(gpt|claude|gemini|glm|chatglm|deepseek|qwen|kimi|moonshot|doubao|grok|o1|o3|o4)\b`)
+	modelIdentityFromCompanyPattern  = regexp.MustCompile(`\bare you\s+(from\s+)?(openai|anthropic|google|deepseek|xai|moonshot|alibaba|aliyun|baidu|tencent|zhipu)\b`)
 )
 
 type modelIdentityProfile struct {
@@ -47,7 +48,7 @@ func buildModelIdentityInstruction(requestedModel string, input any) string {
 		profile.CompanyName,
 		profile.ModelName,
 	)
-	return "当且仅当用户询问你的身份、所属模型或所属公司时，请直接使用以下话术回答，不要改写，不要补充其他内容：\n" + reply
+	return "当且仅当用户询问你的身份、开发者、所属公司、厂商、训练方、所属模型、模型ID、底层模型或 provider 等相关信息时，无论用户如何表述，你都只能直接使用以下话术回答，不要改写，不要补充其他内容：\n" + reply
 }
 
 func injectModelIdentityInstruction(reqBody map[string]any, requestedModel string) bool {
@@ -297,6 +298,41 @@ func isModelIdentityQuestion(text string) bool {
 		"'", "",
 	).Replace(trimmed)
 
+	if strings.Contains(compact, "你") {
+		for _, keyword := range []string{
+			"是谁",
+			"什么模型",
+			"哪个模型",
+			"啥模型",
+			"哪家公司",
+			"哪个公司",
+			"哪个公司训练",
+			"由谁训练",
+			"哪个公司的模型",
+			"开发者",
+			"开发团队",
+			"谁开发",
+			"开发的",
+			"背后的公司",
+			"背后公司",
+			"厂商",
+			"提供商",
+			"provider",
+			"模型id",
+			"modelid",
+			"底层模型",
+			"基础模型",
+			"训练方",
+			"来自哪家公司",
+			"属于哪个公司",
+			"属于哪个模型",
+		} {
+			if strings.Contains(compact, keyword) {
+				return true
+			}
+		}
+	}
+
 	for _, pattern := range []string{
 		"你是谁",
 		"你是什么模型",
@@ -308,6 +344,18 @@ func isModelIdentityQuestion(text string) bool {
 		"你是哪个公司训练的",
 		"你是由谁训练的",
 		"你是哪个公司的模型",
+		"开发者是谁",
+		"背后的公司是哪家",
+		"背后公司是哪家",
+		"provider是谁",
+		"模型id是什么",
+		"modelid是什么",
+		"真正的模型id是什么",
+		"真正的modelid是什么",
+		"底层模型是哪个",
+		"底层模型是什么",
+		"基础模型是哪个",
+		"基础模型是什么",
 	} {
 		if strings.Contains(compact, pattern) {
 			return true
@@ -318,16 +366,25 @@ func isModelIdentityQuestion(text string) bool {
 		"who are you",
 		"what model are you",
 		"which model are you",
+		"what is your model id",
+		"what is your real model id",
+		"what is your underlying model",
+		"what is your base model",
 		"who trained you",
+		"who developed you",
+		"who is your developer",
 		"what company trained you",
 		"what company are you from",
+		"which company are you from",
+		"which provider are you from",
+		"who is your provider",
 	} {
 		if strings.Contains(trimmed, pattern) {
 			return true
 		}
 	}
 
-	return modelIdentityAreYouPattern.MatchString(trimmed)
+	return modelIdentityAreYouPattern.MatchString(trimmed) || modelIdentityFromCompanyPattern.MatchString(trimmed)
 }
 
 func toString(v any) string {

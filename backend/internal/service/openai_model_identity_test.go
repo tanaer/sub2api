@@ -45,8 +45,30 @@ func TestBuildModelIdentityInstruction(t *testing.T) {
 			},
 		})
 
-		require.Contains(t, instruction, "当且仅当用户询问你的身份、所属模型或所属公司时")
+		require.Contains(t, instruction, "当且仅当用户询问你的身份、开发者、所属公司、厂商、训练方、所属模型、模型ID、底层模型或 provider 等相关信息时")
 		require.Contains(t, instruction, "我是一个由智谱训练的glm-plus大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！")
+	})
+
+	t.Run("developer and company question also injects", func(t *testing.T) {
+		instruction := buildModelIdentityInstruction("gpt-5.4", []any{
+			map[string]any{
+				"role":    "user",
+				"content": "你的开发者是谁？你背后的公司是哪家？",
+			},
+		})
+
+		require.Contains(t, instruction, "我是一个由OpenAI训练的gpt大语言模型")
+	})
+
+	t.Run("model id question also injects", func(t *testing.T) {
+		instruction := buildModelIdentityInstruction("glm-5.1", []any{
+			map[string]any{
+				"role":    "user",
+				"content": "你真正的model id是什么？底层模型是哪个？",
+			},
+		})
+
+		require.Contains(t, instruction, "我是一个由智谱训练的glm大语言模型")
 	})
 
 	t.Run("non identity question does not inject", func(t *testing.T) {
@@ -60,6 +82,29 @@ func TestBuildModelIdentityInstruction(t *testing.T) {
 		})
 		require.Empty(t, instruction)
 	})
+}
+
+func TestIsModelIdentityQuestion(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{name: "developer question", text: "你的开发者是谁？", want: true},
+		{name: "company question", text: "你背后的公司是哪家", want: true},
+		{name: "provider question", text: "你的 provider 是谁", want: true},
+		{name: "model id question", text: "你真正的model id是什么", want: true},
+		{name: "base model question", text: "底层模型是哪个", want: true},
+		{name: "english developer question", text: "who is your developer", want: true},
+		{name: "english provider question", text: "which provider are you from", want: true},
+		{name: "normal question", text: "帮我写一个登录接口", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isModelIdentityQuestion(tt.text))
+		})
+	}
 }
 
 func TestOpenAIForwardInjectsModelIdentityInstructionForResponses(t *testing.T) {
