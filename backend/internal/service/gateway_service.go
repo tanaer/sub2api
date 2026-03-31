@@ -138,6 +138,71 @@ func anthropicStreamEventIsTerminal(eventName, data string) bool {
 	return gjson.Get(trimmed, "type").String() == "message_stop"
 }
 
+func replaceKnownModelFieldsInJSONObject(event map[string]any, fromModel, toModel string) bool {
+	if len(event) == 0 {
+		return false
+	}
+	if strings.TrimSpace(fromModel) == "" || strings.TrimSpace(toModel) == "" || fromModel == toModel {
+		return false
+	}
+
+	changed := false
+
+	if model, ok := event["model"].(string); ok && model == fromModel {
+		event["model"] = toModel
+		changed = true
+	}
+	if message, ok := event["message"].(map[string]any); ok {
+		if model, ok := message["model"].(string); ok && model == fromModel {
+			message["model"] = toModel
+			changed = true
+		}
+	}
+	if response, ok := event["response"].(map[string]any); ok {
+		if model, ok := response["model"].(string); ok && model == fromModel {
+			response["model"] = toModel
+			changed = true
+		}
+	}
+
+	return changed
+}
+
+func replaceKnownModelFieldsInJSONBytes(body []byte, fromModel, toModel string) []byte {
+	if len(body) == 0 {
+		return body
+	}
+	if strings.TrimSpace(fromModel) == "" || strings.TrimSpace(toModel) == "" || fromModel == toModel {
+		return body
+	}
+
+	values := gjson.GetManyBytes(body, "model", "message.model", "response.model")
+	replaceRootModel := values[0].Exists() && values[0].Str == fromModel
+	replaceMessageModel := values[1].Exists() && values[1].Str == fromModel
+	replaceResponseModel := values[2].Exists() && values[2].Str == fromModel
+	if !replaceRootModel && !replaceMessageModel && !replaceResponseModel {
+		return body
+	}
+
+	updated := body
+	if replaceRootModel {
+		if next, err := sjson.SetBytes(updated, "model", toModel); err == nil {
+			updated = next
+		}
+	}
+	if replaceMessageModel {
+		if next, err := sjson.SetBytes(updated, "message.model", toModel); err == nil {
+			updated = next
+		}
+	}
+	if replaceResponseModel {
+		if next, err := sjson.SetBytes(updated, "response.model", toModel); err == nil {
+			updated = next
+		}
+	}
+	return updated
+}
+
 func cloneStringSlice(src []string) []string {
 	if len(src) == 0 {
 		return nil
@@ -4911,7 +4976,7 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 	var firstTokenMs *int
 	var clientDisconnect bool
 	if input.RequestStream {
-		streamResult, err := s.handleStreamingResponseAnthropicAPIKeyPassthrough(ctx, resp, c, account, input.StartTime, input.RequestModel)
+		streamResult, err := s.handleStreamingResponseAnthropicAPIKeyPassthrough(ctx, resp, c, account, input.StartTime, input.OriginalModel, input.RequestModel)
 		if err != nil {
 			return nil, err
 		}
@@ -4919,7 +4984,7 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 		firstTokenMs = streamResult.firstTokenMs
 		clientDisconnect = streamResult.clientDisconnect
 	} else {
-		usage, err = s.handleNonStreamingResponseAnthropicAPIKeyPassthrough(ctx, resp, c, account)
+		usage, err = s.handleNonStreamingResponseAnthropicAPIKeyPassthrough(ctx, resp, c, account, input.OriginalModel, input.RequestModel)
 		if err != nil {
 			return nil, err
 		}
@@ -4997,8 +5062,13 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	c *gin.Context,
 	account *Account,
 	startTime time.Time,
-	model string,
+	originalModel string,
+	mappedModels ...string,
 ) (*streamingResult, error) {
+	mappedModel := originalModel
+	if len(mappedModels) > 0 && strings.TrimSpace(mappedModels[0]) != "" {
+		mappedModel = mappedModels[0]
+	}
 	if s.rateLimitService != nil {
 		s.rateLimitService.UpdateSessionWindow(ctx, account, resp.Header)
 	}
@@ -5031,6 +5101,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	var firstTokenMs *int
 	clientDisconnected := false
 	sawTerminalEvent := false
+	needModelReplace := strings.TrimSpace(originalModel) != "" && originalModel != mappedModel
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -5118,6 +5189,14 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 			line := ev.line
 			if data, ok := extractAnthropicSSEDataLine(line); ok {
 				trimmed := strings.TrimSpace(data)
+				if needModelReplace && trimmed != "" && trimmed != "[DONE]" {
+					replaced := replaceKnownModelFieldsInJSONBytes([]byte(trimmed), mappedModel, originalModel)
+					if string(replaced) != trimmed {
+						line = "data: " + string(replaced)
+						data = string(replaced)
+						trimmed = strings.TrimSpace(data)
+					}
+				}
 				if anthropicStreamEventIsTerminal("", trimmed) {
 					sawTerminalEvent = true
 				}
@@ -5154,9 +5233,9 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 			if clientDisconnected {
 				return &streamingResult{usage: usage, firstTokenMs: firstTokenMs, clientDisconnect: true}, fmt.Errorf("stream usage incomplete after timeout")
 			}
-			logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Stream data interval timeout: account=%d model=%s interval=%s", account.ID, model, streamInterval)
+			logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Stream data interval timeout: account=%d model=%s interval=%s", account.ID, originalModel, streamInterval)
 			if s.rateLimitService != nil {
-				s.rateLimitService.HandleStreamTimeout(ctx, account, model)
+				s.rateLimitService.HandleStreamTimeout(ctx, account, originalModel)
 			}
 			return &streamingResult{usage: usage, firstTokenMs: firstTokenMs}, fmt.Errorf("stream data interval timeout")
 		}
@@ -5287,7 +5366,13 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 	resp *http.Response,
 	c *gin.Context,
 	account *Account,
+	originalModel string,
+	mappedModels ...string,
 ) (*ClaudeUsage, error) {
+	mappedModel := originalModel
+	if len(mappedModels) > 0 && strings.TrimSpace(mappedModels[0]) != "" {
+		mappedModel = mappedModels[0]
+	}
 	if s.rateLimitService != nil {
 		s.rateLimitService.UpdateSessionWindow(ctx, account, resp.Header)
 	}
@@ -5309,6 +5394,9 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 	}
 
 	usage := parseClaudeUsageFromResponseBody(body)
+	if strings.TrimSpace(originalModel) != "" && originalModel != mappedModel {
+		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
+	}
 
 	writeAnthropicPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
@@ -6853,12 +6941,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 		}
 
 		if needModelReplace {
-			if msg, ok := event["message"].(map[string]any); ok {
-				if model, ok := msg["model"].(string); ok && model == mappedModel {
-					msg["model"] = originalModel
-					eventChanged = true
-				}
-			}
+			eventChanged = replaceKnownModelFieldsInJSONObject(event, mappedModel, originalModel) || eventChanged
 		}
 
 		usagePatch := s.extractSSEUsagePatch(event)
@@ -7305,14 +7388,7 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 // replaceModelInResponseBody 替换响应体中的model字段
 // 使用 gjson/sjson 精确替换，避免全量 JSON 反序列化
 func (s *GatewayService) replaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
-	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {
-		newBody, err := sjson.SetBytes(body, "model", toModel)
-		if err != nil {
-			return body
-		}
-		return newBody
-	}
-	return body
+	return replaceKnownModelFieldsInJSONBytes(body, fromModel, toModel)
 }
 
 func (s *GatewayService) getUserGroupRateMultiplier(ctx context.Context, userID, groupID int64, groupDefaultMultiplier float64) float64 {
