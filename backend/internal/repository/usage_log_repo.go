@@ -2376,16 +2376,35 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 	stats.Tpm = tpm
 
 	rows, err := r.sql.QueryContext(ctx, `
+		WITH permanent AS (
+			SELECT
+				group_id,
+				request_quota,
+				request_quota_used
+			FROM user_group_request_quotas
+			WHERE user_id = $1
+		),
+		active_grants AS (
+			SELECT
+				group_id,
+				COALESCE(SUM(request_quota_total), 0) AS request_quota,
+				COALESCE(SUM(request_quota_used), 0) AS request_quota_used
+			FROM user_group_request_quota_grants
+			WHERE user_id = $1
+				AND expires_at > NOW()
+			GROUP BY group_id
+		)
 		SELECT
 			g.id,
 			g.name,
 			g.platform,
-			ugq.request_quota,
-			ugq.request_quota_used
-		FROM user_group_request_quotas ugq
-		JOIN groups g ON g.id = ugq.group_id
-		WHERE ugq.user_id = $1
-			AND g.deleted_at IS NULL
+			COALESCE(p.request_quota, 0) + COALESCE(a.request_quota, 0) AS request_quota,
+			COALESCE(p.request_quota_used, 0) + COALESCE(a.request_quota_used, 0) AS request_quota_used
+		FROM groups g
+		LEFT JOIN permanent p ON p.group_id = g.id
+		LEFT JOIN active_grants a ON a.group_id = g.id
+		WHERE g.deleted_at IS NULL
+			AND (COALESCE(p.request_quota, 0) + COALESCE(a.request_quota, 0)) > 0
 		ORDER BY g.name ASC, g.id ASC
 	`, userID)
 	if err != nil {

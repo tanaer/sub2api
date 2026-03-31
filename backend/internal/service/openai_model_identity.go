@@ -1,0 +1,336 @@
+package service
+
+import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
+)
+
+var (
+	modelIdentityVersionTokenPattern = regexp.MustCompile(`^(?:\d+(?:\.\d+)*[a-z]*|[a-z]\d+(?:\.\d+)*[a-z]*)$`)
+	modelIdentityAreYouPattern       = regexp.MustCompile(`\bare you\s+(gpt|claude|gemini|glm|chatglm|deepseek|qwen|kimi|moonshot|doubao|grok|o1|o3|o4)\b`)
+)
+
+type modelIdentityProfile struct {
+	CompanyName string
+	ModelName   string
+}
+
+func resolveModelIdentityProfile(requestedModel string) modelIdentityProfile {
+	modelName := stripModelVersionName(requestedModel)
+	if modelName == "" {
+		modelName = strings.TrimSpace(stripModelNamespace(requestedModel))
+	}
+	companyName := resolveModelCompanyName(requestedModel, modelName)
+	return modelIdentityProfile{
+		CompanyName: companyName,
+		ModelName:   modelName,
+	}
+}
+
+func buildModelIdentityInstruction(requestedModel string, input any) string {
+	lastUserText := extractLastUserTextFromResponsesInput(input)
+	if !isModelIdentityQuestion(lastUserText) {
+		return ""
+	}
+
+	profile := resolveModelIdentityProfile(requestedModel)
+	if profile.CompanyName == "" || profile.ModelName == "" {
+		return ""
+	}
+
+	reply := fmt.Sprintf(
+		"我是一个由%s训练的%s大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！",
+		profile.CompanyName,
+		profile.ModelName,
+	)
+	return "当且仅当用户询问你的身份、所属模型或所属公司时，请直接使用以下话术回答，不要改写，不要补充其他内容：\n" + reply
+}
+
+func injectModelIdentityInstruction(reqBody map[string]any, requestedModel string) bool {
+	if reqBody == nil {
+		return false
+	}
+	instruction := buildModelIdentityInstruction(requestedModel, reqBody["input"])
+	if instruction == "" {
+		return false
+	}
+
+	existing, _ := reqBody["instructions"].(string)
+	merged := mergeModelIdentityInstruction(existing, instruction)
+	if merged == strings.TrimSpace(existing) {
+		return false
+	}
+	reqBody["instructions"] = merged
+	return true
+}
+
+func injectModelIdentityInstructionIntoResponsesRequest(req *apicompat.ResponsesRequest, requestedModel string) bool {
+	if req == nil || len(req.Input) == 0 {
+		return false
+	}
+
+	var input any
+	if err := json.Unmarshal(req.Input, &input); err != nil {
+		return false
+	}
+
+	instruction := buildModelIdentityInstruction(requestedModel, input)
+	if instruction == "" {
+		return false
+	}
+
+	merged := mergeModelIdentityInstruction(req.Instructions, instruction)
+	if merged == strings.TrimSpace(req.Instructions) {
+		return false
+	}
+	req.Instructions = merged
+	return true
+}
+
+func mergeModelIdentityInstruction(existing, instruction string) string {
+	trimmedInstruction := strings.TrimSpace(instruction)
+	if trimmedInstruction == "" {
+		return strings.TrimSpace(existing)
+	}
+
+	trimmedExisting := strings.TrimSpace(existing)
+	if trimmedExisting == "" {
+		return trimmedInstruction
+	}
+	if strings.Contains(trimmedExisting, trimmedInstruction) {
+		return trimmedExisting
+	}
+	return trimmedExisting + "\n\n" + trimmedInstruction
+}
+
+func stripModelVersionName(requestedModel string) string {
+	model := strings.ToLower(strings.TrimSpace(stripModelNamespace(requestedModel)))
+	if model == "" {
+		return ""
+	}
+
+	parts := strings.FieldsFunc(model, func(r rune) bool {
+		return r == '-' || r == '_'
+	})
+	if len(parts) == 0 {
+		return model
+	}
+
+	kept := make([]string, 0, len(parts))
+	for idx, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if idx > 0 && isModelVersionToken(part) {
+			continue
+		}
+		kept = append(kept, part)
+	}
+
+	if len(kept) == 0 {
+		return model
+	}
+	return strings.Join(kept, "-")
+}
+
+func stripModelNamespace(requestedModel string) string {
+	model := strings.TrimSpace(requestedModel)
+	if model == "" {
+		return ""
+	}
+	if idx := strings.LastIndexAny(model, "/:"); idx >= 0 && idx+1 < len(model) {
+		model = model[idx+1:]
+	}
+	return strings.TrimSpace(model)
+}
+
+func isModelVersionToken(token string) bool {
+	token = strings.ToLower(strings.TrimSpace(token))
+	if token == "" {
+		return false
+	}
+	return modelIdentityVersionTokenPattern.MatchString(token)
+}
+
+func resolveModelCompanyName(requestedModel, fallback string) string {
+	base := firstModelFamilyToken(requestedModel)
+	switch base {
+	case "glm", "chatglm":
+		return "智谱"
+	case "gpt", "chatgpt", "o1", "o3", "o4", "codex":
+		return "OpenAI"
+	case "claude":
+		return "Anthropic"
+	case "gemini":
+		return "Google"
+	case "deepseek":
+		return "DeepSeek"
+	case "qwen", "qwq":
+		return "阿里云"
+	case "kimi", "moonshot":
+		return "月之暗面"
+	case "doubao":
+		return "字节跳动"
+	case "grok":
+		return "xAI"
+	case "ernie":
+		return "百度"
+	case "hunyuan":
+		return "腾讯"
+	case "yi", "01", "01ai":
+		return "零一万物"
+	case "step":
+		return "阶跃星辰"
+	case "minimax", "abab":
+		return "MiniMax"
+	default:
+		if fallback != "" {
+			return fallback
+		}
+		return base
+	}
+}
+
+func firstModelFamilyToken(requestedModel string) string {
+	model := strings.ToLower(strings.TrimSpace(stripModelNamespace(requestedModel)))
+	if model == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(model, func(r rune) bool {
+		return r == '-' || r == '_'
+	})
+	if len(parts) == 0 {
+		return model
+	}
+	return strings.TrimSpace(parts[0])
+}
+
+func extractLastUserTextFromResponsesInput(input any) string {
+	switch v := input.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(v)
+	case []any:
+		for idx := len(v) - 1; idx >= 0; idx-- {
+			text, isUser := extractUserTextFromResponsesInputItem(v[idx])
+			if isUser {
+				return strings.TrimSpace(text)
+			}
+		}
+		return ""
+	case map[string]any:
+		text, isUser := extractUserTextFromResponsesInputItem(v)
+		if !isUser {
+			return ""
+		}
+		return strings.TrimSpace(text)
+	default:
+		return ""
+	}
+}
+
+func extractUserTextFromResponsesInputItem(item any) (string, bool) {
+	itemMap, ok := item.(map[string]any)
+	if !ok {
+		return "", false
+	}
+
+	role := strings.ToLower(strings.TrimSpace(toString(itemMap["role"])))
+	if role != "user" {
+		return "", false
+	}
+	return extractResponsesText(itemMap["content"]), true
+}
+
+func extractResponsesText(content any) string {
+	switch v := content.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(v)
+	case []any:
+		parts := make([]string, 0, len(v))
+		for _, part := range v {
+			partMap, ok := part.(map[string]any)
+			if !ok {
+				continue
+			}
+			text, _ := partMap["text"].(string)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			partType := strings.ToLower(strings.TrimSpace(toString(partMap["type"])))
+			if partType == "" || partType == "text" || partType == "input_text" || partType == "output_text" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.TrimSpace(strings.Join(parts, ""))
+	default:
+		return ""
+	}
+}
+
+func isModelIdentityQuestion(text string) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(text))
+	if trimmed == "" {
+		return false
+	}
+
+	compact := strings.NewReplacer(
+		" ", "",
+		"\n", "",
+		"\t", "",
+		"？", "?",
+		"！", "!",
+		"。", ".",
+		"，", ",",
+		"：", ":",
+		"“", "",
+		"”", "",
+		`"`, "",
+		"'", "",
+	).Replace(trimmed)
+
+	for _, pattern := range []string{
+		"你是谁",
+		"你是什么模型",
+		"你是哪个模型",
+		"你是啥模型",
+		"你是哪家公司",
+		"你是哪家公司的",
+		"你是哪个公司",
+		"你是哪个公司训练的",
+		"你是由谁训练的",
+		"你是哪个公司的模型",
+	} {
+		if strings.Contains(compact, pattern) {
+			return true
+		}
+	}
+
+	for _, pattern := range []string{
+		"who are you",
+		"what model are you",
+		"which model are you",
+		"who trained you",
+		"what company trained you",
+		"what company are you from",
+	} {
+		if strings.Contains(trimmed, pattern) {
+			return true
+		}
+	}
+
+	return modelIdentityAreYouPattern.MatchString(trimmed)
+}
+
+func toString(v any) string {
+	s, _ := v.(string)
+	return s
+}

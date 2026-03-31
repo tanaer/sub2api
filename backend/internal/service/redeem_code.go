@@ -14,6 +14,7 @@ type RedeemCode struct {
 	Status    string
 	UsedBy    *int64
 	UsedAt    *time.Time
+	ExpiresAt *time.Time
 	Notes     string
 	CreatedAt time.Time
 

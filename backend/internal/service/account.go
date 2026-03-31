@@ -407,6 +407,48 @@ func (a *Account) GetModelMapping() map[string]string {
 	return mapping
 }
 
+func (a *Account) GetModelFallbacks() map[string][]string {
+	if a == nil || a.Credentials == nil {
+		return nil
+	}
+	rawFallbacks, _ := a.Credentials["model_fallbacks"].(map[string]any)
+	if len(rawFallbacks) == 0 {
+		return nil
+	}
+
+	result := make(map[string][]string, len(rawFallbacks))
+	for pattern, raw := range rawFallbacks {
+		values := normalizeModelFallbackTargets(raw)
+		if len(values) == 0 {
+			continue
+		}
+		result[pattern] = values
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func normalizeModelFallbackTargets(raw any) []string {
+	switch value := raw.(type) {
+	case []string:
+		return compactUniqueModels(value, maxModelRetryChainAttempts)
+	case []any:
+		items := make([]string, 0, len(value))
+		for _, entry := range value {
+			if text, ok := entry.(string); ok {
+				items = append(items, text)
+			}
+		}
+		return compactUniqueModels(items, maxModelRetryChainAttempts)
+	case string:
+		return compactUniqueModels([]string{value}, maxModelRetryChainAttempts)
+	default:
+		return nil
+	}
+}
+
 func (a *Account) resolveModelMapping(rawMapping map[string]any) map[string]string {
 	if a.Credentials == nil {
 		// Antigravity 平台使用默认映射
@@ -540,6 +582,46 @@ func (a *Account) ResolveMappedModel(requestedModel string) (mappedModel string,
 	}
 	// 通配符匹配（最长优先）
 	return matchWildcardMappingResult(mapping, requestedModel)
+}
+
+func (a *Account) ResolveModelFallbackTargets(requestedModel string) ([]string, bool) {
+	fallbacks := a.GetModelFallbacks()
+	if len(fallbacks) == 0 {
+		return nil, false
+	}
+	if values, ok := fallbacks[requestedModel]; ok && len(values) > 0 {
+		return values, true
+	}
+
+	type patternMatch struct {
+		pattern string
+		targets []string
+	}
+	var matches []patternMatch
+	for pattern, targets := range fallbacks {
+		if matchWildcard(pattern, requestedModel) && len(targets) > 0 {
+			matches = append(matches, patternMatch{pattern: pattern, targets: targets})
+		}
+	}
+	if len(matches) == 0 {
+		return nil, false
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		if len(matches[i].pattern) != len(matches[j].pattern) {
+			return len(matches[i].pattern) > len(matches[j].pattern)
+		}
+		return matches[i].pattern < matches[j].pattern
+	})
+	return matches[0].targets, true
+}
+
+func (a *Account) ResolveModelRetryChain(requestedModel string, maxAttempts int) []string {
+	primaryModel := a.GetMappedModel(requestedModel)
+	chain := []string{primaryModel}
+	if fallbacks, ok := a.ResolveModelFallbackTargets(requestedModel); ok {
+		chain = append(chain, fallbacks...)
+	}
+	return compactUniqueModels(chain, maxAttempts)
 }
 
 func (a *Account) GetBaseURL() string {

@@ -100,6 +100,10 @@ func (s *userGroupRateRepoStubForListUsers) IncrementRequestQuotaUsed(_ context.
 	panic("unexpected IncrementRequestQuotaUsed call")
 }
 
+func (s *userGroupRateRepoStubForListUsers) CreateRequestQuotaGrant(_ context.Context, _ *UserGroupRequestQuotaGrant) error {
+	panic("unexpected CreateRequestQuotaGrant call")
+}
+
 func TestAdminService_ListUsers_BatchRateFallbackToSingle(t *testing.T) {
 	userRepo := &userRepoStubForListUsers{
 		users: []User{

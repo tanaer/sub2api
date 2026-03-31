@@ -73,6 +73,10 @@ func (s *userGroupRateRepoStubForGroupRate) IncrementRequestQuotaUsed(_ context.
 	panic("unexpected IncrementRequestQuotaUsed call")
 }
 
+func (s *userGroupRateRepoStubForGroupRate) CreateRequestQuotaGrant(_ context.Context, _ *UserGroupRequestQuotaGrant) error {
+	panic("unexpected CreateRequestQuotaGrant call")
+}
+
 func TestAdminService_GetGroupRateMultipliers(t *testing.T) {
 	t.Run("returns entries for group", func(t *testing.T) {
 		repo := &userGroupRateRepoStubForGroupRate{

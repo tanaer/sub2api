@@ -251,6 +251,85 @@
           </template>
         </div>
 
+        <div
+          v-if="supportsModelFallbackConfig"
+          class="border-t border-gray-200 pt-4 dark:border-dark-600"
+        >
+          <label class="input-label">{{ t('admin.accounts.modelFallbackChain') }}</label>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.accounts.modelFallbackChainHint') }}
+          </p>
+
+          <div class="mb-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+            <p class="text-xs font-medium text-blue-700 dark:text-blue-300">
+              {{ t('admin.accounts.modelFallbackChainExampleTitle') }}
+            </p>
+            <p class="mt-1 text-xs text-blue-700 dark:text-blue-300">
+              {{ t('admin.accounts.modelFallbackChainExample') }}
+            </p>
+            <p class="mt-2 text-xs text-blue-700 dark:text-blue-300">
+              {{ t('admin.accounts.modelFallbackChainNote') }}
+            </p>
+          </div>
+
+          <div
+            v-if="modelFallbackChains.length > 0"
+            class="mb-3 space-y-2"
+            data-testid="model-fallback-chain-list"
+          >
+            <div
+              v-for="(chain, index) in modelFallbackChains"
+              :key="getModelFallbackChainKey(chain)"
+              class="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+            >
+              <input
+                v-model="chain.from"
+                type="text"
+                class="input"
+                :placeholder="t('admin.accounts.requestModel')"
+              />
+              <input
+                v-model="chain.fallbacks"
+                type="text"
+                class="input"
+                :placeholder="t('admin.accounts.modelFallbackTargetsPlaceholder')"
+              />
+              <div
+                v-if="formatModelFallbackChainPreview(chain)"
+                class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-700/60"
+                data-testid="model-fallback-preview"
+              >
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-200">
+                  {{ t('admin.accounts.modelFallbackChainPreviewLabel') }}
+                </p>
+                <p class="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300">
+                  {{ formatModelFallbackChainPreview(chain) }}
+                </p>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.accounts.modelFallbackTargetsHint') }}
+                </p>
+                <button
+                  type="button"
+                  class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  @click="removeModelFallbackChain(index)"
+                >
+                  <Icon name="trash" size="sm" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+            @click="addModelFallbackChain"
+          >
+            + {{ t('admin.accounts.addModelFallbackChain') }}
+          </button>
+        </div>
+
         <!-- Pool Mode Section -->
         <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
           <div class="mb-3 flex items-center justify-between">
@@ -537,6 +616,81 @@
             </div>
           </div>
         </template>
+      </div>
+
+      <div
+        v-if="supportsModelFallbackConfig"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <label class="input-label">{{ t('admin.accounts.modelFallbackChain') }}</label>
+        <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          {{ t('admin.accounts.modelFallbackChainHint') }}
+        </p>
+
+        <div class="mb-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+          <p class="text-xs font-medium text-blue-700 dark:text-blue-300">
+            {{ t('admin.accounts.modelFallbackChainExampleTitle') }}
+          </p>
+          <p class="mt-1 text-xs text-blue-700 dark:text-blue-300">
+            {{ t('admin.accounts.modelFallbackChainExample') }}
+          </p>
+          <p class="mt-2 text-xs text-blue-700 dark:text-blue-300">
+            {{ t('admin.accounts.modelFallbackChainNote') }}
+          </p>
+        </div>
+
+        <div v-if="modelFallbackChains.length > 0" class="mb-3 space-y-2">
+          <div
+            v-for="(chain, index) in modelFallbackChains"
+            :key="'oauth-' + getModelFallbackChainKey(chain)"
+            class="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+          >
+            <input
+              v-model="chain.from"
+              type="text"
+              class="input"
+              :placeholder="t('admin.accounts.requestModel')"
+            />
+            <input
+              v-model="chain.fallbacks"
+              type="text"
+              class="input"
+              :placeholder="t('admin.accounts.modelFallbackTargetsPlaceholder')"
+            />
+            <div
+              v-if="formatModelFallbackChainPreview(chain)"
+              class="rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-700/60"
+              data-testid="model-fallback-preview"
+            >
+              <p class="text-xs font-medium text-gray-700 dark:text-gray-200">
+                {{ t('admin.accounts.modelFallbackChainPreviewLabel') }}
+              </p>
+              <p class="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300">
+                {{ formatModelFallbackChainPreview(chain) }}
+              </p>
+            </div>
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.accounts.modelFallbackTargetsHint') }}
+              </p>
+              <button
+                type="button"
+                class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                @click="removeModelFallbackChain(index)"
+              >
+                <Icon name="trash" size="sm" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="w-full rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+          @click="addModelFallbackChain"
+        >
+          + {{ t('admin.accounts.addModelFallbackChain') }}
+        </button>
       </div>
 
       <!-- Upstream fields (only for upstream type) -->
@@ -1733,6 +1887,7 @@ import {
   getPresetMappingsByPlatform,
   commonErrorCodes,
   buildModelMappingObject,
+  buildModelFallbacksObject,
   isValidWildcardPattern
 } from '@/composables/useModelWhitelist'
 
@@ -1770,6 +1925,11 @@ interface ModelMapping {
   to: string
 }
 
+interface ModelFallbackChain {
+  from: string
+  fallbacks: string
+}
+
 interface TempUnschedRuleForm {
   error_code: number | null
   keywords: string
@@ -1793,6 +1953,7 @@ const isBedrockAPIKeyMode = computed(() =>
   (props.account?.credentials as Record<string, unknown>)?.auth_mode === 'apikey'
 )
 const modelMappings = ref<ModelMapping[]>([])
+const modelFallbackChains = ref<ModelFallbackChain[]>([])
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
 const DEFAULT_POOL_MODE_RETRY_COUNT = 3
@@ -1812,7 +1973,18 @@ const antigravityModelMappings = ref<ModelMapping[]>([])
 const tempUnschedEnabled = ref(false)
 const tempUnschedRules = ref<TempUnschedRuleForm[]>([])
 const getModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-model-mapping')
+const getModelFallbackChainKey = createStableObjectKeyResolver<ModelFallbackChain>('edit-model-fallback-chain')
 const getAntigravityModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-antigravity-model-mapping')
+const supportsModelFallbackConfig = computed(() => {
+  const account = props.account
+  if (!account) {
+    return false
+  }
+  if (account.type === 'oauth') {
+    return account.platform === 'openai'
+  }
+  return account.type === 'apikey' && ['openai', 'anthropic', 'gemini'].includes(account.platform)
+})
 const getTempUnschedRuleKey = createStableObjectKeyResolver<TempUnschedRuleForm>('edit-temp-unsched-rule')
 
 const showMixedChannelWarning = ref(false)
@@ -2143,6 +2315,8 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       allowedModels.value = []
     }
 
+    loadModelFallbackChains(credentials)
+
     // Load pool mode
     poolModeEnabled.value = credentials.pool_mode === true
     poolModeRetryCount.value = normalizePoolModeRetryCount(
@@ -2201,9 +2375,11 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       modelMappings.value = []
       allowedModels.value = []
     }
+    modelFallbackChains.value = []
   } else if (newAccount.type === 'upstream' && newAccount.credentials) {
     const credentials = newAccount.credentials as Record<string, unknown>
     editBaseUrl.value = (credentials.base_url as string) || ''
+    modelFallbackChains.value = []
   } else {
     const platformDefaultUrl =
       newAccount.platform === 'openai' || newAccount.platform === 'sora'
@@ -2234,10 +2410,12 @@ const syncFormFromAccount = (newAccount: Account | null) => {
         modelMappings.value = []
         allowedModels.value = []
       }
+      loadModelFallbackChains(oauthCredentials)
     } else {
       modelRestrictionMode.value = 'whitelist'
       modelMappings.value = []
       allowedModels.value = []
+      modelFallbackChains.value = []
     }
     poolModeEnabled.value = false
     poolModeRetryCount.value = DEFAULT_POOL_MODE_RETRY_COUNT
@@ -2441,6 +2619,62 @@ function loadTempUnschedRules(credentials?: Record<string, unknown>) {
       description: typeof entry.description === 'string' ? entry.description : ''
     }
   })
+}
+
+function loadModelFallbackChains(credentials?: Record<string, unknown>) {
+  const rawFallbacks = credentials?.model_fallbacks as Record<string, unknown> | undefined
+  if (!rawFallbacks || typeof rawFallbacks !== 'object') {
+    modelFallbackChains.value = []
+    return
+  }
+
+  modelFallbackChains.value = Object.entries(rawFallbacks)
+    .map(([from, rawTargets]) => {
+      const targets = Array.isArray(rawTargets)
+        ? rawTargets
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0)
+        : []
+      return {
+        from,
+        fallbacks: targets.join(', ')
+      }
+    })
+    .filter((item) => item.from.trim().length > 0 && item.fallbacks.length > 0)
+}
+
+const addModelFallbackChain = () => {
+  modelFallbackChains.value.push({ from: '', fallbacks: '' })
+}
+
+const removeModelFallbackChain = (index: number) => {
+  modelFallbackChains.value.splice(index, 1)
+}
+
+const parseModelFallbackTargets = (fallbacks: string) => {
+  return fallbacks
+    .split(/[,;\n]/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
+const formatModelFallbackChainPreview = (chain: ModelFallbackChain) => {
+  const from = chain.from.trim()
+  const targets = parseModelFallbackTargets(chain.fallbacks)
+  if (!from || targets.length === 0) {
+    return ''
+  }
+  return [from, ...targets].join(' -> ')
+}
+
+const buildModelFallbackChains = () => {
+  return buildModelFallbacksObject(
+    modelFallbackChains.value.map((item) => ({
+      from: item.from,
+      fallbacks: parseModelFallbackTargets(item.fallbacks)
+    }))
+  )
 }
 
 // Load quota control settings from account (Anthropic OAuth/SetupToken only)
@@ -2711,6 +2945,15 @@ const handleSubmit = async () => {
         newCredentials.model_mapping = currentCredentials.model_mapping
       }
 
+      if (supportsModelFallbackConfig.value) {
+        const modelFallbacks = buildModelFallbackChains()
+        if (modelFallbacks) {
+          newCredentials.model_fallbacks = modelFallbacks
+        } else {
+          delete newCredentials.model_fallbacks
+        }
+      }
+
       // Add pool mode if enabled
       if (poolModeEnabled.value) {
         newCredentials.pool_mode = true
@@ -2834,6 +3077,15 @@ const handleSubmit = async () => {
       } else if (currentCredentials.model_mapping) {
         // 透传模式保留现有映射
         newCredentials.model_mapping = currentCredentials.model_mapping
+      }
+
+      if (supportsModelFallbackConfig.value) {
+        const modelFallbacks = buildModelFallbackChains()
+        if (modelFallbacks) {
+          newCredentials.model_fallbacks = modelFallbacks
+        } else {
+          delete newCredentials.model_fallbacks
+        }
       }
 
       updatePayload.credentials = newCredentials

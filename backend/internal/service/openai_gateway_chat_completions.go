@@ -60,6 +60,7 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	if err != nil {
 		return nil, fmt.Errorf("convert chat completions to responses: %w", err)
 	}
+	injectModelIdentityInstructionIntoResponsesRequest(responsesReq, originalModel)
 	responsesReq.Model = mappedModel
 
 	logFields := []zap.Field{

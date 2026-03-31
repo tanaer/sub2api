@@ -3871,6 +3871,67 @@ func injectClaudeCodePrompt(body []byte, system any) []byte {
 	return result
 }
 
+// injectAnthropicModelIdentityInstruction 在 Anthropic system 中追加身份回答约束。
+// 仅当最后一条用户消息是身份/模型/公司类问题时生效，并保持原有字段顺序不变。
+func injectAnthropicModelIdentityInstruction(body []byte, requestedModel string, input any) []byte {
+	instruction := buildModelIdentityInstruction(requestedModel, input)
+	if instruction == "" {
+		return body
+	}
+
+	identityBlock, err := marshalAnthropicSystemTextBlock(instruction, false)
+	if err != nil {
+		logger.LegacyPrintf("service.gateway", "Warning: failed to build model identity block: %v", err)
+		return body
+	}
+
+	system := gjson.GetBytes(body, "system")
+	items := make([][]byte, 0, 4)
+	hasIdentityInstruction := false
+
+	switch {
+	case !system.Exists() || system.Type == gjson.Null:
+		items = append(items, identityBlock)
+	case system.Type == gjson.String:
+		text := system.String()
+		if strings.Contains(strings.TrimSpace(text), strings.TrimSpace(instruction)) {
+			return body
+		}
+		if strings.TrimSpace(text) != "" {
+			existingBlock, buildErr := marshalAnthropicSystemTextBlock(text, false)
+			if buildErr != nil {
+				logger.LegacyPrintf("service.gateway", "Warning: failed to convert string system block: %v", buildErr)
+				return body
+			}
+			items = append(items, existingBlock)
+		}
+		items = append(items, identityBlock)
+	case system.IsArray():
+		system.ForEach(func(_, item gjson.Result) bool {
+			textResult := item.Get("text")
+			if textResult.Exists() && textResult.Type == gjson.String &&
+				strings.Contains(strings.TrimSpace(textResult.String()), strings.TrimSpace(instruction)) {
+				hasIdentityInstruction = true
+			}
+			items = append(items, []byte(item.Raw))
+			return true
+		})
+		if hasIdentityInstruction {
+			return body
+		}
+		items = append(items, identityBlock)
+	default:
+		items = append(items, []byte(system.Raw), identityBlock)
+	}
+
+	result, ok := setJSONRawBytes(body, "system", buildJSONArrayRaw(items))
+	if !ok {
+		logger.LegacyPrintf("service.gateway", "Warning: failed to inject model identity block")
+		return body
+	}
+	return result
+}
+
 type cacheControlPath struct {
 	path string
 	log  string
@@ -4076,6 +4137,8 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		body, reqModel = normalizeClaudeOAuthRequestBody(body, reqModel, normalizeOpts)
 	}
 
+	body = injectAnthropicModelIdentityInstruction(body, originalModel, parsed.Messages)
+
 	// 强制执行 cache_control 块数量限制（最多 4 个）
 	body = enforceCacheControlLimit(body)
 
@@ -4102,6 +4165,16 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		body = s.replaceModelInBody(body, mappedModel)
 		reqModel = mappedModel
 		logger.LegacyPrintf("service.gateway", "Model mapping applied: %s -> %s (account: %s, source=%s)", originalModel, mappedModel, account.Name, mappingSource)
+	}
+	modelRetryChain := compactUniqueModels([]string{mappedModel}, maxModelRetryChainAttempts)
+	modelRetryIndex := 0
+	if account.Type == AccountTypeAPIKey {
+		modelRetryChain = buildModelRetryChain(account, originalModel)
+		if len(modelRetryChain) > 0 && modelRetryChain[0] != reqModel {
+			reqModel = modelRetryChain[0]
+			mappedModel = modelRetryChain[0]
+			body = s.replaceModelInBody(body, reqModel)
+		}
 	}
 
 	// 获取凭证
@@ -4330,6 +4403,36 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				}
 
 				resp.Body = io.NopCloser(bytes.NewReader(respBody))
+			}
+		}
+
+		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+			_ = resp.Body.Close()
+			if shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := reqModel
+				modelRetryIndex++
+				reqModel = modelRetryChain[modelRetryIndex]
+				mappedModel = reqModel
+				body = s.replaceModelInBody(body, reqModel)
+				setOpsUpstreamRequestBody(c, body)
+				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+					Platform:           account.Platform,
+					AccountID:          account.ID,
+					AccountName:        account.Name,
+					UpstreamStatusCode: resp.StatusCode,
+					UpstreamRequestID:  resp.Header.Get("x-request-id"),
+					Kind:               "model_fallback",
+					Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
+					Detail:             reqModel,
+				})
+				logger.LegacyPrintf("service.gateway", "Anthropic model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, reqModel, account.Name, resp.StatusCode)
+				continue
+			}
+			resp = &http.Response{
+				StatusCode: resp.StatusCode,
+				Header:     resp.Header.Clone(),
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
 			}
 		}
 
@@ -4599,6 +4702,15 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 
 	logger.LegacyPrintf("service.gateway", "[Anthropic 自动透传] 命中 API Key 透传分支: account=%d name=%s model=%s stream=%v",
 		account.ID, account.Name, input.RequestModel, input.RequestStream)
+	modelRetryChain := compactUniqueModels([]string{input.RequestModel}, maxModelRetryChainAttempts)
+	modelRetryIndex := 0
+	if account.Type == AccountTypeAPIKey {
+		modelRetryChain = buildModelRetryChain(account, input.OriginalModel)
+		if len(modelRetryChain) > 0 && modelRetryChain[0] != input.RequestModel {
+			input.RequestModel = modelRetryChain[0]
+			input.Body = s.replaceModelInBody(input.Body, input.RequestModel)
+		}
+	}
 
 	if c != nil {
 		c.Set("anthropic_passthrough", true)
@@ -4640,6 +4752,36 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 				},
 			})
 			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+		}
+
+		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+			_ = resp.Body.Close()
+			if shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := input.RequestModel
+				modelRetryIndex++
+				input.RequestModel = modelRetryChain[modelRetryIndex]
+				input.Body = s.replaceModelInBody(input.Body, input.RequestModel)
+				setOpsUpstreamRequestBody(c, input.Body)
+				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+					Platform:           account.Platform,
+					AccountID:          account.ID,
+					AccountName:        account.Name,
+					UpstreamStatusCode: resp.StatusCode,
+					UpstreamRequestID:  resp.Header.Get("x-request-id"),
+					Passthrough:        true,
+					Kind:               "model_fallback",
+					Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
+					Detail:             input.RequestModel,
+				})
+				logger.LegacyPrintf("service.gateway", "Anthropic passthrough model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, input.RequestModel, account.Name, resp.StatusCode)
+				continue
+			}
+			resp = &http.Response{
+				StatusCode: resp.StatusCode,
+				Header:     resp.Header.Clone(),
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
+			}
 		}
 
 		// 透传分支禁止 400 请求体降级重试（该重试会改写请求体）

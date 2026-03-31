@@ -230,6 +230,10 @@ func (s *authUserGroupRateRepoStub) IncrementRequestQuotaUsed(ctx context.Contex
 	panic("unexpected IncrementRequestQuotaUsed call")
 }
 
+func (s *authUserGroupRateRepoStub) CreateRequestQuotaGrant(ctx context.Context, grant *UserGroupRequestQuotaGrant) error {
+	panic("unexpected CreateRequestQuotaGrant call")
+}
+
 func TestAPIKeyService_GetByKey_UsesL2Cache(t *testing.T) {
 	cache := &authCacheStub{}
 	repo := &authRepoStub{

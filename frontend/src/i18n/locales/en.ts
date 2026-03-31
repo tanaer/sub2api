@@ -803,6 +803,8 @@ export default {
     groupRequestQuotaAddedRedeem: 'Group Request Count Added (Redeem)',
     groupRequestQuotaAdded: 'Group Request Count Added',
     groupRequestQuotaAddedDesc: 'You received {count} request(s) for group {groupName}',
+    groupRequestQuotaExpiresAt: 'This quota grant will expire at {time}',
+    groupRequestQuotaExpiresAtShort: 'Expires: {time}',
     adminAdjustment: 'Admin Adjustment',
     subscriptionAssigned: 'Subscription Assigned',
     subscriptionAssignedDesc: 'You have been granted access to {groupName}',
@@ -2237,6 +2239,18 @@ export default {
       addModel: 'Add',
       modelExists: 'Model already exists',
       modelCount: '{count} models',
+      modelFallbackChain: 'Model Fallback Chain',
+      modelFallbackChainHint:
+        'Only applies to upstream 429 / 529 / rate-limit / overload style errors. When the primary model fails, fallback models are tried in order, up to 3 attempts.',
+      modelFallbackChainExampleTitle: 'Example',
+      modelFallbackChainExample:
+        'When the request model is gpt-5, the current mapping decides the primary upstream model first. If it fails due to concurrency, rate-limit, or overload, gpt-4.1 and then gpt-4o are tried in order.',
+      modelFallbackChainNote:
+        'Use the left field for the user-facing request model and the right field for fallback candidates after failure.',
+      modelFallbackChainPreviewLabel: 'Chain Preview',
+      addModelFallbackChain: 'Add Fallback Chain',
+      modelFallbackTargetsPlaceholder: 'Try these after failure, e.g. gpt-4.1, gpt-4o-mini',
+      modelFallbackTargetsHint: 'Separate fallback models with commas. The primary model still comes from current mapping or the original request model.',
       poolMode: 'Pool Mode',
       poolModeHint: 'Enable when upstream is an account pool; errors won\'t mark local account status',
       poolModeInfo:
@@ -3081,6 +3095,10 @@ export default {
       selectGroup: 'Select Group',
       selectGroupPlaceholder: 'Choose a group',
       validityDays: 'Validity Days',
+      groupRequestQuotaValidityHint:
+        'Defaults to 30 days. The timer starts when the user redeems the code, and each redemption creates an independent request-quota grant that expires automatically.',
+      groupRequestQuotaGrantExpiryAt: 'This quota grant expires at {time}',
+      groupRequestQuotaGrantExpiredAt: 'This quota grant expired at {time}',
       groupRequired: 'Please select a group',
       requestQuotaCount: 'Request Count',
       requestTimes: 'times',

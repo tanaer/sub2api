@@ -77,7 +77,7 @@ export async function generate(
   if (type === 'subscription' || type === 'group_request_quota') {
     payload.group_id = groupId
   }
-  if (type === 'subscription') {
+  if (type === 'subscription' || type === 'group_request_quota') {
     if (validityDays && validityDays > 0) {
       payload.validity_days = validityDays
     }

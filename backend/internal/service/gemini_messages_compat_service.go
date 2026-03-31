@@ -568,6 +568,14 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 	if account.Type == AccountTypeAPIKey {
 		mappedModel = account.GetMappedModel(req.Model)
 	}
+	modelRetryChain := compactUniqueModels([]string{mappedModel}, maxModelRetryChainAttempts)
+	modelRetryIndex := 0
+	if account.Type == AccountTypeAPIKey {
+		modelRetryChain = buildModelRetryChain(account, originalModel)
+		if len(modelRetryChain) > 0 {
+			mappedModel = modelRetryChain[0]
+		}
+	}
 
 	geminiReq, err := convertClaudeMessagesToGeminiGenerateContent(body)
 	if err != nil {
@@ -805,6 +813,34 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 				Body:       io.NopCloser(bytes.NewReader(respBody)),
 			}
 			break
+		}
+
+		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+			_ = resp.Body.Close()
+			if shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := mappedModel
+				modelRetryIndex++
+				mappedModel = modelRetryChain[modelRetryIndex]
+				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+					Platform:           account.Platform,
+					AccountID:          account.ID,
+					AccountName:        account.Name,
+					UpstreamStatusCode: resp.StatusCode,
+					UpstreamRequestID:  resp.Header.Get(requestIDHeader),
+					Kind:               "model_fallback",
+					Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
+					Detail:             mappedModel,
+				})
+				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini model fallback retry: %s -> %s (account: %d, status=%d)", previousModel, mappedModel, account.ID, resp.StatusCode)
+				sleepGeminiBackoff(1)
+				continue
+			}
+			resp = &http.Response{
+				StatusCode: resp.StatusCode,
+				Header:     resp.Header.Clone(),
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
+			}
 		}
 
 		// 错误策略优先：匹配则跳过重试直接处理。
@@ -1081,6 +1117,14 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 	if account.Type == AccountTypeAPIKey {
 		mappedModel = account.GetMappedModel(originalModel)
 	}
+	modelRetryChain := compactUniqueModels([]string{mappedModel}, maxModelRetryChainAttempts)
+	modelRetryIndex := 0
+	if account.Type == AccountTypeAPIKey {
+		modelRetryChain = buildModelRetryChain(account, originalModel)
+		if len(modelRetryChain) > 0 {
+			mappedModel = modelRetryChain[0]
+		}
+	}
 
 	proxyURL := ""
 	if account.ProxyID != nil && account.Proxy != nil {
@@ -1253,6 +1297,34 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 			}
 			setOpsUpstreamError(c, 0, safeErr, "")
 			return nil, s.writeGoogleError(c, http.StatusBadGateway, "Upstream request failed after retries: "+safeErr)
+		}
+
+		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+			_ = resp.Body.Close()
+			if shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := mappedModel
+				modelRetryIndex++
+				mappedModel = modelRetryChain[modelRetryIndex]
+				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+					Platform:           account.Platform,
+					AccountID:          account.ID,
+					AccountName:        account.Name,
+					UpstreamStatusCode: resp.StatusCode,
+					UpstreamRequestID:  resp.Header.Get(requestIDHeader),
+					Kind:               "model_fallback",
+					Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
+					Detail:             mappedModel,
+				})
+				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini native model fallback retry: %s -> %s (account: %d, status=%d)", previousModel, mappedModel, account.ID, resp.StatusCode)
+				sleepGeminiBackoff(1)
+				continue
+			}
+			resp = &http.Response{
+				StatusCode: resp.StatusCode,
+				Header:     resp.Header.Clone(),
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
+			}
 		}
 
 		// 错误策略优先：匹配则跳过重试直接处理。

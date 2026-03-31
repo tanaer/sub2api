@@ -213,6 +213,9 @@ func (s *RedeemService) CreateCode(ctx context.Context, code *RedeemCode) error 
 		if _, ok := requestQuotaUnitsFromValue(code.Value); !ok {
 			return errors.New("value must be a positive integer for group_request_quota type")
 		}
+		if code.ValidityDays <= 0 {
+			code.ValidityDays = 30
+		}
 	}
 	if code.Status == "" {
 		code.Status = StatusUnused
@@ -380,21 +383,24 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	case RedeemTypeGroupRequestQuota:
 		groupID := *redeemCode.GroupID
 		addedQuota, _ := requestQuotaUnitsFromValue(redeemCode.Value)
+		validityDays := redeemCode.ValidityDays
+		if validityDays <= 0 {
+			validityDays = 30
+		}
 		if err := s.userRepo.AddGroupToAllowedGroups(txCtx, userID, groupID); err != nil {
 			return nil, fmt.Errorf("add group to user allowed groups: %w", err)
 		}
-		existingQuota, err := s.userGroupRateRepo.GetRequestQuotaByUserAndGroup(txCtx, userID, groupID)
-		if err != nil {
-			return nil, fmt.Errorf("get user group request quota: %w", err)
+		expiresAt := time.Now().Add(time.Duration(validityDays) * 24 * time.Hour)
+		grant := &UserGroupRequestQuotaGrant{
+			UserID:            userID,
+			GroupID:           groupID,
+			RedeemCodeID:      &redeemCode.ID,
+			RequestQuotaTotal: addedQuota,
+			RequestQuotaUsed:  0,
+			ExpiresAt:         expiresAt,
 		}
-		totalQuota := addedQuota
-		if existingQuota != nil {
-			totalQuota += existingQuota.RequestQuota
-		}
-		if err := s.userGroupRateRepo.SyncUserGroupRequestQuotas(txCtx, userID, map[int64]*int64{
-			groupID: &totalQuota,
-		}); err != nil {
-			return nil, fmt.Errorf("sync user group request quota: %w", err)
+		if err := s.userGroupRateRepo.CreateRequestQuotaGrant(txCtx, grant); err != nil {
+			return nil, fmt.Errorf("create user group request quota grant: %w", err)
 		}
 
 	default:

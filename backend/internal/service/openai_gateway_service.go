@@ -1831,6 +1831,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
+	if injectModelIdentityInstruction(reqBody, originalModel) {
+		bodyModified = true
+		disablePatch()
+	}
+
 	// Handle max_output_tokens based on platform and account type
 	if !isCodexCLI {
 		if maxOutputTokens, hasMaxOutputTokens := reqBody["max_output_tokens"]; hasMaxOutputTokens {
@@ -1918,6 +1923,19 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
+	modelRetryChain := buildModelRetryChain(account, originalModel)
+	modelRetryIndex := 0
+	if len(modelRetryChain) > 0 {
+		reqBody, mappedModel, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])
+		if err != nil {
+			return nil, err
+		}
+		body, mappedModel, err = applyOpenAIModelCandidateToBody(body, modelRetryChain[0])
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Get access token
 	token, _, err := s.GetAccessToken(ctx, account)
 	if err != nil {
@@ -1929,213 +1947,238 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 
 	// 命中 WS 时仅走 WebSocket Mode；不再自动回退 HTTP。
 	if wsDecision.Transport == OpenAIUpstreamTransportResponsesWebsocketV2 {
-		wsReqBody := reqBody
-		if len(reqBody) > 0 {
-			wsReqBody = make(map[string]any, len(reqBody))
-			for k, v := range reqBody {
-				wsReqBody[k] = v
-			}
-		}
-		_, hasPreviousResponseID := wsReqBody["previous_response_id"]
-		logOpenAIWSModeDebug(
-			"forward_start account_id=%d account_type=%s model=%s stream=%v has_previous_response_id=%v",
-			account.ID,
-			account.Type,
-			mappedModel,
-			reqStream,
-			hasPreviousResponseID,
-		)
-		maxAttempts := openAIWSReconnectRetryLimit + 1
-		wsAttempts := 0
-		var wsResult *OpenAIForwardResult
-		var wsErr error
-		wsLastFailureReason := ""
-		wsPrevResponseRecoveryTried := false
-		wsInvalidEncryptedContentRecoveryTried := false
-		recoverPrevResponseNotFound := func(attempt int) bool {
-			if wsPrevResponseRecoveryTried {
-				return false
-			}
-			previousResponseID := openAIWSPayloadString(wsReqBody, "previous_response_id")
-			if previousResponseID == "" {
-				logOpenAIWSModeInfo(
-					"reconnect_prev_response_recovery_skip account_id=%d attempt=%d reason=missing_previous_response_id previous_response_id_present=false",
-					account.ID,
-					attempt,
-				)
-				return false
-			}
-			if HasFunctionCallOutput(wsReqBody) {
-				logOpenAIWSModeInfo(
-					"reconnect_prev_response_recovery_skip account_id=%d attempt=%d reason=has_function_call_output previous_response_id_present=true",
-					account.ID,
-					attempt,
-				)
-				return false
-			}
-			delete(wsReqBody, "previous_response_id")
-			wsPrevResponseRecoveryTried = true
-			logOpenAIWSModeInfo(
-				"reconnect_prev_response_recovery account_id=%d attempt=%d action=drop_previous_response_id retry=1 previous_response_id=%s previous_response_id_kind=%s",
-				account.ID,
-				attempt,
-				truncateOpenAIWSLogValue(previousResponseID, openAIWSIDValueMaxLen),
-				normalizeOpenAIWSLogValue(ClassifyOpenAIPreviousResponseIDKind(previousResponseID)),
-			)
-			return true
-		}
-		recoverInvalidEncryptedContent := func(attempt int) bool {
-			if wsInvalidEncryptedContentRecoveryTried {
-				return false
-			}
-			removedReasoningItems := trimOpenAIEncryptedReasoningItems(wsReqBody)
-			if !removedReasoningItems {
-				logOpenAIWSModeInfo(
-					"reconnect_invalid_encrypted_content_recovery_skip account_id=%d attempt=%d reason=missing_encrypted_reasoning_items",
-					account.ID,
-					attempt,
-				)
-				return false
-			}
-			previousResponseID := openAIWSPayloadString(wsReqBody, "previous_response_id")
-			hasFunctionCallOutput := HasFunctionCallOutput(wsReqBody)
-			if previousResponseID != "" && !hasFunctionCallOutput {
-				delete(wsReqBody, "previous_response_id")
-			}
-			wsInvalidEncryptedContentRecoveryTried = true
-			logOpenAIWSModeInfo(
-				"reconnect_invalid_encrypted_content_recovery account_id=%d attempt=%d action=drop_encrypted_reasoning_items retry=1 previous_response_id_present=%v previous_response_id=%s previous_response_id_kind=%s has_function_call_output=%v dropped_previous_response_id=%v",
-				account.ID,
-				attempt,
-				previousResponseID != "",
-				truncateOpenAIWSLogValue(previousResponseID, openAIWSIDValueMaxLen),
-				normalizeOpenAIWSLogValue(ClassifyOpenAIPreviousResponseIDKind(previousResponseID)),
-				hasFunctionCallOutput,
-				previousResponseID != "" && !hasFunctionCallOutput,
-			)
-			return true
-		}
-		retryBudget := s.openAIWSRetryTotalBudget()
-		retryStartedAt := time.Now()
-	wsRetryLoop:
-		for attempt := 1; attempt <= maxAttempts; attempt++ {
-			wsAttempts = attempt
-			wsResult, wsErr = s.forwardOpenAIWSV2(
-				ctx,
-				c,
-				account,
-				wsReqBody,
-				token,
-				wsDecision,
-				isCodexCLI,
-				reqStream,
-				originalModel,
-				mappedModel,
-				startTime,
-				attempt,
-				wsLastFailureReason,
-			)
-			if wsErr == nil {
-				break
-			}
-			if c != nil && c.Writer != nil && c.Writer.Written() {
-				break
+		for {
+			wsReqBody := make(map[string]any)
+			if err := json.Unmarshal(body, &wsReqBody); err != nil {
+				return nil, fmt.Errorf("parse openai ws request body: %w", err)
 			}
 
-			reason, retryable := classifyOpenAIWSReconnectReason(wsErr)
-			if reason != "" {
-				wsLastFailureReason = reason
-			}
-			// previous_response_not_found 说明续链锚点不可用：
-			// 对非 function_call_output 场景，允许一次“去掉 previous_response_id 后重放”。
-			if reason == "previous_response_not_found" && recoverPrevResponseNotFound(attempt) {
-				continue
-			}
-			if reason == "invalid_encrypted_content" && recoverInvalidEncryptedContent(attempt) {
-				continue
-			}
-			if retryable && attempt < maxAttempts {
-				backoff := s.openAIWSRetryBackoff(attempt)
-				if retryBudget > 0 && time.Since(retryStartedAt)+backoff > retryBudget {
-					s.recordOpenAIWSRetryExhausted()
+			_, hasPreviousResponseID := wsReqBody["previous_response_id"]
+			logOpenAIWSModeDebug(
+				"forward_start account_id=%d account_type=%s model=%s stream=%v has_previous_response_id=%v",
+				account.ID,
+				account.Type,
+				mappedModel,
+				reqStream,
+				hasPreviousResponseID,
+			)
+			maxAttempts := openAIWSReconnectRetryLimit + 1
+			wsAttempts := 0
+			var wsResult *OpenAIForwardResult
+			var wsErr error
+			wsLastFailureReason := ""
+			wsPrevResponseRecoveryTried := false
+			wsInvalidEncryptedContentRecoveryTried := false
+			recoverPrevResponseNotFound := func(attempt int) bool {
+				if wsPrevResponseRecoveryTried {
+					return false
+				}
+				previousResponseID := openAIWSPayloadString(wsReqBody, "previous_response_id")
+				if previousResponseID == "" {
 					logOpenAIWSModeInfo(
-						"reconnect_budget_exhausted account_id=%d attempts=%d max_retries=%d reason=%s elapsed_ms=%d budget_ms=%d",
+						"reconnect_prev_response_recovery_skip account_id=%d attempt=%d reason=missing_previous_response_id previous_response_id_present=false",
+						account.ID,
+						attempt,
+					)
+					return false
+				}
+				if HasFunctionCallOutput(wsReqBody) {
+					logOpenAIWSModeInfo(
+						"reconnect_prev_response_recovery_skip account_id=%d attempt=%d reason=has_function_call_output previous_response_id_present=true",
+						account.ID,
+						attempt,
+					)
+					return false
+				}
+				delete(wsReqBody, "previous_response_id")
+				wsPrevResponseRecoveryTried = true
+				logOpenAIWSModeInfo(
+					"reconnect_prev_response_recovery account_id=%d attempt=%d action=drop_previous_response_id retry=1 previous_response_id=%s previous_response_id_kind=%s",
+					account.ID,
+					attempt,
+					truncateOpenAIWSLogValue(previousResponseID, openAIWSIDValueMaxLen),
+					normalizeOpenAIWSLogValue(ClassifyOpenAIPreviousResponseIDKind(previousResponseID)),
+				)
+				return true
+			}
+			recoverInvalidEncryptedContent := func(attempt int) bool {
+				if wsInvalidEncryptedContentRecoveryTried {
+					return false
+				}
+				removedReasoningItems := trimOpenAIEncryptedReasoningItems(wsReqBody)
+				if !removedReasoningItems {
+					logOpenAIWSModeInfo(
+						"reconnect_invalid_encrypted_content_recovery_skip account_id=%d attempt=%d reason=missing_encrypted_reasoning_items",
+						account.ID,
+						attempt,
+					)
+					return false
+				}
+				previousResponseID := openAIWSPayloadString(wsReqBody, "previous_response_id")
+				hasFunctionCallOutput := HasFunctionCallOutput(wsReqBody)
+				if previousResponseID != "" && !hasFunctionCallOutput {
+					delete(wsReqBody, "previous_response_id")
+				}
+				wsInvalidEncryptedContentRecoveryTried = true
+				logOpenAIWSModeInfo(
+					"reconnect_invalid_encrypted_content_recovery account_id=%d attempt=%d action=drop_encrypted_reasoning_items retry=1 previous_response_id_present=%v previous_response_id=%s previous_response_id_kind=%s has_function_call_output=%v dropped_previous_response_id=%v",
+					account.ID,
+					attempt,
+					previousResponseID != "",
+					truncateOpenAIWSLogValue(previousResponseID, openAIWSIDValueMaxLen),
+					normalizeOpenAIWSLogValue(ClassifyOpenAIPreviousResponseIDKind(previousResponseID)),
+					hasFunctionCallOutput,
+					previousResponseID != "" && !hasFunctionCallOutput,
+				)
+				return true
+			}
+			retryBudget := s.openAIWSRetryTotalBudget()
+			retryStartedAt := time.Now()
+		wsRetryLoop:
+			for attempt := 1; attempt <= maxAttempts; attempt++ {
+				wsAttempts = attempt
+				wsResult, wsErr = s.forwardOpenAIWSV2(
+					ctx,
+					c,
+					account,
+					wsReqBody,
+					token,
+					wsDecision,
+					isCodexCLI,
+					reqStream,
+					originalModel,
+					mappedModel,
+					startTime,
+					attempt,
+					wsLastFailureReason,
+				)
+				if wsErr == nil {
+					break
+				}
+				if c != nil && c.Writer != nil && c.Writer.Written() {
+					break
+				}
+
+				reason, retryable := classifyOpenAIWSReconnectReason(wsErr)
+				if reason != "" {
+					wsLastFailureReason = reason
+				}
+				// previous_response_not_found 说明续链锚点不可用：
+				// 对非 function_call_output 场景，允许一次“去掉 previous_response_id 后重放”。
+				if reason == "previous_response_not_found" && recoverPrevResponseNotFound(attempt) {
+					continue
+				}
+				if reason == "invalid_encrypted_content" && recoverInvalidEncryptedContent(attempt) {
+					continue
+				}
+				if retryable && attempt < maxAttempts {
+					backoff := s.openAIWSRetryBackoff(attempt)
+					if retryBudget > 0 && time.Since(retryStartedAt)+backoff > retryBudget {
+						s.recordOpenAIWSRetryExhausted()
+						logOpenAIWSModeInfo(
+							"reconnect_budget_exhausted account_id=%d attempts=%d max_retries=%d reason=%s elapsed_ms=%d budget_ms=%d",
+							account.ID,
+							attempt,
+							openAIWSReconnectRetryLimit,
+							normalizeOpenAIWSLogValue(reason),
+							time.Since(retryStartedAt).Milliseconds(),
+							retryBudget.Milliseconds(),
+						)
+						break
+					}
+					s.recordOpenAIWSRetryAttempt(backoff)
+					logOpenAIWSModeInfo(
+						"reconnect_retry account_id=%d retry=%d max_retries=%d reason=%s backoff_ms=%d",
 						account.ID,
 						attempt,
 						openAIWSReconnectRetryLimit,
 						normalizeOpenAIWSLogValue(reason),
-						time.Since(retryStartedAt).Milliseconds(),
-						retryBudget.Milliseconds(),
+						backoff.Milliseconds(),
 					)
-					break
-				}
-				s.recordOpenAIWSRetryAttempt(backoff)
-				logOpenAIWSModeInfo(
-					"reconnect_retry account_id=%d retry=%d max_retries=%d reason=%s backoff_ms=%d",
-					account.ID,
-					attempt,
-					openAIWSReconnectRetryLimit,
-					normalizeOpenAIWSLogValue(reason),
-					backoff.Milliseconds(),
-				)
-				if backoff > 0 {
-					timer := time.NewTimer(backoff)
-					select {
-					case <-ctx.Done():
-						if !timer.Stop() {
-							<-timer.C
+					if backoff > 0 {
+						timer := time.NewTimer(backoff)
+						select {
+						case <-ctx.Done():
+							if !timer.Stop() {
+								<-timer.C
+							}
+							wsErr = wrapOpenAIWSFallback("retry_backoff_canceled", ctx.Err())
+							break wsRetryLoop
+						case <-timer.C:
 						}
-						wsErr = wrapOpenAIWSFallback("retry_backoff_canceled", ctx.Err())
-						break wsRetryLoop
-					case <-timer.C:
+					}
+					continue
+				}
+				if retryable {
+					s.recordOpenAIWSRetryExhausted()
+					logOpenAIWSModeInfo(
+						"reconnect_exhausted account_id=%d attempts=%d max_retries=%d reason=%s",
+						account.ID,
+						attempt,
+						openAIWSReconnectRetryLimit,
+						normalizeOpenAIWSLogValue(reason),
+					)
+				} else if reason != "" {
+					s.recordOpenAIWSNonRetryableFastFallback()
+					logOpenAIWSModeInfo(
+						"reconnect_stop account_id=%d attempt=%d reason=%s",
+						account.ID,
+						attempt,
+						normalizeOpenAIWSLogValue(reason),
+					)
+				}
+				break
+			}
+			if wsErr == nil {
+				firstTokenMs := int64(0)
+				hasFirstTokenMs := wsResult != nil && wsResult.FirstTokenMs != nil
+				if hasFirstTokenMs {
+					firstTokenMs = int64(*wsResult.FirstTokenMs)
+				}
+				requestID := ""
+				if wsResult != nil {
+					requestID = strings.TrimSpace(wsResult.RequestID)
+				}
+				logOpenAIWSModeDebug(
+					"forward_succeeded account_id=%d request_id=%s stream=%v has_first_token_ms=%v first_token_ms=%d ws_attempts=%d",
+					account.ID,
+					requestID,
+					reqStream,
+					hasFirstTokenMs,
+					firstTokenMs,
+					wsAttempts,
+				)
+				wsResult.UpstreamModel = mappedModel
+				return wsResult, nil
+			}
+
+			if modelRetryIndex+1 < len(modelRetryChain) {
+				statusCode, _, _, upstreamMessage, ok := resolveOpenAIWSFallbackErrorResponse(wsErr)
+				if ok && shouldFallbackToNextModel(statusCode, []byte(upstreamMessage)) {
+					previousModel := mappedModel
+					nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
+					if nextErr == nil {
+						modelRetryIndex++
+						body = nextBody
+						mappedModel = nextModel
+						setOpsUpstreamRequestBody(c, body)
+						appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+							Platform:           account.Platform,
+							AccountID:          account.ID,
+							AccountName:        account.Name,
+							UpstreamStatusCode: statusCode,
+							Kind:               "model_fallback",
+							Message:            upstreamMessage,
+							Detail:             nextModel,
+						})
+						logger.LegacyPrintf("service.openai_gateway", "[OpenAI] WS model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, nextModel, account.Name, statusCode)
+						continue
 					}
 				}
-				continue
 			}
-			if retryable {
-				s.recordOpenAIWSRetryExhausted()
-				logOpenAIWSModeInfo(
-					"reconnect_exhausted account_id=%d attempts=%d max_retries=%d reason=%s",
-					account.ID,
-					attempt,
-					openAIWSReconnectRetryLimit,
-					normalizeOpenAIWSLogValue(reason),
-				)
-			} else if reason != "" {
-				s.recordOpenAIWSNonRetryableFastFallback()
-				logOpenAIWSModeInfo(
-					"reconnect_stop account_id=%d attempt=%d reason=%s",
-					account.ID,
-					attempt,
-					normalizeOpenAIWSLogValue(reason),
-				)
-			}
-			break
+			s.writeOpenAIWSFallbackErrorResponse(c, account, wsErr)
+			return nil, wsErr
 		}
-		if wsErr == nil {
-			firstTokenMs := int64(0)
-			hasFirstTokenMs := wsResult != nil && wsResult.FirstTokenMs != nil
-			if hasFirstTokenMs {
-				firstTokenMs = int64(*wsResult.FirstTokenMs)
-			}
-			requestID := ""
-			if wsResult != nil {
-				requestID = strings.TrimSpace(wsResult.RequestID)
-			}
-			logOpenAIWSModeDebug(
-				"forward_succeeded account_id=%d request_id=%s stream=%v has_first_token_ms=%v first_token_ms=%d ws_attempts=%d",
-				account.ID,
-				requestID,
-				reqStream,
-				hasFirstTokenMs,
-				firstTokenMs,
-				wsAttempts,
-			)
-			wsResult.UpstreamModel = mappedModel
-			return wsResult, nil
-		}
-		s.writeOpenAIWSFallbackErrorResponse(c, account, wsErr)
-		return nil, wsErr
 	}
 
 	httpInvalidEncryptedContentRetryTried := false
@@ -2200,6 +2243,31 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					continue
 				}
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s)", account.Name)
+			}
+			if modelRetryIndex+1 < len(modelRetryChain) && shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := mappedModel
+				reqBody, _, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[modelRetryIndex+1])
+				if err == nil {
+					nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
+					if nextErr == nil {
+						modelRetryIndex++
+						body = nextBody
+						mappedModel = nextModel
+						setOpsUpstreamRequestBody(c, body)
+						appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+							Platform:           account.Platform,
+							AccountID:          account.ID,
+							AccountName:        account.Name,
+							UpstreamStatusCode: resp.StatusCode,
+							UpstreamRequestID:  resp.Header.Get("x-request-id"),
+							Kind:               "model_fallback",
+							Message:            upstreamMsg,
+							Detail:             nextModel,
+						})
+						logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, nextModel, account.Name, resp.StatusCode)
+						continue
+					}
+				}
 			}
 			if s.shouldFailoverOpenAIUpstreamResponse(resp.StatusCode, upstreamMsg, respBody) {
 				upstreamDetail := ""
@@ -2345,15 +2413,19 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		}
 	}
 
-	// Get access token
-	token, _, err := s.GetAccessToken(ctx, account)
-	if err != nil {
-		return nil, err
+	modelRetryChain := buildModelRetryChain(account, reqModel)
+	modelRetryIndex := 0
+	currentUpstreamModel := reqModel
+	var err error
+	if len(modelRetryChain) > 0 {
+		body, currentUpstreamModel, err = applyOpenAIModelCandidateToBody(body, modelRetryChain[0])
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, reqStream)
-	upstreamReq, err := s.buildUpstreamRequestOpenAIPassthrough(upstreamCtx, c, account, body, token)
-	releaseUpstreamCtx()
+	// Get access token
+	token, _, err := s.GetAccessToken(ctx, account)
 	if err != nil {
 		return nil, err
 	}
@@ -2368,71 +2440,107 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		c.Set("openai_passthrough", true)
 	}
 
-	upstreamStart := time.Now()
-	resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
-	SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
-	if err != nil {
-		safeErr := sanitizeUpstreamErrorMessage(err.Error())
-		setOpsUpstreamError(c, 0, safeErr, "")
-		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-			Platform:           account.Platform,
-			AccountID:          account.ID,
-			AccountName:        account.Name,
-			UpstreamStatusCode: 0,
-			Passthrough:        true,
-			Kind:               "request_error",
-			Message:            safeErr,
-		})
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": gin.H{
-				"type":    "upstream_error",
-				"message": "Upstream request failed",
-			},
-		})
-		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode >= 400 {
-		// 透传模式不做 failover（避免改变原始上游语义），按上游原样返回错误响应。
-		return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, body)
-	}
-
-	var usage *OpenAIUsage
-	var firstTokenMs *int
-	if reqStream {
-		result, err := s.handleStreamingResponsePassthrough(ctx, resp, c, account, startTime)
+	for {
+		upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, reqStream)
+		upstreamReq, err := s.buildUpstreamRequestOpenAIPassthrough(upstreamCtx, c, account, body, token)
+		releaseUpstreamCtx()
 		if err != nil {
 			return nil, err
 		}
-		usage = result.usage
-		firstTokenMs = result.firstTokenMs
-	} else {
-		usage, err = s.handleNonStreamingResponsePassthrough(ctx, resp, c)
+
+		upstreamStart := time.Now()
+		resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
+		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 		if err != nil {
-			return nil, err
+			safeErr := sanitizeUpstreamErrorMessage(err.Error())
+			setOpsUpstreamError(c, 0, safeErr, "")
+			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+				Platform:           account.Platform,
+				AccountID:          account.ID,
+				AccountName:        account.Name,
+				UpstreamStatusCode: 0,
+				Passthrough:        true,
+				Kind:               "request_error",
+				Message:            safeErr,
+			})
+			c.JSON(http.StatusBadGateway, gin.H{
+				"error": gin.H{
+					"type":    "upstream_error",
+					"message": "Upstream request failed",
+				},
+			})
+			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
 		}
-	}
 
-	if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
-		s.updateCodexUsageSnapshot(ctx, account.ID, snapshot)
-	}
+		if resp.StatusCode >= 400 {
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+			_ = resp.Body.Close()
+			resp.Body = io.NopCloser(bytes.NewReader(respBody))
 
-	if usage == nil {
-		usage = &OpenAIUsage{}
-	}
+			if modelRetryIndex+1 < len(modelRetryChain) && shouldFallbackToNextModel(resp.StatusCode, respBody) {
+				previousModel := currentUpstreamModel
+				nextBody, nextModel, nextErr := applyOpenAIModelCandidateToBody(body, modelRetryChain[modelRetryIndex+1])
+				if nextErr == nil {
+					modelRetryIndex++
+					body = nextBody
+					currentUpstreamModel = nextModel
+					setOpsUpstreamRequestBody(c, body)
+					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+						Platform:           account.Platform,
+						AccountID:          account.ID,
+						AccountName:        account.Name,
+						UpstreamStatusCode: resp.StatusCode,
+						UpstreamRequestID:  resp.Header.Get("x-request-id"),
+						Passthrough:        true,
+						Kind:               "model_fallback",
+						Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
+						Detail:             nextModel,
+					})
+					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Passthrough model fallback retry: %s -> %s (account: %s, status=%d)", previousModel, nextModel, account.Name, resp.StatusCode)
+					continue
+				}
+			}
+			return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, body)
+		}
+		defer func() { _ = resp.Body.Close() }()
 
-	return &OpenAIForwardResult{
-		RequestID:       resp.Header.Get("x-request-id"),
-		Usage:           *usage,
-		Model:           reqModel,
-		ServiceTier:     extractOpenAIServiceTierFromBody(body),
-		ReasoningEffort: reasoningEffort,
-		Stream:          reqStream,
-		OpenAIWSMode:    false,
-		Duration:        time.Since(startTime),
-		FirstTokenMs:    firstTokenMs,
-	}, nil
+		var usage *OpenAIUsage
+		var firstTokenMs *int
+		if reqStream {
+			result, err := s.handleStreamingResponsePassthrough(ctx, resp, c, account, startTime)
+			if err != nil {
+				return nil, err
+			}
+			usage = result.usage
+			firstTokenMs = result.firstTokenMs
+		} else {
+			usage, err = s.handleNonStreamingResponsePassthrough(ctx, resp, c)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if snapshot := ParseCodexRateLimitHeaders(resp.Header); snapshot != nil {
+			s.updateCodexUsageSnapshot(ctx, account.ID, snapshot)
+		}
+
+		if usage == nil {
+			usage = &OpenAIUsage{}
+		}
+
+		return &OpenAIForwardResult{
+			RequestID:       resp.Header.Get("x-request-id"),
+			Usage:           *usage,
+			Model:           reqModel,
+			UpstreamModel:   currentUpstreamModel,
+			ServiceTier:     extractOpenAIServiceTierFromBody(body),
+			ReasoningEffort: reasoningEffort,
+			Stream:          reqStream,
+			OpenAIWSMode:    false,
+			Duration:        time.Since(startTime),
+			FirstTokenMs:    firstTokenMs,
+		}, nil
+	}
 }
 
 func logOpenAIPassthroughInstructionsRejected(

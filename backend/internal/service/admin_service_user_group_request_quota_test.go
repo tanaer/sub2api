@@ -152,6 +152,10 @@ func (s *userGroupRateRepoStubForRequestQuota) IncrementRequestQuotaUsed(context
 	return false, nil
 }
 
+func (s *userGroupRateRepoStubForRequestQuota) CreateRequestQuotaGrant(context.Context, *UserGroupRequestQuotaGrant) error {
+	return nil
+}
+
 func TestAdminService_GetUser_LoadsGroupRequestQuotas(t *testing.T) {
 	userRepo := &userRepoStubForGroupRequestQuota{
 		user: &User{

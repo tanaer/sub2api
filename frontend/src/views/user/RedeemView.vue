@@ -119,6 +119,12 @@
                       <span v-if="redeemResult.group?.name"> - {{ redeemResult.group.name }}</span>
                       <span> (+{{ redeemResult.value }}{{ t('redeem.times') }})</span>
                     </p>
+                    <p
+                      v-if="isGroupRequestQuotaType(redeemResult.type) && redeemResult.expires_at"
+                      class="text-xs"
+                    >
+                      {{ t('redeem.groupRequestQuotaExpiresAt', { time: formatDateTime(redeemResult.expires_at) }) }}
+                    </p>
                     <p v-if="redeemResult.new_balance !== undefined">
                       {{ t('redeem.newBalance') }}:
                       <span class="font-semibold">${{ redeemResult.new_balance.toFixed(2) }}</span>
@@ -316,6 +322,12 @@
                 </p>
                 <p v-else class="text-xs text-gray-400 dark:text-dark-500">
                   {{ t('redeem.adminAdjustment') }}
+                </p>
+                <p
+                  v-if="isGroupRequestQuotaType(item.type) && item.expires_at"
+                  class="text-xs text-gray-400 dark:text-dark-500"
+                >
+                  {{ t('redeem.groupRequestQuotaExpiresAtShort', { time: formatDateTime(item.expires_at) }) }}
                 </p>
                 <!-- Display notes for admin adjustments -->
                 <p

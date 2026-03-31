@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
 )
@@ -233,9 +235,25 @@ func (r *userGroupRateRepository) DeleteByUserID(ctx context.Context, userID int
 // GetRequestQuotasByUserID 获取用户的所有分组按次配额配置。
 func (r *userGroupRateRepository) GetRequestQuotasByUserID(ctx context.Context, userID int64) (map[int64]int64, error) {
 	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(ctx, `
-		SELECT group_id, request_quota
-		FROM user_group_request_quotas
-		WHERE user_id = $1
+		WITH permanent AS (
+			SELECT group_id, request_quota
+			FROM user_group_request_quotas
+			WHERE user_id = $1
+		),
+		active_grants AS (
+			SELECT group_id, COALESCE(SUM(request_quota_total - request_quota_used), 0) AS active_quota
+			FROM user_group_request_quota_grants
+			WHERE user_id = $1
+				AND expires_at > NOW()
+				AND request_quota_total > request_quota_used
+			GROUP BY group_id
+		)
+		SELECT
+			COALESCE(p.group_id, g.group_id) AS group_id,
+			COALESCE(p.request_quota, 0) + COALESCE(g.active_quota, 0) AS request_quota
+		FROM permanent p
+		FULL OUTER JOIN active_grants g ON g.group_id = p.group_id
+		WHERE COALESCE(p.request_quota, 0) + COALESCE(g.active_quota, 0) > 0
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -261,11 +279,25 @@ func (r *userGroupRateRepository) GetRequestQuotasByUserID(ctx context.Context, 
 func (r *userGroupRateRepository) GetRequestQuotaByUserAndGroup(ctx context.Context, userID, groupID int64) (*service.UserGroupRequestQuota, error) {
 	quota := &service.UserGroupRequestQuota{}
 	err := scanSingleRow(ctx, sqlExecutorFromContext(ctx, r.sql), `
-		SELECT request_quota, request_quota_used
-		FROM user_group_request_quotas
-		WHERE user_id = $1 AND group_id = $2
+		WITH permanent AS (
+			SELECT request_quota, request_quota_used
+			FROM user_group_request_quotas
+			WHERE user_id = $1 AND group_id = $2
+		),
+		active_grants AS (
+			SELECT
+				COALESCE(SUM(request_quota_total), 0) AS request_quota,
+				COALESCE(SUM(request_quota_used), 0) AS request_quota_used
+			FROM user_group_request_quota_grants
+			WHERE user_id = $1
+				AND group_id = $2
+				AND expires_at > NOW()
+		)
+		SELECT
+			COALESCE((SELECT request_quota FROM permanent), 0) + COALESCE((SELECT request_quota FROM active_grants), 0) AS request_quota,
+			COALESCE((SELECT request_quota_used FROM permanent), 0) + COALESCE((SELECT request_quota_used FROM active_grants), 0) AS request_quota_used
 	`, []any{userID, groupID}, &quota.RequestQuota, &quota.RequestQuotaUsed)
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows || quota.RequestQuota <= 0 {
 		return nil, nil
 	}
 	if err != nil {
@@ -331,23 +363,187 @@ func (r *userGroupRateRepository) IncrementRequestQuotaUsed(ctx context.Context,
 		return false, nil
 	}
 
-	var applied bool
-	err := scanSingleRow(ctx, sqlExecutorFromContext(ctx, r.sql), `
-		UPDATE user_group_request_quotas
-		SET
-			request_quota_used = request_quota_used + $3,
-			updated_at = NOW()
-		WHERE user_id = $1
-			AND group_id = $2
-			AND request_quota > 0
-			AND request_quota_used < request_quota
-		RETURNING TRUE
-	`, []any{userID, groupID, amount}, &applied)
-	if err == sql.ErrNoRows {
-		return false, nil
+	if dbent.TxFromContext(ctx) != nil {
+		return incrementUserGroupRequestQuotaWithExecutor(ctx, sqlExecutorFromContext(ctx, r.sql), userID, groupID, amount)
 	}
+
+	db, ok := r.sql.(*sql.DB)
+	if !ok {
+		return false, errors.New("user group request quota repository requires *sql.DB for atomic increment")
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
-	return applied, nil
+	defer func() { _ = tx.Rollback() }()
+
+	applied, err := incrementUserGroupRequestQuotaWithExecutor(ctx, tx, userID, groupID, amount)
+	if err != nil {
+		return false, err
+	}
+	if !applied {
+		return false, nil
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *userGroupRateRepository) CreateRequestQuotaGrant(ctx context.Context, grant *service.UserGroupRequestQuotaGrant) error {
+	if grant == nil {
+		return nil
+	}
+	sqlq := sqlExecutorFromContext(ctx, r.sql)
+	now := time.Now()
+	if grant.CreatedAt.IsZero() {
+		grant.CreatedAt = now
+	}
+	if grant.UpdatedAt.IsZero() {
+		grant.UpdatedAt = grant.CreatedAt
+	}
+
+	var redeemCodeID any
+	if grant.RedeemCodeID != nil && *grant.RedeemCodeID > 0 {
+		redeemCodeID = *grant.RedeemCodeID
+	}
+
+	row, err := sqlq.QueryContext(ctx, `
+		INSERT INTO user_group_request_quota_grants (
+			user_id,
+			group_id,
+			redeem_code_id,
+			request_quota_total,
+			request_quota_used,
+			expires_at,
+			created_at,
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, created_at, updated_at
+	`, grant.UserID, grant.GroupID, redeemCodeID, grant.RequestQuotaTotal, grant.RequestQuotaUsed, grant.ExpiresAt, grant.CreatedAt, grant.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = row.Close() }()
+	if row.Next() {
+		if err := row.Scan(&grant.ID, &grant.CreatedAt, &grant.UpdatedAt); err != nil {
+			return err
+		}
+	}
+	return row.Err()
+}
+
+type userGroupRequestQuotaGrantRow struct {
+	ID                int64
+	RequestQuotaTotal int64
+	RequestQuotaUsed  int64
+}
+
+func incrementUserGroupRequestQuotaWithExecutor(ctx context.Context, sqlq sqlExecutor, userID, groupID, amount int64) (bool, error) {
+	if amount <= 0 {
+		return false, nil
+	}
+
+	grantRows, grantAvailable, err := lockActiveUserGroupRequestQuotaGrants(ctx, sqlq, userID, groupID)
+	if err != nil {
+		return false, err
+	}
+	permanentQuota, permanentUsed, hasPermanentQuota, err := lockPermanentUserGroupRequestQuota(ctx, sqlq, userID, groupID)
+	if err != nil {
+		return false, err
+	}
+	permanentAvailable := permanentQuota - permanentUsed
+	if permanentAvailable < 0 {
+		permanentAvailable = 0
+	}
+	if grantAvailable+permanentAvailable < amount {
+		return false, nil
+	}
+
+	remaining := amount
+	for _, grant := range grantRows {
+		if remaining <= 0 {
+			break
+		}
+		available := grant.RequestQuotaTotal - grant.RequestQuotaUsed
+		if available <= 0 {
+			continue
+		}
+		consume := available
+		if consume > remaining {
+			consume = remaining
+		}
+		if _, err := sqlq.ExecContext(ctx, `
+			UPDATE user_group_request_quota_grants
+			SET request_quota_used = request_quota_used + $2,
+				updated_at = NOW()
+			WHERE id = $1
+		`, grant.ID, consume); err != nil {
+			return false, err
+		}
+		remaining -= consume
+	}
+
+	if remaining > 0 && hasPermanentQuota {
+		if _, err := sqlq.ExecContext(ctx, `
+			UPDATE user_group_request_quotas
+			SET request_quota_used = request_quota_used + $3,
+				updated_at = NOW()
+			WHERE user_id = $1 AND group_id = $2
+		`, userID, groupID, remaining); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+func lockActiveUserGroupRequestQuotaGrants(ctx context.Context, sqlq sqlExecutor, userID, groupID int64) ([]userGroupRequestQuotaGrantRow, int64, error) {
+	rows, err := sqlq.QueryContext(ctx, `
+		SELECT id, request_quota_total, request_quota_used
+		FROM user_group_request_quota_grants
+		WHERE user_id = $1
+			AND group_id = $2
+			AND expires_at > NOW()
+			AND request_quota_total > request_quota_used
+		ORDER BY expires_at ASC, id ASC
+		FOR UPDATE
+	`, userID, groupID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make([]userGroupRequestQuotaGrantRow, 0)
+	var totalAvailable int64
+	for rows.Next() {
+		var row userGroupRequestQuotaGrantRow
+		if err := rows.Scan(&row.ID, &row.RequestQuotaTotal, &row.RequestQuotaUsed); err != nil {
+			return nil, 0, err
+		}
+		result = append(result, row)
+		totalAvailable += row.RequestQuotaTotal - row.RequestQuotaUsed
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return result, totalAvailable, nil
+}
+
+func lockPermanentUserGroupRequestQuota(ctx context.Context, sqlq sqlExecutor, userID, groupID int64) (quota int64, used int64, found bool, err error) {
+	err = scanSingleRow(ctx, sqlq, `
+		SELECT request_quota, request_quota_used
+		FROM user_group_request_quotas
+		WHERE user_id = $1 AND group_id = $2
+		FOR UPDATE
+	`, []any{userID, groupID}, &quota, &used)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, 0, false, nil
+	}
+	if err != nil {
+		return 0, 0, false, err
+	}
+	return quota, used, true, nil
 }

@@ -1084,6 +1084,7 @@ export interface RedeemCode {
   status: 'active' | 'used' | 'expired' | 'unused'
   used_by: number | null
   used_at: string | null
+  expires_at?: string | null
   created_at: string
   updated_at?: string
   group_id?: number | null // 订阅/分组次数类型专用

@@ -100,6 +100,15 @@
               </template>
               <template v-else-if="row.type === 'group_request_quota'">
                 {{ value }} {{ t('admin.redeem.requestTimes') }}
+                <span class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                  >· {{ row.validity_days || 30 }}{{ t('admin.redeem.days') }}</span
+                >
+                <span
+                  v-if="row.expires_at"
+                  class="ml-1 block text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ formatGroupRequestQuotaExpiry(row.expires_at) }}
+                </span>
                 <span v-if="row.group" class="ml-1 text-xs text-gray-500 dark:text-gray-400"
                   >({{ row.group.name }})</span
                 >
@@ -279,7 +288,7 @@
                   </template>
                 </Select>
               </div>
-              <div v-if="generateForm.type === 'subscription'">
+              <div v-if="generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'">
                 <label class="input-label">{{ t('admin.redeem.validityDays') }}</label>
                 <input
                   v-model.number="generateForm.validity_days"
@@ -289,6 +298,12 @@
                   required
                   class="input"
                 />
+                <p
+                  v-if="generateForm.type === 'group_request_quota'"
+                  class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ t('admin.redeem.groupRequestQuotaValidityHint') }}
+                </p>
               </div>
             </template>
             <div>
@@ -654,6 +669,18 @@ const handlePageSizeChange = (pageSize: number) => {
   loadCodes()
 }
 
+const formatGroupRequestQuotaExpiry = (expiresAt: string) => {
+  const expiresAtMs = Date.parse(expiresAt)
+  if (!Number.isFinite(expiresAtMs)) {
+    return ''
+  }
+  const key =
+    expiresAtMs <= Date.now()
+      ? 'admin.redeem.groupRequestQuotaGrantExpiredAt'
+      : 'admin.redeem.groupRequestQuotaGrantExpiryAt'
+  return t(key, { time: formatDateTime(expiresAt) })
+}
+
 const handleGenerateCodes = async () => {
   // 订阅/分组次数类型必须选择分组
   if ((generateForm.type === 'subscription' || generateForm.type === 'group_request_quota') && !generateForm.group_id) {
@@ -670,7 +697,9 @@ const handleGenerateCodes = async () => {
       generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'
         ? generateForm.group_id
         : undefined,
-      generateForm.type === 'subscription' ? generateForm.validity_days : undefined
+      generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'
+        ? generateForm.validity_days
+        : undefined
     )
     showGenerateDialog.value = false
     generatedCodes.value = result

@@ -94,6 +94,9 @@ function buildAccount() {
       base_url: 'https://api.openai.com',
       model_mapping: {
         'gpt-5.2': 'gpt-5.2'
+      },
+      model_fallbacks: {
+        'gpt-5.2': ['gpt-4.1', 'gpt-4o']
       }
     },
     extra: {},
@@ -154,6 +157,32 @@ describe('EditAccountModal', () => {
     expect(updateAccountMock).toHaveBeenCalledTimes(1)
     expect(updateAccountMock.mock.calls[0]?.[1]?.credentials?.model_mapping).toEqual({
       'gpt-5.2': 'gpt-5.2'
+    })
+  })
+
+  it('rehydrates and persists model fallback chains', async () => {
+    const account = buildAccount()
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+    const inputs = wrapper.get('[data-testid="model-fallback-chain-list"]').findAll('input')
+
+    expect(wrapper.text()).toContain('admin.accounts.modelFallbackChainExampleTitle')
+    expect(wrapper.text()).toContain('admin.accounts.modelFallbackChainNote')
+    expect(wrapper.text()).toContain('gpt-5.2 -> gpt-4.1 -> gpt-4o')
+    expect(inputs).toHaveLength(2)
+    expect((inputs[0].element as HTMLInputElement).value).toBe('gpt-5.2')
+    expect((inputs[1].element as HTMLInputElement).value).toBe('gpt-4.1, gpt-4o')
+
+    await inputs[1].setValue('gpt-4.1, gpt-4o-mini ; gpt-4o')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials?.model_fallbacks).toEqual({
+      'gpt-5.2': ['gpt-4.1', 'gpt-4o-mini', 'gpt-4o']
     })
   })
 })

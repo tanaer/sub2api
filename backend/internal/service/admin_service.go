@@ -2131,7 +2131,7 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		if input.Type == RedeemTypeSubscription || input.Type == RedeemTypeGroupRequestQuota {
 			code.GroupID = input.GroupID
 		}
-		if input.Type == RedeemTypeSubscription {
+		if input.Type == RedeemTypeSubscription || input.Type == RedeemTypeGroupRequestQuota {
 			code.ValidityDays = input.ValidityDays
 			if code.ValidityDays <= 0 {
 				code.ValidityDays = 30 // 默认30天

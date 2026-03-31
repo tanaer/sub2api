@@ -83,6 +83,16 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	requireColumn(t, tx, "user_group_request_quotas", "request_quota", "bigint", 0, false)
 	requireColumn(t, tx, "user_group_request_quotas", "request_quota_used", "bigint", 0, false)
 
+	// user_group_request_quota_grants table should exist
+	var ugrqGrantRegclass sql.NullString
+	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT to_regclass('public.user_group_request_quota_grants')").Scan(&ugrqGrantRegclass))
+	require.True(t, ugrqGrantRegclass.Valid, "expected user_group_request_quota_grants table to exist")
+	requireColumn(t, tx, "user_group_request_quota_grants", "request_quota_total", "bigint", 0, false)
+	requireColumn(t, tx, "user_group_request_quota_grants", "request_quota_used", "bigint", 0, false)
+	requireColumn(t, tx, "user_group_request_quota_grants", "expires_at", "timestamp with time zone", 0, false)
+	requireIndex(t, tx, "user_group_request_quota_grants", "uq_user_group_request_quota_grants_redeem_code_id")
+	requireIndex(t, tx, "user_group_request_quota_grants", "idx_user_group_request_quota_grants_user_group_expires")
+
 	// user_subscriptions: deleted_at for soft delete support (migration 012)
 	requireColumn(t, tx, "user_subscriptions", "deleted_at", "timestamp with time zone", 0, true)
 

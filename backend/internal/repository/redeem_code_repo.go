@@ -280,6 +280,14 @@ func redeemCodeEntityToService(m *dbent.RedeemCode) *service.RedeemCode {
 		GroupID:      m.GroupID,
 		ValidityDays: m.ValidityDays,
 	}
+	if out.Type == service.RedeemTypeGroupRequestQuota && out.UsedAt != nil {
+		validityDays := out.ValidityDays
+		if validityDays <= 0 {
+			validityDays = 30
+		}
+		expiresAt := out.UsedAt.Add(time.Duration(validityDays) * 24 * time.Hour)
+		out.ExpiresAt = &expiresAt
+	}
 	if m.Edges.User != nil {
 		out.User = userEntityToService(m.Edges.User)
 	}

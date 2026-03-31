@@ -466,3 +466,28 @@ export function buildModelMappingObject(
 
   return Object.keys(mapping).length > 0 ? mapping : null
 }
+
+export function buildModelFallbacksObject(
+  modelFallbacks: { from: string; fallbacks: string[] }[]
+): Record<string, string[]> | null {
+  const mapping: Record<string, string[]> = {}
+
+  for (const item of modelFallbacks) {
+    const from = item.from.trim()
+    if (!from || !isValidWildcardPattern(from)) {
+      continue
+    }
+
+    const fallbacks = item.fallbacks
+      .map((model) => model.trim())
+      .filter((model) => model.length > 0 && !model.includes('*'))
+
+    if (fallbacks.length === 0) {
+      continue
+    }
+
+    mapping[from] = Array.from(new Set(fallbacks))
+  }
+
+  return Object.keys(mapping).length > 0 ? mapping : null
+}
