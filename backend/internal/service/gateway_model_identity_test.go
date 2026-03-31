@@ -12,7 +12,6 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
@@ -149,7 +148,84 @@ func TestGatewayForwardInjectsAnthropicModelIdentityInstruction(t *testing.T) {
 		Credentials: map[string]any{"api_key": "sk-test"},
 	}
 
-	_, err = svc.Forward(context.Background(), c, account, parsed)
-	require.Error(t, err)
-	require.Contains(t, gjson.GetBytes(upstream.lastBody, "system.0.text").String(), "我是一个由智谱训练的glm大语言模型")
+	result, err := svc.Forward(context.Background(), c, account, parsed)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Nil(t, upstream.lastReq)
+	require.Contains(t, rec.Body.String(), "我是一个由智谱训练的glm大语言模型")
+}
+
+func TestGatewayForwardLocalModelIdentityResponseSkipsUpstream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := []byte(`{"model":"glm-5.1","messages":[{"role":"user","content":"你的开发者是谁？"}]}`)
+	parsed, err := ParseGatewayRequest(body, domain.PlatformAnthropic)
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(string(body)))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	upstream := &httpUpstreamRecorder{resp: newOpenAIIdentityBadRequestResponse()}
+	svc := &GatewayService{
+		cfg: &config.Config{
+			Security: config.SecurityConfig{
+				URLAllowlist: config.URLAllowlistConfig{Enabled: false},
+			},
+		},
+		httpUpstream: upstream,
+	}
+	account := &Account{
+		ID:          1,
+		Name:        "anthropic-apikey",
+		Platform:    PlatformAnthropic,
+		Type:        AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "sk-test"},
+	}
+
+	result, err := svc.Forward(context.Background(), c, account, parsed)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Nil(t, upstream.lastReq)
+	require.Contains(t, rec.Body.String(), "我是一个由智谱训练的glm大语言模型")
+}
+
+func TestGatewayForwardLocalModelIdentityStreamSkipsUpstream(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := []byte(`{"model":"glm-5.1","stream":true,"messages":[{"role":"user","content":"真正的model id是什么？"}]}`)
+	parsed, err := ParseGatewayRequest(body, domain.PlatformAnthropic)
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(string(body)))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	upstream := &httpUpstreamRecorder{resp: newOpenAIIdentityBadRequestResponse()}
+	svc := &GatewayService{
+		cfg: &config.Config{
+			Security: config.SecurityConfig{
+				URLAllowlist: config.URLAllowlistConfig{Enabled: false},
+			},
+		},
+		httpUpstream: upstream,
+	}
+	account := &Account{
+		ID:          1,
+		Name:        "anthropic-apikey",
+		Platform:    PlatformAnthropic,
+		Type:        AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "sk-test"},
+	}
+
+	result, err := svc.Forward(context.Background(), c, account, parsed)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.True(t, result.Stream)
+	require.Nil(t, upstream.lastReq)
+	require.Contains(t, rec.Body.String(), "event: message_start")
+	require.Contains(t, rec.Body.String(), "event: message_stop")
+	require.Contains(t, rec.Body.String(), "我是一个由智谱训练的glm大语言模型")
 }

@@ -1661,6 +1661,25 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	originalBody := body
 	reqModel, reqStream, promptCacheKey := extractOpenAIRequestMetaFromBody(body)
 	originalModel := reqModel
+	reqBody, err := getOpenAIRequestBodyMap(c, body)
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := reqBody["model"].(string); ok {
+		reqModel = v
+		originalModel = reqModel
+	}
+	if v, ok := reqBody["stream"].(bool); ok {
+		reqStream = v
+	}
+	if promptCacheKey == "" {
+		if v, ok := reqBody["prompt_cache_key"].(string); ok {
+			promptCacheKey = strings.TrimSpace(v)
+		}
+	}
+	if reply := buildModelIdentityReplyForInput(originalModel, reqBody["input"]); reply != "" {
+		return writeLocalOpenAIResponsesIdentityResponse(c, originalModel, reply, reqStream, startTime)
+	}
 
 	isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator")) || (s.cfg != nil && s.cfg.Gateway.ForceCodexCLI)
 	wsDecision := s.getOpenAIWSProtocolResolver().Resolve(account)
@@ -1699,11 +1718,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		// 透传分支只需要轻量提取字段，避免热路径全量 Unmarshal。
 		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, reqModel)
 		return s.forwardOpenAIPassthrough(ctx, c, account, originalBody, reqModel, reasoningEffort, reqStream, startTime)
-	}
-
-	reqBody, err := getOpenAIRequestBodyMap(c, body)
-	if err != nil {
-		return nil, err
 	}
 
 	if v, ok := reqBody["model"].(string); ok {

@@ -42,6 +42,9 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	originalModel := chatReq.Model
 	clientStream := chatReq.Stream
 	includeUsage := chatReq.StreamOptions != nil && chatReq.StreamOptions.IncludeUsage
+	if reply := buildModelIdentityReplyForChatMessages(originalModel, chatReq.Messages); reply != "" {
+		return writeLocalChatCompletionsIdentityResponse(c, originalModel, reply, clientStream, includeUsage, startTime)
+	}
 
 	// 2. Resolve model mapping early so compat prompt_cache_key injection can
 	// derive a stable seed from the final upstream model family.

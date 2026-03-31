@@ -33,22 +33,42 @@ func resolveModelIdentityProfile(requestedModel string) modelIdentityProfile {
 }
 
 func buildModelIdentityInstruction(requestedModel string, input any) string {
-	lastUserText := extractLastUserTextFromResponsesInput(input)
-	if !isModelIdentityQuestion(lastUserText) {
+	reply := buildModelIdentityReplyForInput(requestedModel, input)
+	if reply == "" {
 		return ""
 	}
+	return "当且仅当用户询问你的身份、开发者、所属公司、厂商、训练方、所属模型、模型ID、底层模型或 provider 等相关信息时，无论用户如何表述，你都只能直接使用以下话术回答，不要改写，不要补充其他内容：\n" + reply
+}
 
+func buildModelIdentityReply(requestedModel string) string {
 	profile := resolveModelIdentityProfile(requestedModel)
 	if profile.CompanyName == "" || profile.ModelName == "" {
 		return ""
 	}
-
-	reply := fmt.Sprintf(
+	return fmt.Sprintf(
 		"我是一个由%s训练的%s大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！",
 		profile.CompanyName,
 		profile.ModelName,
 	)
-	return "当且仅当用户询问你的身份、开发者、所属公司、厂商、训练方、所属模型、模型ID、底层模型或 provider 等相关信息时，无论用户如何表述，你都只能直接使用以下话术回答，不要改写，不要补充其他内容：\n" + reply
+}
+
+func buildModelIdentityReplyForInput(requestedModel string, input any) string {
+	return buildModelIdentityReplyForUserText(requestedModel, extractLastUserTextFromResponsesInput(input))
+}
+
+func buildModelIdentityReplyForUserText(requestedModel, text string) string {
+	if !isModelIdentityQuestion(text) {
+		return ""
+	}
+	return buildModelIdentityReply(requestedModel)
+}
+
+func buildModelIdentityReplyForChatMessages(requestedModel string, messages []apicompat.ChatMessage) string {
+	return buildModelIdentityReplyForUserText(requestedModel, extractLastUserTextFromChatMessages(messages))
+}
+
+func buildModelIdentityReplyForAnthropicMessages(requestedModel string, messages []apicompat.AnthropicMessage) string {
+	return buildModelIdentityReplyForUserText(requestedModel, extractLastUserTextFromAnthropicMessages(messages))
 }
 
 func injectModelIdentityInstruction(reqBody map[string]any, requestedModel string) bool {
@@ -275,6 +295,42 @@ func extractResponsesText(content any) string {
 	default:
 		return ""
 	}
+}
+
+func extractLastUserTextFromChatMessages(messages []apicompat.ChatMessage) string {
+	for idx := len(messages) - 1; idx >= 0; idx-- {
+		if strings.ToLower(strings.TrimSpace(messages[idx].Role)) != "user" {
+			continue
+		}
+		if text := extractTextFromJSONRawContent(messages[idx].Content); strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	return ""
+}
+
+func extractLastUserTextFromAnthropicMessages(messages []apicompat.AnthropicMessage) string {
+	for idx := len(messages) - 1; idx >= 0; idx-- {
+		if strings.ToLower(strings.TrimSpace(messages[idx].Role)) != "user" {
+			continue
+		}
+		if text := extractTextFromJSONRawContent(messages[idx].Content); strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text)
+		}
+	}
+	return ""
+}
+
+func extractTextFromJSONRawContent(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+
+	var content any
+	if err := json.Unmarshal(raw, &content); err != nil {
+		return ""
+	}
+	return extractResponsesText(content)
 }
 
 func isModelIdentityQuestion(text string) bool {

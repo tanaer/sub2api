@@ -41,6 +41,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	}
 	originalModel := anthropicReq.Model
 	clientStream := anthropicReq.Stream // client's original stream preference
+	if reply := buildModelIdentityReplyForAnthropicMessages(originalModel, anthropicReq.Messages); reply != "" {
+		return writeLocalOpenAIAnthropicIdentityResponse(c, originalModel, reply, clientStream, startTime)
+	}
 
 	// 2. Convert Anthropic → Responses
 	responsesReq, err := apicompat.AnthropicToResponses(&anthropicReq)

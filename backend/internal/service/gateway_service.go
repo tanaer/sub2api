@@ -4132,6 +4132,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		return nil, fmt.Errorf("parse request: empty request")
 	}
 
+	if reply := buildModelIdentityReplyForInput(parsed.Model, parsed.Messages); reply != "" {
+		return writeLocalAnthropicIdentityResponse(c, parsed.Model, reply, parsed.Stream, startTime)
+	}
+
 	if account != nil && account.IsAnthropicAPIKeyPassthroughEnabled() {
 		passthroughBody := parsed.Body
 		passthroughModel := parsed.Model
