@@ -5201,6 +5201,14 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 						trimmed = strings.TrimSpace(data)
 					}
 				}
+				if trimmed != "" && trimmed != "[DONE]" {
+					rewritten := rewriteAnthropicEventTextInJSONBytes([]byte(trimmed), originalModel)
+					if string(rewritten) != trimmed {
+						line = "data: " + string(rewritten)
+						data = string(rewritten)
+						trimmed = strings.TrimSpace(data)
+					}
+				}
 				if anthropicStreamEventIsTerminal("", trimmed) {
 					sawTerminalEvent = true
 				}
@@ -5401,6 +5409,7 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 	if strings.TrimSpace(originalModel) != "" && originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
+	body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel)
 
 	writeAnthropicPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
@@ -6953,6 +6962,10 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			sawTerminalEvent = true
 		}
 		if !eventChanged {
+			rewrittenData := rewriteAnthropicEventTextInJSONBytes([]byte(dataLine), originalModel)
+			if string(rewrittenData) != dataLine {
+				dataLine = string(rewrittenData)
+			}
 			block := ""
 			if eventName != "" {
 				block = "event: " + eventName + "\n"
@@ -6971,6 +6984,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			block += "data: " + dataLine + "\n\n"
 			return []string{block}, dataLine, usagePatch, nil
 		}
+		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel)
 
 		block := ""
 		if eventName != "" {
@@ -7373,6 +7387,7 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 	if originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
+	body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel)
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 

@@ -2521,14 +2521,14 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		var usage *OpenAIUsage
 		var firstTokenMs *int
 		if reqStream {
-			result, err := s.handleStreamingResponsePassthrough(ctx, resp, c, account, startTime)
+			result, err := s.handleStreamingResponsePassthrough(ctx, resp, c, account, reqModel, startTime)
 			if err != nil {
 				return nil, err
 			}
 			usage = result.usage
 			firstTokenMs = result.firstTokenMs
 		} else {
-			usage, err = s.handleNonStreamingResponsePassthrough(ctx, resp, c)
+			usage, err = s.handleNonStreamingResponsePassthrough(ctx, resp, c, reqModel)
 			if err != nil {
 				return nil, err
 			}
@@ -2798,6 +2798,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	resp *http.Response,
 	c *gin.Context,
 	account *Account,
+	requestedModel string,
 	startTime time.Time,
 ) (*openaiStreamingResultPassthrough, error) {
 	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
@@ -2836,6 +2837,11 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	for scanner.Scan() {
 		line := scanner.Text()
 		if data, ok := extractOpenAISSEDataLine(line); ok {
+			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel)
+			if !bytes.Equal(rewrittenData, []byte(data)) {
+				data = string(rewrittenData)
+				line = "data: " + data
+			}
 			dataBytes := []byte(data)
 			trimmedData := strings.TrimSpace(data)
 			if trimmedData == "[DONE]" {
@@ -2898,6 +2904,7 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 	ctx context.Context,
 	resp *http.Response,
 	c *gin.Context,
+	requestedModel string,
 ) (*OpenAIUsage, error) {
 	maxBytes := resolveUpstreamResponseReadLimit(s.cfg)
 	body, err := readUpstreamResponseBodyLimited(resp.Body, maxBytes)
@@ -2925,6 +2932,11 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 	if !usageParsed {
 		// 兜底：尝试从 SSE 文本中解析 usage
 		usage = s.parseSSEUsageFromBody(string(body))
+	}
+	if isEventStreamResponse(resp.Header) || bytes.Contains(body, []byte("data:")) {
+		body = []byte(rewriteResponsesTextInSSEBody(string(body), requestedModel))
+	} else {
+		body = rewriteResponsesResponseTextInJSONBytes(body, requestedModel)
 	}
 
 	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
@@ -3511,6 +3523,12 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 			// Fast path: most events do not contain model field values.
 			if needModelReplace && mappedModel != "" && strings.Contains(data, mappedModel) {
 				line = s.replaceModelInSSELine(line, mappedModel, originalModel)
+				data = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			}
+			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), originalModel)
+			if !bytes.Equal(rewrittenData, []byte(data)) {
+				data = string(rewrittenData)
+				line = "data: " + data
 			}
 
 			dataBytes := []byte(data)
@@ -3715,6 +3733,9 @@ func (s *OpenAIGatewayService) correctToolCallsInResponseBody(body []byte) []byt
 	if len(body) == 0 {
 		return body
 	}
+	if s == nil || s.toolCorrector == nil {
+		return body
+	}
 
 	corrected, changed := s.toolCorrector.CorrectToolCallsInSSEBytes(body)
 	if changed {
@@ -3795,6 +3816,7 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 	if originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
+	body = rewriteResponsesResponseTextInJSONBytes(body, originalModel)
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 
@@ -3828,6 +3850,7 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 		if originalModel != mappedModel {
 			body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 		}
+		body = rewriteResponsesResponseTextInJSONBytes(body, originalModel)
 		// Correct tool calls in final response
 		body = s.correctToolCallsInResponseBody(body)
 	} else {
@@ -3843,6 +3866,7 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 		if originalModel != mappedModel {
 			bodyText = s.replaceModelInSSEBody(bodyText, mappedModel, originalModel)
 		}
+		bodyText = rewriteResponsesTextInSSEBody(bodyText, originalModel)
 		body = []byte(bodyText)
 	}
 

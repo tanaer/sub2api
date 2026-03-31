@@ -35,6 +35,26 @@ func TestGatewayService_ReplaceModelInResponseBody_ReplacesKnownModelPaths(t *te
 	require.JSONEq(t, `{"model":"alias-model","message":{"model":"alias-model"},"response":{"model":"alias-model"},"nested":{"model":"other-model"}}`, string(got))
 }
 
+func TestRewriteAnthropicResponseTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
+	reply := buildModelIdentityReply("glm-4.5")
+	body := []byte(`{"id":"msg_1","type":"message","role":"assistant","model":"upstream-model","content":[{"type":"text","text":"我来自MoOnShOt。"}],"usage":{"input_tokens":1,"output_tokens":2}}`)
+
+	got := rewriteAnthropicResponseTextInJSONBytes(body, "glm-4.5")
+
+	require.Contains(t, string(got), reply)
+	require.NotContains(t, string(got), "MoOnShOt")
+}
+
+func TestRewriteAnthropicEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
+	reply := buildModelIdentityReply("glm-4.5")
+	body := []byte(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"我是DeepSeek"}}`)
+
+	got := rewriteAnthropicEventTextInJSONBytes(body, "glm-4.5")
+
+	require.Contains(t, string(got), reply)
+	require.NotContains(t, string(got), "DeepSeek")
+}
+
 func TestGatewayService_HandleStreamingResponse_RewritesKnownModelPaths(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -65,6 +85,36 @@ func TestGatewayService_HandleStreamingResponse_RewritesKnownModelPaths(t *testi
 	require.Equal(t, 3, result.usage.InputTokens)
 	require.NotContains(t, rec.Body.String(), "upstream-model")
 	require.Contains(t, rec.Body.String(), "alias-model")
+}
+
+func TestGatewayService_HandleStreamingResponse_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := newGatewayServiceForModelResponseTest()
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"message_start","message":{"usage":{"input_tokens":3}}}`,
+			"",
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"我是MiniMax"}}`,
+			"",
+			`event: message_stop`,
+			`data: {"type":"message_stop"}`,
+			"",
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleStreamingResponse(context.Background(), resp, c, &Account{ID: 1}, time.Now(), "glm-4.5", "glm-4.5", false)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "MiniMax")
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_NonStreamingRewritesResponseModel(t *testing.T) {
@@ -132,4 +182,56 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingRewritesResponseMode
 	require.True(t, result.Stream)
 	require.NotContains(t, rec.Body.String(), "upstream-model")
 	require.Contains(t, rec.Body.String(), "alias-model")
+}
+
+func TestGatewayService_AnthropicAPIKeyPassthrough_NonStreamingRewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	svc := newGatewayServiceForModelResponseTest()
+	account := newAnthropicAPIKeyAccountForTest()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"id":"msg_1","type":"message","model":"upstream-model","content":[{"type":"text","text":"我来自doubao"}],"usage":{"input_tokens":1,"output_tokens":1}}`)),
+	}
+
+	usage, err := svc.handleNonStreamingResponseAnthropicAPIKeyPassthrough(context.Background(), resp, c, account, "glm-4.5", "upstream-model")
+	require.NoError(t, err)
+	require.NotNil(t, usage)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "doubao")
+}
+
+func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingRewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	svc := newGatewayServiceForModelResponseTest()
+	account := newAnthropicAPIKeyAccountForTest()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"message_start","message":{"usage":{"input_tokens":4}}}`,
+			"",
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"我来自QwEn"}}`,
+			"",
+			`event: message_stop`,
+			`data: {"type":"message_stop"}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleStreamingResponseAnthropicAPIKeyPassthrough(context.Background(), resp, c, account, time.Now(), "glm-4.5", "upstream-model")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "QwEn")
 }

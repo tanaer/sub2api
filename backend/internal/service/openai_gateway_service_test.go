@@ -1052,7 +1052,7 @@ func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.in_progress\",\"response\":{}}\n\n"))
 	}()
 
-	_, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, time.Now())
+	_, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, "gpt-4o", time.Now())
 	_ = pr.Close()
 	if err == nil || !strings.Contains(err.Error(), "missing terminal event") {
 		t.Fatalf("expected missing terminal event error, got %v", err)
@@ -1084,7 +1084,7 @@ func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.done\",\"response\":{\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, time.Now())
+	result, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, "gpt-4o", time.Now())
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1738,6 +1738,26 @@ func TestReplaceModelInResponseBody(t *testing.T) {
 	}
 }
 
+func TestRewriteResponsesResponseTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
+	reply := buildModelIdentityReply("qwen-plus-2025")
+	body := []byte(`{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自阿里巴巴"}]}],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`)
+
+	got := rewriteResponsesResponseTextInJSONBytes(body, "qwen-plus-2025")
+
+	require.Contains(t, string(got), reply)
+	require.NotContains(t, string(got), "阿里巴巴")
+}
+
+func TestRewriteResponsesEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
+	reply := buildModelIdentityReply("glm-4.5")
+	body := []byte(`{"type":"response.output_text.delta","delta":"我来自dEePsEeK"}`)
+
+	got := rewriteResponsesEventTextInJSONBytes(body, "glm-4.5")
+
+	require.Contains(t, string(got), reply)
+	require.NotContains(t, string(got), "dEePsEeK")
+}
+
 func TestExtractOpenAISSEDataLine(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1758,6 +1778,157 @@ func TestExtractOpenAISSEDataLine(t *testing.T) {
 			require.Equal(t, tt.wantData, got)
 		})
 	}
+}
+
+func TestOpenAIGatewayService_HandleNonStreamingResponsePassthrough_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+
+	svc := &OpenAIGatewayService{}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自kimi"}]}],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`)),
+	}
+
+	usage, err := svc.handleNonStreamingResponsePassthrough(context.Background(), resp, c, "glm-4.5")
+	require.NoError(t, err)
+	require.NotNil(t, usage)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "kimi")
+}
+
+func TestOpenAIGatewayService_HandleStreamingResponsePassthrough_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+
+	svc := &OpenAIGatewayService{}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"response.output_text.delta","delta":"我来自MoonShot"}`,
+			"",
+			`data: {"type":"response.completed","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, "glm-4.5", time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "MoonShot")
+}
+
+func TestOpenAIGatewayService_HandleChatBufferedStreamingResponse_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/chat/completions", nil)
+
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"response.completed","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自MiniMax"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleChatBufferedStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "MiniMax")
+}
+
+func TestOpenAIGatewayService_HandleChatStreamingResponse_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/chat/completions", nil)
+
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"response.created","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"in_progress","output":[]}}`,
+			"",
+			`data: {"type":"response.output_text.delta","delta":"我来自douBao"}`,
+			"",
+			`data: {"type":"response.completed","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleChatStreamingResponse(resp, c, "glm-4.5", "upstream-model", false, time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "douBao")
+}
+
+func TestOpenAIGatewayService_HandleAnthropicBufferedStreamingResponse_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"response.completed","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自QwEn"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleAnthropicBufferedStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "QwEn")
+}
+
+func TestOpenAIGatewayService_HandleAnthropicStreamingResponse_RewritesForbiddenIdentityText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+
+	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			`data: {"type":"response.created","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"in_progress","output":[]}}`,
+			"",
+			`data: {"type":"response.output_text.delta","delta":"我来自DeepSeek"}`,
+			"",
+			`data: {"type":"response.completed","response":{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+			"",
+		}, "\n"))),
+	}
+
+	result, err := svc.handleAnthropicStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.NotContains(t, rec.Body.String(), "DeepSeek")
 }
 
 func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
