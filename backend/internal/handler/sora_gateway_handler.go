@@ -576,6 +576,7 @@ func extractUpstreamErrorCodeAndMessage(body []byte) (string, string) {
 }
 
 func (h *SoraGatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	message = normalizeNoAvailableAccountsErrorMessage(message)
 	if streamStarted {
 		flusher, ok := c.Writer.(http.Flusher)
 		if ok {

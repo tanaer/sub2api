@@ -112,6 +112,35 @@ func TestOpenAIHandleStreamingAwareError_NonStreaming(t *testing.T) {
 	assert.Equal(t, "test error", errorObj["message"])
 }
 
+func TestNormalizeNoAvailableAccountsErrorMessage(t *testing.T) {
+	t.Run("append mapping hint for no available accounts", func(t *testing.T) {
+		got := normalizeNoAvailableAccountsErrorMessage("No available accounts: no available accounts")
+		require.Equal(t, "No available accounts: no available accounts，模型映射错误，使用了错误的模型请求，请查看发货教程！", got)
+	})
+
+	t.Run("leave other messages unchanged", func(t *testing.T) {
+		got := normalizeNoAvailableAccountsErrorMessage("No available accounts: upstream timeout")
+		require.Equal(t, "No available accounts: upstream timeout", got)
+	})
+}
+
+func TestOpenAIHandleStreamingAwareError_AppendsNoAvailableAccountsHint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	h := &OpenAIGatewayHandler{}
+	h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available accounts: no available accounts", false)
+
+	var parsed map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &parsed)
+	require.NoError(t, err)
+	errorObj, ok := parsed["error"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "No available accounts: no available accounts，模型映射错误，使用了错误的模型请求，请查看发货教程！", errorObj["message"])
+}
+
 func TestReadRequestBodyWithPrealloc(t *testing.T) {
 	payload := `{"model":"gpt-5","input":"hello"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(payload))

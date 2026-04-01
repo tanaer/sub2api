@@ -1272,6 +1272,7 @@ func (h *GatewayHandler) mapUpstreamError(statusCode int, responseBody []byte) (
 
 // handleStreamingAwareError handles errors that may occur after streaming has started
 func (h *GatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	message = normalizeNoAvailableAccountsErrorMessage(message)
 	if streamStarted {
 		// Stream already started, send error as SSE event then close
 		flusher, ok := c.Writer.(http.Flusher)

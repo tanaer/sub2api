@@ -1487,6 +1487,7 @@ func (h *OpenAIGatewayHandler) mapUpstreamError(statusCode int, responseBody []b
 
 // handleStreamingAwareError handles errors that may occur after streaming has started
 func (h *OpenAIGatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	message = normalizeNoAvailableAccountsErrorMessage(message)
 	if streamStarted {
 		// Stream already started, send error as SSE event then close
 		flusher, ok := c.Writer.(http.Flusher)
