@@ -1,0 +1,293 @@
+- generic [ref=e1]:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic:
+            - img "Logo"
+          - generic:
+            - generic: AIAPI
+            - generic:
+              - button "v0.1.104":
+                - generic: v0.1.104
+        - navigation:
+          - generic:
+            - link "Dashboard":
+              - /url: /admin/dashboard
+              - img
+              - generic: Dashboard
+            - link "Ops":
+              - /url: /admin/ops
+              - img
+              - generic: Ops
+            - link "Users":
+              - /url: /admin/users
+              - img
+              - generic: Users
+            - link "Groups":
+              - /url: /admin/groups
+              - img
+              - generic: Groups
+            - link "Subscriptions":
+              - /url: /admin/subscriptions
+              - img
+              - generic: Subscriptions
+            - link "Accounts":
+              - /url: /admin/accounts
+              - img
+              - generic: Accounts
+            - link "Announcements":
+              - /url: /admin/announcements
+              - img
+              - generic: Announcements
+            - link "Proxies":
+              - /url: /admin/proxies
+              - img
+              - generic: Proxies
+            - link "Redeem Codes":
+              - /url: /admin/redeem
+              - img
+              - generic: Redeem Codes
+            - link "Promo Codes":
+              - /url: /admin/promo-codes
+              - img
+              - generic: Promo Codes
+            - link "Usage":
+              - /url: /admin/usage
+              - img
+              - generic: Usage
+            - link "Settings":
+              - /url: /admin/settings
+              - img
+              - generic: Settings
+          - generic:
+            - generic: My Account
+            - link "API Keys":
+              - /url: /keys
+              - img
+              - generic: API Keys
+            - link "Usage":
+              - /url: /usage
+              - img
+              - generic: Usage
+            - link "My Subscriptions":
+              - /url: /subscriptions
+              - img
+              - generic: My Subscriptions
+            - link "Redeem":
+              - /url: /redeem
+              - img
+              - generic: Redeem
+            - link "Profile":
+              - /url: /profile
+              - img
+              - generic: Profile
+        - generic:
+          - button "Dark Mode":
+            - img
+            - generic: Dark Mode
+          - button "Collapse":
+            - img
+            - generic: Collapse
+      - generic:
+        - banner:
+          - generic:
+            - generic:
+              - generic:
+                - heading "User Management" [level=1]
+                - paragraph: Manage users and their permissions
+            - generic:
+              - generic:
+                - button "Announcements":
+                  - img
+              - generic:
+                - button "🇺🇸 EN":
+                  - generic: 🇺🇸
+                  - generic: EN
+                  - img
+              - generic:
+                - img
+                - generic: $99999.00
+              - generic:
+                - button "User Menu":
+                  - generic: AD
+                  - generic:
+                    - generic: admin
+                    - generic: admin
+                  - img
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - textbox "Search by email, username, notes, or API key..."
+                - generic:
+                  - generic:
+                    - button "Refresh":
+                      - img
+                    - generic:
+                      - button "Filter Settings":
+                        - img
+                        - generic: Filter Settings
+                    - generic:
+                      - button "Column Settings":
+                        - img
+                        - generic: Column Settings
+                    - button "Attributes":
+                      - img
+                      - generic: Attributes
+                  - button "Create User":
+                    - img
+                    - text: Create User
+            - generic:
+              - generic:
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row "User ID Username Role Balance Status Created Actions":
+                        - columnheader "User":
+                          - generic:
+                            - generic: User
+                            - generic:
+                              - img
+                        - columnheader "ID":
+                          - generic:
+                            - generic: ID
+                            - generic:
+                              - img
+                        - columnheader "Username":
+                          - generic:
+                            - generic: Username
+                            - generic:
+                              - img
+                        - columnheader "Role":
+                          - generic:
+                            - generic: Role
+                            - generic:
+                              - img
+                        - columnheader "Balance":
+                          - generic:
+                            - generic: Balance
+                            - generic:
+                              - img
+                        - columnheader "Status":
+                          - generic:
+                            - generic: Status
+                            - generic:
+                              - img
+                        - columnheader "Created":
+                          - generic:
+                            - generic: Created
+                            - generic:
+                              - img
+                        - columnheader "Actions":
+                          - generic:
+                            - generic: Actions
+                    - rowgroup:
+                      - row "T test@qq.com 2 - User $0.00 Click to open recharge history Deposit Active 03/24/2026, 13:33:18 Edit Disable More":
+                        - cell "T test@qq.com":
+                          - generic:
+                            - generic:
+                              - generic: T
+                            - generic: test@qq.com
+                        - cell "2"
+                        - cell "-"
+                        - cell "User":
+                          - generic: User
+                        - cell "$0.00 Click to open recharge history Deposit":
+                          - generic:
+                            - generic:
+                              - button "$0.00"
+                              - generic: Click to open recharge history
+                            - button "Deposit"
+                        - cell "Active":
+                          - generic:
+                            - generic: Active
+                        - cell "03/24/2026, 13:33:18"
+                        - cell "Edit Disable More":
+                          - generic:
+                            - button "Edit":
+                              - img
+                              - generic: Edit
+                            - button "Disable":
+                              - img
+                              - generic: Disable
+                            - button "More":
+                              - img
+                              - generic: More
+                      - row "A admin@aiapi.local 1 - Admin $99999.00 Click to open recharge history Deposit Active 03/23/2026, 22:21:58 Edit More":
+                        - cell "A admin@aiapi.local":
+                          - generic:
+                            - generic:
+                              - generic: A
+                            - generic: admin@aiapi.local
+                        - cell "1"
+                        - cell "-"
+                        - cell "Admin":
+                          - generic: Admin
+                        - cell "$99999.00 Click to open recharge history Deposit":
+                          - generic:
+                            - generic:
+                              - button "$99999.00"
+                              - generic: Click to open recharge history
+                            - button "Deposit"
+                        - cell "Active":
+                          - generic:
+                            - generic: Active
+                        - cell "03/23/2026, 22:21:58"
+                        - cell "Edit More":
+                          - generic:
+                            - button "Edit":
+                              - img
+                              - generic: Edit
+                            - button "More":
+                              - img
+                              - generic: More
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - paragraph: Showing 1 to 2 of 2 results
+                    - generic:
+                      - generic: "Per page:"
+                      - generic:
+                        - generic:
+                          - button "Select option":
+                            - generic: "20"
+                            - generic:
+                              - img
+                  - navigation "Pagination":
+                    - button "Previous" [disabled]:
+                      - img
+                    - button "Go to page 1": "1"
+                    - button "Next" [disabled]:
+                      - img
+  - dialog "👋 Welcome to AIAPI" [ref=e2]:
+    - button "Close" [active] [ref=e3] [cursor=pointer]: ×
+    - banner [ref=e4]: 👋 Welcome to AIAPI
+    - generic [ref=e6]:
+      - paragraph [ref=e7]: AIAPI is a powerful AI service gateway platform that helps you easily manage and distribute AI services.
+      - paragraph [ref=e8]: "🎯 Core Features:"
+      - list [ref=e9]:
+        - listitem [ref=e10]: 📦 Group Management - Create service tiers (VIP, Free Trial, etc.)
+        - listitem [ref=e11]: 🔗 Account Pool - Connect multiple upstream AI service accounts
+        - listitem [ref=e12]: 🔑 Key Distribution - Generate independent API Keys for users
+        - listitem [ref=e13]: 💰 Billing Control - Flexible rate and quota management
+      - paragraph [ref=e14]: Let's complete the initial setup in 3 minutes →
+    - contentinfo [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: 1 of 21
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]: ←
+            - generic [ref=e21]: →
+            - text: Flip Page
+          - generic [ref=e22]:
+            - generic [ref=e23]: ESC
+            - text: Exit
+      - generic [ref=e24]:
+        - button "Skip" [disabled]
+        - button "Start Setup 🚀" [ref=e25] [cursor=pointer]
+  - img

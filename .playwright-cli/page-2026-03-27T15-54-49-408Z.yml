@@ -1,0 +1,281 @@
+- generic [ref=e1]:
+  - generic [ref=e28]:
+    - complementary [ref=e29]:
+      - generic [ref=e30]:
+        - img "Logo" [ref=e32]
+        - generic [ref=e33]:
+          - generic [ref=e34]: AIAPI
+          - button "v0.1.104" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37]: v0.1.104
+      - navigation [ref=e41]:
+        - generic [ref=e42]:
+          - link "Dashboard" [ref=e43] [cursor=pointer]:
+            - /url: /admin/dashboard
+            - img [ref=e44]
+            - generic [ref=e46]: Dashboard
+          - link "Ops" [ref=e47] [cursor=pointer]:
+            - /url: /admin/ops
+            - img [ref=e48]
+            - generic [ref=e50]: Ops
+          - link "Users" [ref=e51] [cursor=pointer]:
+            - /url: /admin/users
+            - img [ref=e52]
+            - generic [ref=e54]: Users
+          - link "Groups" [ref=e55] [cursor=pointer]:
+            - /url: /admin/groups
+            - img [ref=e56]
+            - generic [ref=e58]: Groups
+          - link "Subscriptions" [ref=e59] [cursor=pointer]:
+            - /url: /admin/subscriptions
+            - img [ref=e60]
+            - generic [ref=e62]: Subscriptions
+          - link "Accounts" [ref=e63] [cursor=pointer]:
+            - /url: /admin/accounts
+            - img [ref=e64]
+            - generic [ref=e66]: Accounts
+          - link "Announcements" [ref=e67] [cursor=pointer]:
+            - /url: /admin/announcements
+            - img [ref=e68]
+            - generic [ref=e70]: Announcements
+          - link "Proxies" [ref=e71] [cursor=pointer]:
+            - /url: /admin/proxies
+            - img [ref=e72]
+            - generic [ref=e74]: Proxies
+          - link "Redeem Codes" [ref=e75] [cursor=pointer]:
+            - /url: /admin/redeem
+            - img [ref=e76]
+            - generic [ref=e78]: Redeem Codes
+          - link "Promo Codes" [ref=e79] [cursor=pointer]:
+            - /url: /admin/promo-codes
+            - img [ref=e80]
+            - generic [ref=e82]: Promo Codes
+          - link "Usage" [ref=e83] [cursor=pointer]:
+            - /url: /admin/usage
+            - img [ref=e84]
+            - generic [ref=e86]: Usage
+          - link "Settings" [ref=e87] [cursor=pointer]:
+            - /url: /admin/settings
+            - img [ref=e88]
+            - generic [ref=e91]: Settings
+        - generic [ref=e92]:
+          - generic [ref=e93]: My Account
+          - link "API Keys" [ref=e94] [cursor=pointer]:
+            - /url: /keys
+            - img [ref=e95]
+            - generic [ref=e97]: API Keys
+          - link "Usage" [ref=e98] [cursor=pointer]:
+            - /url: /usage
+            - img [ref=e99]
+            - generic [ref=e101]: Usage
+          - link "My Subscriptions" [ref=e102] [cursor=pointer]:
+            - /url: /subscriptions
+            - img [ref=e103]
+            - generic [ref=e105]: My Subscriptions
+          - link "Redeem" [ref=e106] [cursor=pointer]:
+            - /url: /redeem
+            - img [ref=e107]
+            - generic [ref=e109]: Redeem
+          - link "Profile" [ref=e110] [cursor=pointer]:
+            - /url: /profile
+            - img [ref=e111]
+            - generic [ref=e113]: Profile
+      - generic [ref=e114]:
+        - button "Dark Mode" [ref=e115] [cursor=pointer]:
+          - img [ref=e116]
+          - generic [ref=e118]: Dark Mode
+        - button "Collapse" [ref=e119] [cursor=pointer]:
+          - img [ref=e120]
+          - generic [ref=e122]: Collapse
+    - generic [ref=e123]:
+      - banner [ref=e124]:
+        - generic [ref=e125]:
+          - generic [ref=e127]:
+            - heading "User Management" [level=1] [ref=e128]
+            - paragraph [ref=e129]: Manage users and their permissions
+          - generic [ref=e130]:
+            - button "Announcements" [ref=e132] [cursor=pointer]:
+              - img [ref=e133]
+            - button "🇺🇸 EN" [ref=e136] [cursor=pointer]:
+              - generic [ref=e137]: 🇺🇸
+              - generic [ref=e138]: EN
+              - img [ref=e139]
+            - generic [ref=e141]:
+              - img [ref=e142]
+              - generic [ref=e144]: $99999.00
+            - button "User Menu" [ref=e146] [cursor=pointer]:
+              - generic [ref=e147]: AD
+              - generic [ref=e148]:
+                - generic [ref=e149]: admin
+                - generic [ref=e150]: admin
+              - img [ref=e151]
+      - main [ref=e153]:
+        - generic [ref=e154]:
+          - generic [ref=e156]:
+            - generic [ref=e158]:
+              - img [ref=e159]
+              - textbox "Search by email, username, notes, or API key..." [ref=e161]
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - button "Refresh" [ref=e164] [cursor=pointer]:
+                  - img [ref=e165]
+                - button "Filter Settings" [ref=e168] [cursor=pointer]:
+                  - img [ref=e169]
+                  - generic [ref=e171]: Filter Settings
+                - button "Column Settings" [ref=e173] [cursor=pointer]:
+                  - img [ref=e174]
+                  - generic [ref=e176]: Column Settings
+                - button "Attributes" [ref=e177] [cursor=pointer]:
+                  - img [ref=e178]
+                  - generic [ref=e180]: Attributes
+              - button "Create User" [ref=e181] [cursor=pointer]:
+                - img [ref=e182]
+                - text: Create User
+          - table [ref=e187]:
+            - rowgroup [ref=e188]:
+              - row "User ID Username Role Balance Status Created Actions" [ref=e189]:
+                - columnheader "User" [ref=e190] [cursor=pointer]:
+                  - generic [ref=e191]:
+                    - generic [ref=e192]: User
+                    - img [ref=e194]
+                - columnheader "ID" [ref=e196] [cursor=pointer]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: ID
+                    - img [ref=e200]
+                - columnheader "Username" [ref=e202] [cursor=pointer]:
+                  - generic [ref=e203]:
+                    - generic [ref=e204]: Username
+                    - img [ref=e206]
+                - columnheader "Role" [ref=e208] [cursor=pointer]:
+                  - generic [ref=e209]:
+                    - generic [ref=e210]: Role
+                    - img [ref=e212]
+                - columnheader "Balance" [ref=e214] [cursor=pointer]:
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: Balance
+                    - img [ref=e218]
+                - columnheader "Status" [ref=e220] [cursor=pointer]:
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: Status
+                    - img [ref=e224]
+                - columnheader "Created" [ref=e226] [cursor=pointer]:
+                  - generic [ref=e227]:
+                    - generic [ref=e228]: Created
+                    - img [ref=e230]
+                - columnheader "Actions" [ref=e232]:
+                  - generic [ref=e234]: Actions
+            - rowgroup [ref=e235]:
+              - row "T test@qq.com 2 - User $0.00 Click to open recharge history Deposit Active 03/24/2026, 13:33:18 Edit Disable More" [ref=e236]:
+                - cell "T test@qq.com" [ref=e237]:
+                  - generic [ref=e238]:
+                    - generic [ref=e240]: T
+                    - generic [ref=e241]: test@qq.com
+                - cell "2" [ref=e242]
+                - cell "-" [ref=e243]
+                - cell "User" [ref=e244]:
+                  - generic [ref=e245]: User
+                - cell "$0.00 Click to open recharge history Deposit" [ref=e246]:
+                  - generic [ref=e247]:
+                    - generic [ref=e248]:
+                      - button "$0.00" [ref=e249] [cursor=pointer]
+                      - generic: Click to open recharge history
+                    - button "Deposit" [ref=e250] [cursor=pointer]
+                - cell "Active" [ref=e251]:
+                  - generic [ref=e254]: Active
+                - cell "03/24/2026, 13:33:18" [ref=e255]
+                - cell "Edit Disable More" [ref=e256]:
+                  - generic [ref=e257]:
+                    - button "Edit" [ref=e258] [cursor=pointer]:
+                      - img [ref=e259]
+                      - generic [ref=e261]: Edit
+                    - button "Disable" [ref=e262] [cursor=pointer]:
+                      - img [ref=e263]
+                      - generic [ref=e265]: Disable
+                    - button "More" [ref=e266] [cursor=pointer]:
+                      - img [ref=e267]
+                      - generic [ref=e269]: More
+              - row "A admin@aiapi.local 1 - Admin $99999.00 Click to open recharge history Deposit Active 03/23/2026, 22:21:58 Edit More" [ref=e270]:
+                - cell "A admin@aiapi.local" [ref=e271]:
+                  - generic [ref=e272]:
+                    - generic [ref=e274]: A
+                    - generic [ref=e275]: admin@aiapi.local
+                - cell "1" [ref=e276]
+                - cell "-" [ref=e277]
+                - cell "Admin" [ref=e278]:
+                  - generic [ref=e279]: Admin
+                - cell "$99999.00 Click to open recharge history Deposit" [ref=e280]:
+                  - generic [ref=e281]:
+                    - generic [ref=e282]:
+                      - button "$99999.00" [ref=e283] [cursor=pointer]
+                      - generic: Click to open recharge history
+                    - button "Deposit" [ref=e284] [cursor=pointer]
+                - cell "Active" [ref=e285]:
+                  - generic [ref=e288]: Active
+                - cell "03/23/2026, 22:21:58" [ref=e289]
+                - cell "Edit More" [ref=e290]:
+                  - generic [ref=e291]:
+                    - button "Edit" [ref=e292] [cursor=pointer]:
+                      - img [ref=e293]
+                      - generic [ref=e295]: Edit
+                    - button "More" [ref=e296] [cursor=pointer]:
+                      - img [ref=e297]
+                      - generic [ref=e299]: More
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - paragraph [ref=e304]: Showing 1 to 2 of 2 results
+              - generic [ref=e305]:
+                - generic [ref=e306]: "Per page:"
+                - button "Select option" [ref=e309] [cursor=pointer]:
+                  - generic [ref=e310]: "20"
+                  - img [ref=e312]
+            - navigation "Pagination" [ref=e314]:
+              - button "Previous" [disabled] [ref=e315]:
+                - img [ref=e316]
+              - button "Go to page 1" [ref=e318] [cursor=pointer]: "1"
+              - button "Next" [disabled] [ref=e319]:
+                - img [ref=e320]
+  - dialog "User Group Configuration" [ref=e343]:
+    - generic [ref=e344]:
+      - generic [ref=e345]:
+        - heading "User Group Configuration" [level=3] [ref=e346]
+        - button "Close modal" [active] [ref=e347] [cursor=pointer]:
+          - img [ref=e348]
+      - generic [ref=e351]:
+        - generic [ref=e352]:
+          - generic [ref=e354]: T
+          - generic [ref=e355]:
+            - paragraph [ref=e356]: test@qq.com
+            - paragraph [ref=e357]: Configure custom rate multipliers for user test@qq.com (overrides group defaults)
+        - generic [ref=e359]:
+          - generic [ref=e360]:
+            - heading "Public Groups (Default Available)" [level=4] [ref=e362]
+            - generic [ref=e363]: (2)
+          - generic [ref=e364]:
+            - generic [ref=e366]:
+              - img [ref=e369]
+              - generic [ref=e371]:
+                - generic [ref=e373]: 智谱
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - img [ref=e376]
+                    - generic [ref=e378]: anthropic
+                  - generic [ref=e379]: •
+                  - generic [ref=e380]: "Default Rate: 1x"
+              - generic [ref=e381]:
+                - generic [ref=e382]: Custom Rate
+                - spinbutton [ref=e383]
+            - generic [ref=e385]:
+              - img [ref=e388]
+              - generic [ref=e390]:
+                - generic [ref=e392]: default
+                - generic [ref=e393]:
+                  - generic [ref=e394]:
+                    - img [ref=e395]
+                    - generic [ref=e397]: anthropic
+                  - generic [ref=e398]: •
+                  - generic [ref=e399]: "Default Rate: 1x"
+              - generic [ref=e400]:
+                - generic [ref=e401]: Custom Rate
+                - spinbutton [ref=e402]
+      - generic [ref=e404]:
+        - button "Cancel" [ref=e405] [cursor=pointer]
+        - button "Save" [ref=e406] [cursor=pointer]

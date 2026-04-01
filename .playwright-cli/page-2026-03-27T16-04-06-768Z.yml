@@ -1,0 +1,199 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img "Logo" [ref=e79]
+      - generic [ref=e7]:
+        - generic [ref=e8]: AIAPI
+        - generic [ref=e80]: v0.1.104
+    - navigation [ref=e9]:
+      - generic [ref=e10]:
+        - link "Dashboard" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e14]: Dashboard
+        - link "API Keys" [ref=e15] [cursor=pointer]:
+          - /url: /keys
+          - img [ref=e16]
+          - generic [ref=e18]: API Keys
+        - link "Usage" [ref=e19] [cursor=pointer]:
+          - /url: /usage
+          - img [ref=e20]
+          - generic [ref=e22]: Usage
+        - link "My Subscriptions" [ref=e23] [cursor=pointer]:
+          - /url: /subscriptions
+          - img [ref=e24]
+          - generic [ref=e26]: My Subscriptions
+        - link "Redeem" [ref=e27] [cursor=pointer]:
+          - /url: /redeem
+          - img [ref=e28]
+          - generic [ref=e30]: Redeem
+        - link "Profile" [ref=e31] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e32]
+          - generic [ref=e34]: Profile
+    - generic [ref=e35]:
+      - button "Dark Mode" [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+        - generic [ref=e39]: Dark Mode
+      - button "Collapse" [ref=e40] [cursor=pointer]:
+        - img [ref=e41]
+        - generic [ref=e43]: Collapse
+  - generic [ref=e44]:
+    - banner [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e48]:
+          - heading "Dashboard" [level=1] [ref=e49]
+          - paragraph [ref=e50]: Welcome back! Here's an overview of your account.
+        - generic [ref=e51]:
+          - button "Announcements" [ref=e53] [cursor=pointer]:
+            - img [ref=e54]
+          - button "🇺🇸 EN" [ref=e57] [cursor=pointer]:
+            - generic [ref=e58]: 🇺🇸
+            - generic [ref=e59]: EN
+            - img [ref=e60]
+          - generic [ref=e62]:
+            - img [ref=e63]
+            - generic [ref=e65]: $0.00
+          - button "User Menu" [ref=e67] [cursor=pointer]:
+            - generic [ref=e68]: TE
+            - generic [ref=e69]:
+              - generic [ref=e70]: test
+              - generic [ref=e71]: user
+            - img [ref=e72]
+    - main [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e81]:
+          - generic [ref=e83]:
+            - img [ref=e85]
+            - generic [ref=e87]:
+              - paragraph [ref=e88]: Balance
+              - paragraph [ref=e89]: $0.00
+              - paragraph [ref=e90]: Available
+          - generic [ref=e92]:
+            - img [ref=e94]
+            - generic [ref=e96]:
+              - paragraph [ref=e97]: API Keys
+              - paragraph [ref=e98]: "1"
+              - paragraph [ref=e99]: 1 Active
+          - generic [ref=e101]:
+            - img [ref=e103]
+            - generic [ref=e105]:
+              - paragraph [ref=e106]: Today Requests
+              - paragraph [ref=e107]: "0"
+              - paragraph [ref=e108]: "Total: 0"
+          - generic [ref=e110]:
+            - img [ref=e112]
+            - generic [ref=e114]:
+              - paragraph [ref=e115]: Today Cost
+              - paragraph [ref=e116]: $0.0000 / $0.0000
+              - paragraph [ref=e117]: "Total: $0.0000 / $0.0000"
+        - generic [ref=e118]:
+          - generic [ref=e120]:
+            - img [ref=e122]
+            - generic [ref=e124]:
+              - paragraph [ref=e125]: Today Tokens
+              - paragraph [ref=e126]: "0"
+              - paragraph [ref=e127]: "Input: 0 / Output: 0"
+          - generic [ref=e129]:
+            - img [ref=e131]
+            - generic [ref=e133]:
+              - paragraph [ref=e134]: Total Tokens
+              - paragraph [ref=e135]: "0"
+              - paragraph [ref=e136]: "Input: 0 / Output: 0"
+          - generic [ref=e138]:
+            - img [ref=e140]
+            - generic [ref=e142]:
+              - paragraph [ref=e143]: Performance
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: "0"
+                - generic [ref=e146]: RPM
+              - generic [ref=e147]:
+                - paragraph [ref=e148]: "0"
+                - generic [ref=e149]: TPM
+          - generic [ref=e151]:
+            - img [ref=e153]
+            - generic [ref=e155]:
+              - paragraph [ref=e156]: Avg Response
+              - paragraph [ref=e157]: 0ms
+              - paragraph [ref=e158]: Average time
+        - generic [ref=e159]:
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - paragraph [ref=e162]: Group Request Quota
+              - paragraph [ref=e163]: Used and remaining requests for each group
+            - img [ref=e165]
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - paragraph [ref=e171]: default
+                - paragraph [ref=e172]: anthropic
+              - generic [ref=e173]:
+                - paragraph [ref=e174]: Request Quota
+                - paragraph [ref=e175]: "5"
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - paragraph [ref=e178]: Used Requests
+                - paragraph [ref=e179]: "0"
+              - generic [ref=e180]:
+                - paragraph [ref=e181]: Remaining Requests
+                - paragraph [ref=e182]: "5"
+        - generic [ref=e183]:
+          - generic [ref=e185]:
+            - generic [ref=e186]:
+              - generic [ref=e187]: "Time Range:"
+              - button "Mar 21 - Mar 27" [ref=e189] [cursor=pointer]:
+                - img [ref=e191]
+                - generic [ref=e193]: Mar 21 - Mar 27
+                - img [ref=e195]
+            - generic [ref=e197]:
+              - generic [ref=e198]: "Granularity:"
+              - button "Select option" [ref=e201] [cursor=pointer]:
+                - generic [ref=e202]: Day
+                - img [ref=e204]
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - heading "Model Distribution" [level=3] [ref=e208]
+              - generic [ref=e209]:
+                - generic [ref=e211]: No data available
+                - table [ref=e213]:
+                  - rowgroup [ref=e214]:
+                    - row "Model Requests Tokens Actual Standard" [ref=e215]:
+                      - columnheader "Model" [ref=e216]
+                      - columnheader "Requests" [ref=e217]
+                      - columnheader "Tokens" [ref=e218]
+                      - columnheader "Actual" [ref=e219]
+                      - columnheader "Standard" [ref=e220]
+                  - rowgroup
+            - generic [ref=e221]:
+              - heading "Token Usage Trend" [level=3] [ref=e222]
+              - generic [ref=e223]: No data available
+        - generic [ref=e224]:
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - heading "Recent Usage" [level=2] [ref=e228]
+              - generic [ref=e229]: Last 7 days
+            - generic [ref=e232]:
+              - img [ref=e234]
+              - heading "No usage records" [level=3] [ref=e236]
+              - paragraph [ref=e237]: Start using the API to see your usage history here.
+          - generic [ref=e239]:
+            - heading "Quick Actions" [level=2] [ref=e241]
+            - generic [ref=e242]:
+              - button "Create API Key Generate a new API key" [ref=e243] [cursor=pointer]:
+                - img [ref=e245]
+                - generic [ref=e247]:
+                  - paragraph [ref=e248]: Create API Key
+                  - paragraph [ref=e249]: Generate a new API key
+                - img [ref=e250]
+              - button "View Usage Check detailed usage logs" [ref=e252] [cursor=pointer]:
+                - img [ref=e254]
+                - generic [ref=e256]:
+                  - paragraph [ref=e257]: View Usage
+                  - paragraph [ref=e258]: Check detailed usage logs
+                - img [ref=e259]
+              - button "Redeem Code Add balance with a code" [ref=e261] [cursor=pointer]:
+                - img [ref=e263]
+                - generic [ref=e265]:
+                  - paragraph [ref=e266]: Redeem Code
+                  - paragraph [ref=e267]: Add balance with a code
+                - img [ref=e268]
