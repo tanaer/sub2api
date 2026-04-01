@@ -1844,7 +1844,7 @@ func TestOpenAIGatewayService_HandleChatBufferedStreamingResponse_RewritesForbid
 		}, "\n"))),
 	}
 
-	result, err := svc.handleChatBufferedStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	result, err := svc.handleChatBufferedStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
@@ -1872,7 +1872,7 @@ func TestOpenAIGatewayService_HandleChatStreamingResponse_RewritesForbiddenIdent
 		}, "\n"))),
 	}
 
-	result, err := svc.handleChatStreamingResponse(resp, c, "glm-4.5", "upstream-model", false, time.Now())
+	result, err := svc.handleChatStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
@@ -1896,7 +1896,7 @@ func TestOpenAIGatewayService_HandleAnthropicBufferedStreamingResponse_RewritesF
 		}, "\n"))),
 	}
 
-	result, err := svc.handleAnthropicBufferedStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	result, err := svc.handleAnthropicBufferedStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
@@ -1924,7 +1924,7 @@ func TestOpenAIGatewayService_HandleAnthropicStreamingResponse_RewritesForbidden
 		}, "\n"))),
 	}
 
-	result, err := svc.handleAnthropicStreamingResponse(resp, c, "glm-4.5", "upstream-model", time.Now())
+	result, err := svc.handleAnthropicStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))

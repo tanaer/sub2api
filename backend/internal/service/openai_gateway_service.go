@@ -1974,6 +1974,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	}
 
 	modelRetryChain := buildModelRetryChain(account, originalModel)
+	mappedModel := upstreamModel
 	modelRetryIndex := 0
 	if len(modelRetryChain) > 0 {
 		reqBody, upstreamModel, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])

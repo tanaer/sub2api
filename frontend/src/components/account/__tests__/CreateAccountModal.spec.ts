@@ -9,7 +9,8 @@ const {
   showInfoMock,
   showSuccessMock,
   showWarningMock,
-  fetchAntigravityDefaultMappingsMock
+  fetchAntigravityDefaultMappingsMock,
+  listTLSFingerprintProfilesMock
 } = vi.hoisted(() => ({
   createAccountMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
@@ -17,7 +18,8 @@ const {
   showInfoMock: vi.fn(),
   showSuccessMock: vi.fn(),
   showWarningMock: vi.fn(),
-  fetchAntigravityDefaultMappingsMock: vi.fn().mockResolvedValue([])
+  fetchAntigravityDefaultMappingsMock: vi.fn().mockResolvedValue([]),
+  listTLSFingerprintProfilesMock: vi.fn().mockResolvedValue([])
 }))
 
 const buildOAuthClient = () => ({
@@ -57,6 +59,9 @@ vi.mock('@/api/admin', () => ({
     accounts: {
       create: createAccountMock,
       checkMixedChannelRisk: checkMixedChannelRiskMock
+    },
+    tlsFingerprintProfiles: {
+      list: listTLSFingerprintProfilesMock
     }
   }
 }))
@@ -305,6 +310,7 @@ describe('CreateAccountModal', () => {
     showSuccessMock.mockReset()
     showWarningMock.mockReset()
     fetchAntigravityDefaultMappingsMock.mockClear()
+    listTLSFingerprintProfilesMock.mockClear()
     createAccountMock.mockResolvedValue({ id: 999 })
     checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
   })
