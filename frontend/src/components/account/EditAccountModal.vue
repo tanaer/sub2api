@@ -619,7 +619,7 @@
       </div>
 
       <div
-        v-if="supportsModelFallbackConfig"
+        v-if="supportsModelFallbackConfig && account.platform === 'openai' && account.type === 'oauth'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.accounts.modelFallbackChain') }}</label>
@@ -2486,7 +2486,7 @@ watch(
   { immediate: true }
 )
 
-const loadTLSProfiles = async () => {
+async function loadTLSProfiles() {
   try {
     const profiles = await adminAPI.tlsFingerprintProfiles.list()
     tlsFingerprintProfiles.value = profiles.map(p => ({ id: p.id, name: p.name }))
