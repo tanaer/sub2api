@@ -99,6 +99,7 @@ type CreateAccountRequest struct {
 	Notes                   *string        `json:"notes"`
 	Platform                string         `json:"platform" binding:"required"`
 	Type                    string         `json:"type" binding:"required,oneof=oauth setup-token apikey upstream bedrock"`
+	UpstreamProvider        string         `json:"upstream_provider"`
 	Credentials             map[string]any `json:"credentials" binding:"required"`
 	Extra                   map[string]any `json:"extra"`
 	ProxyID                 *int64         `json:"proxy_id"`
@@ -118,6 +119,7 @@ type UpdateAccountRequest struct {
 	Name                    string         `json:"name"`
 	Notes                   *string        `json:"notes"`
 	Type                    string         `json:"type" binding:"omitempty,oneof=oauth setup-token apikey upstream bedrock"`
+	UpstreamProvider        *string        `json:"upstream_provider"`
 	Credentials             map[string]any `json:"credentials"`
 	Extra                   map[string]any `json:"extra"`
 	ProxyID                 *int64         `json:"proxy_id"`
@@ -522,6 +524,7 @@ func (h *AccountHandler) Create(c *gin.Context) {
 			Notes:                 req.Notes,
 			Platform:              req.Platform,
 			Type:                  req.Type,
+			UpstreamProvider:      req.UpstreamProvider,
 			Credentials:           req.Credentials,
 			Extra:                 req.Extra,
 			ProxyID:               req.ProxyID,
@@ -596,6 +599,7 @@ func (h *AccountHandler) Update(c *gin.Context) {
 		Name:                  req.Name,
 		Notes:                 req.Notes,
 		Type:                  req.Type,
+		UpstreamProvider:      req.UpstreamProvider,
 		Credentials:           req.Credentials,
 		Extra:                 req.Extra,
 		ProxyID:               req.ProxyID,

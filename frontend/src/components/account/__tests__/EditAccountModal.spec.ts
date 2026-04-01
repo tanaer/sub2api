@@ -169,10 +169,16 @@ describe('EditAccountModal', () => {
 
     const wrapper = mountModal(account)
     const inputs = wrapper.get('[data-testid="model-fallback-chain-list"]').findAll('input')
+    const fallbackPreviews = wrapper.findAll('[data-testid="model-fallback-preview"]')
+    const fallbackExampleTitleMatches = wrapper.text().match(/admin\.accounts\.modelFallbackChainExampleTitle/g) ?? []
+    const fallbackExampleNoteMatches = wrapper.text().match(/admin\.accounts\.modelFallbackChainNote/g) ?? []
 
     expect(wrapper.text()).toContain('admin.accounts.modelFallbackChainExampleTitle')
     expect(wrapper.text()).toContain('admin.accounts.modelFallbackChainNote')
     expect(wrapper.text()).toContain('gpt-5.2 -> gpt-4.1 -> gpt-4o')
+    expect(fallbackPreviews).toHaveLength(1)
+    expect(fallbackExampleTitleMatches).toHaveLength(1)
+    expect(fallbackExampleNoteMatches).toHaveLength(1)
     expect(inputs).toHaveLength(2)
     expect((inputs[0].element as HTMLInputElement).value).toBe('gpt-5.2')
     expect((inputs[1].element as HTMLInputElement).value).toBe('gpt-4.1, gpt-4o')

@@ -686,6 +686,7 @@ export interface Account {
   notes?: string | null
   platform: AccountPlatform
   type: AccountType
+  upstream_provider?: string
   credentials?: Record<string, unknown>
   // Extra fields including Codex usage and model-level rate limits (Antigravity smart retry)
   extra?: (CodexUsageSnapshot & {

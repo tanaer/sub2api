@@ -33,6 +33,8 @@ const (
 	FieldCredentials = "credentials"
 	// FieldExtra holds the string denoting the extra field in the database.
 	FieldExtra = "extra"
+	// FieldUpstreamProvider holds the string denoting the upstream_provider field in the database.
+	FieldUpstreamProvider = "upstream_provider"
 	// FieldProxyID holds the string denoting the proxy_id field in the database.
 	FieldProxyID = "proxy_id"
 	// FieldConcurrency holds the string denoting the concurrency field in the database.
@@ -121,6 +123,7 @@ var Columns = []string{
 	FieldType,
 	FieldCredentials,
 	FieldExtra,
+	FieldUpstreamProvider,
 	FieldProxyID,
 	FieldConcurrency,
 	FieldLoadFactor,
@@ -182,6 +185,8 @@ var (
 	DefaultCredentials func() map[string]interface{}
 	// DefaultExtra holds the default value on creation for the "extra" field.
 	DefaultExtra func() map[string]interface{}
+	// UpstreamProviderValidator is a validator for the "upstream_provider" field. It is called by the builders before save.
+	UpstreamProviderValidator func(string) error
 	// DefaultConcurrency holds the default value on creation for the "concurrency" field.
 	DefaultConcurrency int
 	// DefaultPriority holds the default value on creation for the "priority" field.
@@ -241,6 +246,11 @@ func ByPlatform(opts ...sql.OrderTermOption) OrderOption {
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByUpstreamProvider orders the results by the upstream_provider field.
+func ByUpstreamProvider(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpstreamProvider, opts...).ToFunc()
 }
 
 // ByProxyID orders the results by the proxy_id field.

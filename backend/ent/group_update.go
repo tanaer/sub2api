@@ -598,6 +598,18 @@ func (_u *GroupUpdate) SetNillableModelRoutingEnabled(v *bool) *GroupUpdate {
 	return _u
 }
 
+// SetModelAliases sets the "model_aliases" field.
+func (_u *GroupUpdate) SetModelAliases(v map[string]string) *GroupUpdate {
+	_u.mutation.SetModelAliases(v)
+	return _u
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (_u *GroupUpdate) ClearModelAliases() *GroupUpdate {
+	_u.mutation.ClearModelAliases()
+	return _u
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_u *GroupUpdate) SetMcpXMLInject(v bool) *GroupUpdate {
 	_u.mutation.SetMcpXMLInject(v)
@@ -1179,6 +1191,12 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ModelRoutingEnabled(); ok {
 		_spec.SetField(group.FieldModelRoutingEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ModelAliases(); ok {
+		_spec.SetField(group.FieldModelAliases, field.TypeJSON, value)
+	}
+	if _u.mutation.ModelAliasesCleared() {
+		_spec.ClearField(group.FieldModelAliases, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)
@@ -2086,6 +2104,18 @@ func (_u *GroupUpdateOne) SetNillableModelRoutingEnabled(v *bool) *GroupUpdateOn
 	return _u
 }
 
+// SetModelAliases sets the "model_aliases" field.
+func (_u *GroupUpdateOne) SetModelAliases(v map[string]string) *GroupUpdateOne {
+	_u.mutation.SetModelAliases(v)
+	return _u
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (_u *GroupUpdateOne) ClearModelAliases() *GroupUpdateOne {
+	_u.mutation.ClearModelAliases()
+	return _u
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_u *GroupUpdateOne) SetMcpXMLInject(v bool) *GroupUpdateOne {
 	_u.mutation.SetMcpXMLInject(v)
@@ -2697,6 +2727,12 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.ModelRoutingEnabled(); ok {
 		_spec.SetField(group.FieldModelRoutingEnabled, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ModelAliases(); ok {
+		_spec.SetField(group.FieldModelAliases, field.TypeJSON, value)
+	}
+	if _u.mutation.ModelAliasesCleared() {
+		_spec.ClearField(group.FieldModelAliases, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)

@@ -26,6 +26,23 @@
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
 
+      <!-- 上游供应商 -->
+      <div>
+        <label class="input-label">{{ t('admin.accounts.upstreamProvider') }}</label>
+        <select v-model="form.upstream_provider" class="input">
+          <option value="">{{ t('admin.accounts.upstreamProviderNone') }}</option>
+          <option value="zhipu">智谱 (Zhipu/GLM)</option>
+          <option value="kimi">Kimi (Moonshot)</option>
+          <option value="xunfei">讯飞 (Xunfei/iFlytek)</option>
+          <option value="minimax">MiniMax</option>
+          <option value="volcengine">火山引擎 (Volcengine/Doubao)</option>
+          <option value="aliyun">阿里云 (Aliyun/DashScope)</option>
+          <option value="baidu">百度 (Baidu/Wenxin)</option>
+          <option value="native">原生 (Native Anthropic/OpenAI)</option>
+        </select>
+        <p class="input-hint">{{ t('admin.accounts.upstreamProviderHint') }}</p>
+      </div>
+
       <!-- API Key fields (only for apikey type) -->
       <div v-if="account.type === 'apikey'" class="space-y-4">
         <div>
@@ -619,7 +636,7 @@
       </div>
 
       <div
-        v-if="supportsModelFallbackConfig"
+        v-if="supportsModelFallbackConfig && account.platform === 'openai' && account.type === 'oauth'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.accounts.modelFallbackChain') }}</label>
@@ -2156,6 +2173,7 @@ const mixedChannelWarningMessageText = computed(() => {
 const form = reactive({
   name: '',
   notes: '',
+  upstream_provider: '',
   proxy_id: null as number | null,
   concurrency: 1,
   load_factor: null as number | null,
@@ -2210,6 +2228,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   mixedChannelWarningAction.value = null
   form.name = newAccount.name
   form.notes = newAccount.notes || ''
+  form.upstream_provider = newAccount.upstream_provider || ''
   form.proxy_id = newAccount.proxy_id
   form.concurrency = newAccount.concurrency
   form.load_factor = newAccount.load_factor ?? null
@@ -2486,7 +2505,7 @@ watch(
   { immediate: true }
 )
 
-const loadTLSProfiles = async () => {
+async function loadTLSProfiles() {
   try {
     const profiles = await adminAPI.tlsFingerprintProfiles.list()
     tlsFingerprintProfiles.value = profiles.map(p => ({ id: p.id, name: p.name }))

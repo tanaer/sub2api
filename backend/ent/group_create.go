@@ -404,6 +404,12 @@ func (_c *GroupCreate) SetNillableModelRoutingEnabled(v *bool) *GroupCreate {
 	return _c
 }
 
+// SetModelAliases sets the "model_aliases" field.
+func (_c *GroupCreate) SetModelAliases(v map[string]string) *GroupCreate {
+	_c.mutation.SetModelAliases(v)
+	return _c
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_c *GroupCreate) SetMcpXMLInject(v bool) *GroupCreate {
 	_c.mutation.SetMcpXMLInject(v)
@@ -924,6 +930,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelRoutingEnabled(); ok {
 		_spec.SetField(group.FieldModelRoutingEnabled, field.TypeBool, value)
 		_node.ModelRoutingEnabled = value
+	}
+	if value, ok := _c.mutation.ModelAliases(); ok {
+		_spec.SetField(group.FieldModelAliases, field.TypeJSON, value)
+		_node.ModelAliases = value
 	}
 	if value, ok := _c.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)
@@ -1616,6 +1626,24 @@ func (u *GroupUpsert) SetModelRoutingEnabled(v bool) *GroupUpsert {
 // UpdateModelRoutingEnabled sets the "model_routing_enabled" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateModelRoutingEnabled() *GroupUpsert {
 	u.SetExcluded(group.FieldModelRoutingEnabled)
+	return u
+}
+
+// SetModelAliases sets the "model_aliases" field.
+func (u *GroupUpsert) SetModelAliases(v map[string]string) *GroupUpsert {
+	u.Set(group.FieldModelAliases, v)
+	return u
+}
+
+// UpdateModelAliases sets the "model_aliases" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateModelAliases() *GroupUpsert {
+	u.SetExcluded(group.FieldModelAliases)
+	return u
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (u *GroupUpsert) ClearModelAliases() *GroupUpsert {
+	u.SetNull(group.FieldModelAliases)
 	return u
 }
 
@@ -2346,6 +2374,27 @@ func (u *GroupUpsertOne) SetModelRoutingEnabled(v bool) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateModelRoutingEnabled() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateModelRoutingEnabled()
+	})
+}
+
+// SetModelAliases sets the "model_aliases" field.
+func (u *GroupUpsertOne) SetModelAliases(v map[string]string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetModelAliases(v)
+	})
+}
+
+// UpdateModelAliases sets the "model_aliases" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateModelAliases() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateModelAliases()
+	})
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (u *GroupUpsertOne) ClearModelAliases() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearModelAliases()
 	})
 }
 
@@ -3257,6 +3306,27 @@ func (u *GroupUpsertBulk) SetModelRoutingEnabled(v bool) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateModelRoutingEnabled() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateModelRoutingEnabled()
+	})
+}
+
+// SetModelAliases sets the "model_aliases" field.
+func (u *GroupUpsertBulk) SetModelAliases(v map[string]string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetModelAliases(v)
+	})
+}
+
+// UpdateModelAliases sets the "model_aliases" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateModelAliases() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateModelAliases()
+	})
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (u *GroupUpsertBulk) ClearModelAliases() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearModelAliases()
 	})
 }
 

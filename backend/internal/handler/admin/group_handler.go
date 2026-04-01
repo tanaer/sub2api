@@ -106,7 +106,9 @@ type CreateGroupRequest struct {
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
-	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
+	// 模型别名映射（支持通配符，如 "claude-opus-*" -> "glm-4-plus"）
+	ModelAliases map[string]string `json:"model_aliases"`
+	MCPXMLInject *bool             `json:"mcp_xml_inject"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string `json:"supported_model_scopes"`
 	// Sora 存储配额
@@ -147,7 +149,9 @@ type UpdateGroupRequest struct {
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled *bool              `json:"model_routing_enabled"`
-	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
+	// 模型别名映射（支持通配符，如 "claude-opus-*" -> "glm-4-plus"）
+	ModelAliases map[string]string `json:"model_aliases"`
+	MCPXMLInject *bool             `json:"mcp_xml_inject"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
 	// Sora 存储配额
@@ -270,6 +274,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
 		ModelRouting:                    req.ModelRouting,
 		ModelRoutingEnabled:             req.ModelRoutingEnabled,
+		ModelAliases:                    req.ModelAliases,
 		MCPXMLInject:                    req.MCPXMLInject,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		SoraStorageQuotaBytes:           req.SoraStorageQuotaBytes,
@@ -326,6 +331,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
 		ModelRouting:                    req.ModelRouting,
 		ModelRoutingEnabled:             req.ModelRoutingEnabled,
+		ModelAliases:                    req.ModelAliases,
 		MCPXMLInject:                    req.MCPXMLInject,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		SoraStorageQuotaBytes:           req.SoraStorageQuotaBytes,

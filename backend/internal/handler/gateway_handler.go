@@ -27,10 +27,20 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 )
 
 const gatewayCompatibilityMetricsLogInterval = 1024
+
+const (
+	gatewayRequestedModelContextKey = "gateway_requested_model"
+	// gatewayUserOriginalModelKey stores the user's original model name before alias resolution.
+	// Used by service layer to replace model names in responses back to what the user requested.
+	gatewayUserOriginalModelKey = "gateway_user_original_model"
+	glmSynthetic1302Message     = "您的账户已达到速率限制，请您控制请求频率"
+)
 
 var gatewayCompatibilityMetricsLogCounter atomic.Uint64
 
@@ -157,6 +167,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	reqModel := parsedReq.Model
 	reqStream := parsedReq.Stream
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
+	c.Set(gatewayRequestedModelContextKey, reqModel)
 
 	// 设置 max_tokens=1 + haiku 探测请求标识到 context 中
 	// 必须在 SetClaudeCodeClientContext 之前设置，因为 ClaudeCodeValidator 需要读取此标识进行绕过判断
@@ -176,6 +187,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 	// 在请求上下文中记录 thinking 状态，供 Antigravity 最终模型 key 推导/模型维度限流使用
 	c.Request = c.Request.WithContext(service.WithThinkingEnabled(c.Request.Context(), parsedReq.ThinkingEnabled, h.metadataBridgeEnabled()))
+	c.Request = c.Request.WithContext(service.WithGLMRequestTraits(c.Request.Context(), service.GLMRequestTraitsFromParsedRequest(parsedReq)))
 
 	setOpsRequestContext(c, reqModel, reqStream, body)
 	setOpsEndpointContext(c, "", int16(service.RequestTypeFromLegacy(reqStream, false)))
@@ -243,6 +255,20 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		status, code, message := billingErrorDetails(err)
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
 		return
+	}
+
+	// 模型别名解析：将用户请求的模型名映射到实际上游模型名
+	if apiKey.Group != nil {
+		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			reqLog.Info("gateway.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
+			c.Set(gatewayUserOriginalModelKey, reqModel)
+			reqModel = resolved
+			parsedReq.Model = resolved
+			if updated, err := sjson.SetBytes(parsedReq.Body, "model", resolved); err == nil {
+				parsedReq.Body = updated
+			}
+			c.Set(gatewayRequestedModelContextKey, resolved)
+		}
 	}
 
 	// 计算粘性会话hash
@@ -517,7 +543,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), currentAPIKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, parsedReq.MetadataUserID)
 			if err != nil {
 				if len(fs.FailedAccountIDs) == 0 {
-					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available accounts: "+err.Error(), streamStarted)
+					h.handleAnthropicNoAvailableAccounts(c, reqModel, "No available accounts: "+err.Error(), streamStarted)
 					return
 				}
 				action := fs.HandleSelectionExhausted(c.Request.Context())
@@ -560,7 +586,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 			accountReleaseFunc := selection.ReleaseFunc
 			if !selection.Acquired {
 				if selection.WaitPlan == nil {
-					h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available accounts", streamStarted)
+					h.handleAnthropicNoAvailableAccounts(c, reqModel, "No available accounts", streamStarted)
 					return
 				}
 				accountWaitCounted := false
@@ -1229,9 +1255,53 @@ func (h *GatewayHandler) handleConcurrencyError(c *gin.Context, err error, slotT
 		fmt.Sprintf("Concurrency limit exceeded for %s, please retry later", slotType), streamStarted)
 }
 
+func getGatewayRequestedModel(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	v, ok := c.Get(gatewayRequestedModelContextKey)
+	if !ok {
+		return ""
+	}
+	model, _ := v.(string)
+	return strings.TrimSpace(model)
+}
+
+func glm1302Message(responseBody []byte) string {
+	msg := strings.TrimSpace(service.ExtractUpstreamErrorMessage(responseBody))
+	if msg != "" {
+		return msg
+	}
+	return glmSynthetic1302Message
+}
+
+func (h *GatewayHandler) handleAnthropicNoAvailableAccounts(c *gin.Context, requestedModel, message string, streamStarted bool) {
+	if service.IsGLMModel(requestedModel) {
+		h.handleStreamingAwareError(c, http.StatusTooManyRequests, "1302", glmSynthetic1302Message, streamStarted)
+		return
+	}
+	h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", message, streamStarted)
+}
+
+func (h *GatewayHandler) tryHandleGLM1302Failover(c *gin.Context, statusCode int, responseBody []byte, streamStarted bool) bool {
+	if !service.IsGLMModel(getGatewayRequestedModel(c)) {
+		return false
+	}
+	if statusCode != http.StatusTooManyRequests && strings.TrimSpace(gjson.GetBytes(responseBody, "error.type").String()) != "1302" {
+		return false
+	}
+	h.handleStreamingAwareError(c, http.StatusTooManyRequests, "1302", glm1302Message(responseBody), streamStarted)
+	return true
+}
+
 func (h *GatewayHandler) handleFailoverExhausted(c *gin.Context, failoverErr *service.UpstreamFailoverError, platform string, streamStarted bool) {
 	statusCode := failoverErr.StatusCode
 	responseBody := failoverErr.ResponseBody
+
+	if h.tryHandleGLM1302Failover(c, statusCode, responseBody, streamStarted) {
+		service.SetOpsUpstreamError(c, statusCode, glm1302Message(responseBody), "")
+		return
+	}
 
 	// 先检查透传规则
 	if h.errorPassthroughService != nil && len(responseBody) > 0 {
@@ -1268,6 +1338,10 @@ func (h *GatewayHandler) handleFailoverExhausted(c *gin.Context, failoverErr *se
 
 // handleFailoverExhaustedSimple 简化版本，用于没有响应体的情况
 func (h *GatewayHandler) handleFailoverExhaustedSimple(c *gin.Context, statusCode int, streamStarted bool) {
+	if h.tryHandleGLM1302Failover(c, statusCode, nil, streamStarted) {
+		service.SetOpsUpstreamError(c, statusCode, glm1302Message(nil), "")
+		return
+	}
 	status, errType, errMsg := h.mapUpstreamError(statusCode, nil)
 	service.SetOpsUpstreamError(c, statusCode, errMsg, "")
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)

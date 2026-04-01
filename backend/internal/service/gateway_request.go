@@ -22,6 +22,10 @@ var (
 	patternTypeThinkingSpaced   = []byte(`"type": "thinking"`)
 	patternTypeRedactedThinking = []byte(`"type":"redacted_thinking"`)
 	patternTypeRedactedSpaced   = []byte(`"type": "redacted_thinking"`)
+	patternTypeToolResult       = []byte(`"type":"tool_result"`)
+	patternTypeToolResultSpaced = []byte(`"type": "tool_result"`)
+	patternTypeToolUseResult    = []byte(`"type":"tool_use_result"`)
+	patternTypeToolUseResultSp  = []byte(`"type": "tool_use_result"`)
 
 	patternThinkingField       = []byte(`"thinking":`)
 	patternThinkingFieldSpaced = []byte(`"thinking" :`)
@@ -74,10 +78,34 @@ type ParsedRequest struct {
 	OutputEffort    string          // output_config.effort（Claude API 的推理强度控制）
 	MaxTokens       int             // max_tokens 值（用于探测请求拦截）
 	SessionContext  *SessionContext // 可选：请求上下文区分因子（nil 时行为不变）
+	HasTools        bool            // 是否携带 top-level tools
+	HasToolResult   bool            // 是否包含 tool_result / tool_use_result 历史块
+	HasContextMgmt  bool            // 是否显式携带 context_management
 
 	// OnUpstreamAccepted 上游接受请求后立即调用（用于提前释放串行锁）
 	// 流式请求在收到 2xx 响应头后调用，避免持锁等流完成
 	OnUpstreamAccepted func()
+}
+
+type GLMRequestTraits struct {
+	HasTools       bool
+	HasToolResult  bool
+	HasContextMgmt bool
+}
+
+func IsGLMModel(model string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "glm")
+}
+
+func GLMRequestTraitsFromParsedRequest(parsed *ParsedRequest) GLMRequestTraits {
+	if parsed == nil {
+		return GLMRequestTraits{}
+	}
+	return GLMRequestTraits{
+		HasTools:       parsed.HasTools,
+		HasToolResult:  parsed.HasToolResult,
+		HasContextMgmt: parsed.HasContextMgmt,
+	}
 }
 
 // NormalizeSessionUserAgent reduces UA noise for sticky-session and digest hashing.
@@ -183,6 +211,13 @@ func ParseGatewayRequest(body []byte, protocol string) (*ParsedRequest, error) {
 			parsed.MaxTokens = int(f)
 		}
 	}
+
+	parsed.HasTools = gjson.Get(jsonStr, "tools.#").Int() > 0
+	parsed.HasContextMgmt = gjson.Get(jsonStr, "context_management").Exists()
+	parsed.HasToolResult = bytes.Contains(body, patternTypeToolResult) ||
+		bytes.Contains(body, patternTypeToolResultSpaced) ||
+		bytes.Contains(body, patternTypeToolUseResult) ||
+		bytes.Contains(body, patternTypeToolUseResultSp)
 
 	// --- system/messages 提取 ---
 	// 避免把整个 body Unmarshal 到 map（会产生大量 map/接口分配）。
@@ -848,6 +883,41 @@ func FilterSignatureSensitiveBlocksForRetry(body []byte) []byte {
 		return body
 	}
 	return newBody
+}
+
+// StripMiniMaxAnthropicIgnoredFieldsForRetry 去掉 MiniMax Anthropic 兼容接口明确忽略/不支持的顶层字段。
+// 仅用于 400 invalid params 后的兼容重试，避免首发请求过度改写。
+func StripMiniMaxAnthropicIgnoredFieldsForRetry(body []byte) []byte {
+	if !gjson.ValidBytes(body) {
+		return body
+	}
+
+	paths := []string{
+		"context_management",
+		"container",
+		"mcp_servers",
+		"service_tier",
+		"stop_sequences",
+		"top_k",
+	}
+
+	out := body
+	changed := false
+	for _, path := range paths {
+		if !gjson.GetBytes(out, path).Exists() {
+			continue
+		}
+		next, err := sjson.DeleteBytes(out, path)
+		if err != nil {
+			continue
+		}
+		out = next
+		changed = true
+	}
+	if !changed {
+		return body
+	}
+	return out
 }
 
 // filterThinkingBlocksInternal removes invalid thinking blocks from request

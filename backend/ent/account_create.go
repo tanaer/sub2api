@@ -111,6 +111,20 @@ func (_c *AccountCreate) SetExtra(v map[string]interface{}) *AccountCreate {
 	return _c
 }
 
+// SetUpstreamProvider sets the "upstream_provider" field.
+func (_c *AccountCreate) SetUpstreamProvider(v string) *AccountCreate {
+	_c.mutation.SetUpstreamProvider(v)
+	return _c
+}
+
+// SetNillableUpstreamProvider sets the "upstream_provider" field if the given value is not nil.
+func (_c *AccountCreate) SetNillableUpstreamProvider(v *string) *AccountCreate {
+	if v != nil {
+		_c.SetUpstreamProvider(*v)
+	}
+	return _c
+}
+
 // SetProxyID sets the "proxy_id" field.
 func (_c *AccountCreate) SetProxyID(v int64) *AccountCreate {
 	_c.mutation.SetProxyID(v)
@@ -542,6 +556,11 @@ func (_c *AccountCreate) check() error {
 	if _, ok := _c.mutation.Extra(); !ok {
 		return &ValidationError{Name: "extra", err: errors.New(`ent: missing required field "Account.extra"`)}
 	}
+	if v, ok := _c.mutation.UpstreamProvider(); ok {
+		if err := account.UpstreamProviderValidator(v); err != nil {
+			return &ValidationError{Name: "upstream_provider", err: fmt.Errorf(`ent: validator failed for field "Account.upstream_provider": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.Concurrency(); !ok {
 		return &ValidationError{Name: "concurrency", err: errors.New(`ent: missing required field "Account.concurrency"`)}
 	}
@@ -632,6 +651,10 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Extra(); ok {
 		_spec.SetField(account.FieldExtra, field.TypeJSON, value)
 		_node.Extra = value
+	}
+	if value, ok := _c.mutation.UpstreamProvider(); ok {
+		_spec.SetField(account.FieldUpstreamProvider, field.TypeString, value)
+		_node.UpstreamProvider = &value
 	}
 	if value, ok := _c.mutation.Concurrency(); ok {
 		_spec.SetField(account.FieldConcurrency, field.TypeInt, value)
@@ -915,6 +938,24 @@ func (u *AccountUpsert) SetExtra(v map[string]interface{}) *AccountUpsert {
 // UpdateExtra sets the "extra" field to the value that was provided on create.
 func (u *AccountUpsert) UpdateExtra() *AccountUpsert {
 	u.SetExcluded(account.FieldExtra)
+	return u
+}
+
+// SetUpstreamProvider sets the "upstream_provider" field.
+func (u *AccountUpsert) SetUpstreamProvider(v string) *AccountUpsert {
+	u.Set(account.FieldUpstreamProvider, v)
+	return u
+}
+
+// UpdateUpstreamProvider sets the "upstream_provider" field to the value that was provided on create.
+func (u *AccountUpsert) UpdateUpstreamProvider() *AccountUpsert {
+	u.SetExcluded(account.FieldUpstreamProvider)
+	return u
+}
+
+// ClearUpstreamProvider clears the value of the "upstream_provider" field.
+func (u *AccountUpsert) ClearUpstreamProvider() *AccountUpsert {
+	u.SetNull(account.FieldUpstreamProvider)
 	return u
 }
 
@@ -1416,6 +1457,27 @@ func (u *AccountUpsertOne) SetExtra(v map[string]interface{}) *AccountUpsertOne 
 func (u *AccountUpsertOne) UpdateExtra() *AccountUpsertOne {
 	return u.Update(func(s *AccountUpsert) {
 		s.UpdateExtra()
+	})
+}
+
+// SetUpstreamProvider sets the "upstream_provider" field.
+func (u *AccountUpsertOne) SetUpstreamProvider(v string) *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetUpstreamProvider(v)
+	})
+}
+
+// UpdateUpstreamProvider sets the "upstream_provider" field to the value that was provided on create.
+func (u *AccountUpsertOne) UpdateUpstreamProvider() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateUpstreamProvider()
+	})
+}
+
+// ClearUpstreamProvider clears the value of the "upstream_provider" field.
+func (u *AccountUpsertOne) ClearUpstreamProvider() *AccountUpsertOne {
+	return u.Update(func(s *AccountUpsert) {
+		s.ClearUpstreamProvider()
 	})
 }
 
@@ -2138,6 +2200,27 @@ func (u *AccountUpsertBulk) SetExtra(v map[string]interface{}) *AccountUpsertBul
 func (u *AccountUpsertBulk) UpdateExtra() *AccountUpsertBulk {
 	return u.Update(func(s *AccountUpsert) {
 		s.UpdateExtra()
+	})
+}
+
+// SetUpstreamProvider sets the "upstream_provider" field.
+func (u *AccountUpsertBulk) SetUpstreamProvider(v string) *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.SetUpstreamProvider(v)
+	})
+}
+
+// UpdateUpstreamProvider sets the "upstream_provider" field to the value that was provided on create.
+func (u *AccountUpsertBulk) UpdateUpstreamProvider() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.UpdateUpstreamProvider()
+	})
+}
+
+// ClearUpstreamProvider clears the value of the "upstream_provider" field.
+func (u *AccountUpsertBulk) ClearUpstreamProvider() *AccountUpsertBulk {
+	return u.Update(func(s *AccountUpsert) {
+		s.ClearUpstreamProvider()
 	})
 }
 

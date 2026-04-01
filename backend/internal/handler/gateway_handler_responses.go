@@ -12,6 +12,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 )
 
@@ -75,6 +76,19 @@ func (h *GatewayHandler) Responses(c *gin.Context) {
 	}
 	reqModel := modelResult.String()
 	reqStream := gjson.GetBytes(body, "stream").Bool()
+
+	// 模型别名解析
+	if apiKey.Group != nil {
+		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			reqLog.Info("gateway.responses.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
+			c.Set(gatewayUserOriginalModelKey, reqModel)
+			reqModel = resolved
+			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
+				body = updated
+			}
+		}
+	}
+
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 
 	setOpsRequestContext(c, reqModel, reqStream, body)

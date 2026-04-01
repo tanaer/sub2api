@@ -138,6 +138,12 @@ func (Group) Fields() []ent.Field {
 			Default(false).
 			Comment("是否启用模型路由配置"),
 
+		// 模型别名映射（支持通配符，如 "claude-opus-*" -> "glm-4-plus"）
+		field.JSON("model_aliases", map[string]string{}).
+			Optional().
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
+			Comment("模型别名映射：请求模型模式 -> 目标模型名"),
+
 		// MCP XML 协议注入开关 (added by migration 042)
 		field.Bool("mcp_xml_inject").
 			Default(true).

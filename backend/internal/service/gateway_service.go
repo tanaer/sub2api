@@ -3573,6 +3573,11 @@ func summarizeSelectionFailureStats(stats selectionFailureStats) string {
 // isModelSupportedByAccountWithContext 根据账户平台检查模型支持（带 context）
 // 对于 Antigravity 平台，会先获取映射后的最终模型名（包括 thinking 后缀）再检查支持
 func (s *GatewayService) isModelSupportedByAccountWithContext(ctx context.Context, account *Account, requestedModel string) bool {
+	if IsGLMModel(requestedModel) {
+		if traits, ok := GLMRequestTraitsFromContext(ctx); ok && !account.SupportsGLMRequestTraits(traits) {
+			return false
+		}
+	}
 	if account.Platform == PlatformAntigravity {
 		if strings.TrimSpace(requestedModel) == "" {
 			return true
@@ -4273,6 +4278,16 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	reqStream := parsed.Stream
 	originalModel := reqModel
 
+	// 如果 handler 层做了模型别名解析，用用户原始模型名作为 originalModel
+	// 这样响应中的 model 字段会显示用户请求的原始模型名而非映射后的上游模型名
+	if c != nil {
+		if userOriginal, exists := c.Get("gateway_user_original_model"); exists {
+			if s, ok := userOriginal.(string); ok && s != "" {
+				originalModel = s
+			}
+		}
+	}
+
 	// === DEBUG: 打印客户端原始请求（headers + body 摘要）===
 	if c != nil {
 		s.debugLogGatewaySnapshot("CLIENT_ORIGINAL", c.Request.Header, body, map[string]string{
@@ -4423,6 +4438,88 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 			respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 			if readErr == nil {
 				_ = resp.Body.Close()
+
+				if account.IsMiniMaxAnthropicAPIKey() && IsGLMModel(originalModel) && isMiniMaxInvalidParamsError(respBody) {
+					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
+						Platform:           account.Platform,
+						AccountID:          account.ID,
+						AccountName:        account.Name,
+						UpstreamStatusCode: resp.StatusCode,
+						UpstreamRequestID:  resp.Header.Get("x-request-id"),
+						UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
+						Kind:               "minimax_invalid_params",
+						Message:            extractUpstreamErrorMessage(respBody),
+						Detail: func() string {
+							if s.cfg != nil && s.cfg.Gateway.LogUpstreamErrorBody {
+								return truncateString(string(respBody), s.cfg.Gateway.LogUpstreamErrorBodyMaxBytes)
+							}
+							return ""
+						}(),
+					})
+
+					stage1Body := StripMiniMaxAnthropicIgnoredFieldsForRetry(body)
+					stage1Changed := !bytes.Equal(stage1Body, body)
+					if stage1Changed && time.Since(retryStart) < maxRetryElapsed {
+						logger.LegacyPrintf("service.gateway", "Account %d: MiniMax invalid params detected, retrying after stripping ignored Anthropic fields", account.ID)
+						retryCtx, releaseRetryCtx := detachStreamUpstreamContext(ctx, reqStream)
+						retryReq, buildErr := s.buildUpstreamRequest(retryCtx, c, account, stage1Body, token, tokenType, reqModel, reqStream, shouldMimicClaudeCode)
+						releaseRetryCtx()
+						if buildErr == nil {
+							retryResp, retryErr := s.httpUpstream.DoWithTLS(retryReq, proxyURL, account.ID, account.Concurrency, tlsProfile)
+							if retryErr == nil {
+								if retryResp.StatusCode < 400 {
+									logger.LegacyPrintf("service.gateway", "Account %d: MiniMax ignored-field retry succeeded", account.ID)
+									resp = retryResp
+									break
+								}
+								retryRespBody, retryReadErr := io.ReadAll(io.LimitReader(retryResp.Body, 2<<20))
+								_ = retryResp.Body.Close()
+								if retryReadErr == nil {
+									respBody = retryRespBody
+									resp = &http.Response{
+										StatusCode: retryResp.StatusCode,
+										Header:     retryResp.Header.Clone(),
+										Body:       io.NopCloser(bytes.NewReader(retryRespBody)),
+									}
+								}
+							} else {
+								if retryResp != nil && retryResp.Body != nil {
+									_ = retryResp.Body.Close()
+								}
+								logger.LegacyPrintf("service.gateway", "Account %d: MiniMax ignored-field retry failed: %v", account.ID, retryErr)
+							}
+						} else {
+							logger.LegacyPrintf("service.gateway", "Account %d: MiniMax ignored-field retry build failed: %v", account.ID, buildErr)
+						}
+					}
+
+					if (parsed.HasToolResult || isMiniMaxToolHistoryCompatError(respBody)) && time.Since(retryStart) < maxRetryElapsed {
+						stage2Source := body
+						if stage1Changed {
+							stage2Source = stage1Body
+						}
+						filteredBody := FilterSignatureSensitiveBlocksForRetry(stage2Source)
+						if !bytes.Equal(filteredBody, stage2Source) {
+							logger.LegacyPrintf("service.gateway", "Account %d: MiniMax tool-history compatibility retry with downgraded tool blocks", account.ID)
+							retryCtx, releaseRetryCtx := detachStreamUpstreamContext(ctx, reqStream)
+							retryReq, buildErr := s.buildUpstreamRequest(retryCtx, c, account, filteredBody, token, tokenType, reqModel, reqStream, shouldMimicClaudeCode)
+							releaseRetryCtx()
+							if buildErr == nil {
+								retryResp, retryErr := s.httpUpstream.DoWithTLS(retryReq, proxyURL, account.ID, account.Concurrency, tlsProfile)
+								if retryErr == nil {
+									resp = retryResp
+									break
+								}
+								if retryResp != nil && retryResp.Body != nil {
+									_ = retryResp.Body.Close()
+								}
+								logger.LegacyPrintf("service.gateway", "Account %d: MiniMax tool-history retry failed: %v", account.ID, retryErr)
+							} else {
+								logger.LegacyPrintf("service.gateway", "Account %d: MiniMax tool-history retry build failed: %v", account.ID, buildErr)
+							}
+						}
+					}
+				}
 
 				if s.shouldRectifySignatureError(ctx, account, respBody) {
 					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -4763,7 +4860,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 			_ = resp.Body.Close()
 			resp.Body = io.NopCloser(bytes.NewReader(respBody))
 
-			if s.shouldFailoverOn400(respBody) {
+			if s.shouldFailoverOn400(respBody) || shouldFailoverMiniMaxInvalidParams(account, originalModel, respBody) {
 				upstreamMsg := strings.TrimSpace(extractUpstreamErrorMessage(respBody))
 				upstreamMsg = sanitizeUpstreamErrorMessage(upstreamMsg)
 				upstreamDetail := ""
@@ -6505,6 +6602,9 @@ func truncateForLog(b []byte, maxBytes int) string {
 // 根据账号类型检查对应的开关和匹配模式。
 func (s *GatewayService) shouldRectifySignatureError(ctx context.Context, account *Account, respBody []byte) bool {
 	if account.Type == AccountTypeAPIKey {
+		if s.settingService == nil {
+			return false
+		}
 		// API Key 账号：独立开关，一次读取配置
 		settings, err := s.settingService.GetRectifierSettings(ctx)
 		if err != nil || !settings.Enabled || !settings.APIKeySignatureEnabled {
@@ -6527,6 +6627,9 @@ func (s *GatewayService) isSignatureErrorPattern(ctx context.Context, account *A
 		return true
 	}
 	if account.Type == AccountTypeAPIKey {
+		if s.settingService == nil {
+			return false
+		}
 		settings, err := s.settingService.GetRectifierSettings(ctx)
 		if err != nil {
 			return false
@@ -6591,7 +6694,34 @@ func (s *GatewayService) isThinkingBlockSignatureError(respBody []byte) bool {
 		return true
 	}
 
+	// 检测 thinking 模式下 reasoning_content 缺失错误
+	// 某些非原生 Anthropic 上游（kimi 等）在 thinking 开启时要求 assistant tool_call 消息包含 reasoning_content
+	// 例如: "thinking is enabled but reasoning_content is missing in assistant tool call message at index 456"
+	if strings.Contains(msg, "reasoning_content") && strings.Contains(msg, "missing") {
+		logger.LegacyPrintf("service.gateway", "[SignatureCheck] Detected reasoning_content missing error")
+		return true
+	}
+
 	return false
+}
+
+func isMiniMaxInvalidParamsError(respBody []byte) bool {
+	msg := strings.ToLower(strings.TrimSpace(extractUpstreamErrorMessage(respBody)))
+	return strings.Contains(msg, "invalid params")
+}
+
+func isMiniMaxToolHistoryCompatError(respBody []byte) bool {
+	msg := strings.ToLower(strings.TrimSpace(extractUpstreamErrorMessage(respBody)))
+	return strings.Contains(msg, "tool_result") ||
+		strings.Contains(msg, "tool id") ||
+		strings.Contains(msg, "tool_use_id not found")
+}
+
+func shouldFailoverMiniMaxInvalidParams(account *Account, requestedModel string, respBody []byte) bool {
+	return account != nil &&
+		account.IsMiniMaxAnthropicAPIKey() &&
+		IsGLMModel(requestedModel) &&
+		isMiniMaxInvalidParamsError(respBody)
 }
 
 func (s *GatewayService) shouldFailoverOn400(respBody []byte) bool {

@@ -16,12 +16,13 @@ import (
 )
 
 type Account struct {
-	ID          int64
-	Name        string
-	Notes       *string
-	Platform    string
-	Type        string
-	Credentials map[string]any
+	ID               int64
+	Name             string
+	Notes            *string
+	Platform         string
+	Type             string
+	UpstreamProvider string
+	Credentials      map[string]any
 	Extra       map[string]any
 	ProxyID     *int64
 	Concurrency int
@@ -713,6 +714,57 @@ func (a *Account) GetExtraString(key string) string {
 		}
 	}
 	return ""
+}
+
+type AccountGLMCapabilities struct {
+	ToolHistory       bool
+	ContextManagement bool
+}
+
+func (a *Account) IsMiniMaxAnthropicAPIKey() bool {
+	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey {
+		return false
+	}
+	baseURL := strings.ToLower(strings.TrimSpace(a.GetBaseURL()))
+	return strings.Contains(baseURL, "minimaxi.com")
+}
+
+func (a *Account) ResolveGLMCapabilities() AccountGLMCapabilities {
+	caps := AccountGLMCapabilities{
+		ToolHistory:       true,
+		ContextManagement: true,
+	}
+	if a == nil {
+		return caps
+	}
+
+	// MiniMax Anthropic 兼容接口对 GLM 的工具续轮历史要求更严格，默认保守绕开；
+	// context_management 在其兼容层会被忽略，默认不把它当成可靠能力。
+	if a.IsMiniMaxAnthropicAPIKey() {
+		caps.ToolHistory = false
+		caps.ContextManagement = false
+	}
+
+	rawCapabilities, _ := a.Extra["glm_capabilities"].(map[string]any)
+	if enabled, ok := rawCapabilities["tool_history"].(bool); ok {
+		caps.ToolHistory = enabled
+	}
+	if enabled, ok := rawCapabilities["context_management"].(bool); ok {
+		caps.ContextManagement = enabled
+	}
+
+	return caps
+}
+
+func (a *Account) SupportsGLMRequestTraits(traits GLMRequestTraits) bool {
+	caps := a.ResolveGLMCapabilities()
+	if traits.HasToolResult && !caps.ToolHistory {
+		return false
+	}
+	if traits.HasContextMgmt && !caps.ContextManagement {
+		return false
+	}
+	return true
 }
 
 func (a *Account) GetClaudeUserID() string {

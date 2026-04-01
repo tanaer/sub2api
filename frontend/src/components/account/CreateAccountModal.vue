@@ -67,6 +67,23 @@
         <p class="input-hint">{{ t('admin.accounts.notesHint') }}</p>
       </div>
 
+      <!-- 上游供应商 -->
+      <div>
+        <label class="input-label">{{ t('admin.accounts.upstreamProvider') }}</label>
+        <select v-model="form.upstream_provider" class="input">
+          <option value="">{{ t('admin.accounts.upstreamProviderNone') }}</option>
+          <option value="zhipu">智谱 (Zhipu/GLM)</option>
+          <option value="kimi">Kimi (Moonshot)</option>
+          <option value="xunfei">讯飞 (Xunfei/iFlytek)</option>
+          <option value="minimax">MiniMax</option>
+          <option value="volcengine">火山引擎 (Volcengine/Doubao)</option>
+          <option value="aliyun">阿里云 (Aliyun/DashScope)</option>
+          <option value="baidu">百度 (Baidu/Wenxin)</option>
+          <option value="native">原生 (Native Anthropic/OpenAI)</option>
+        </select>
+        <p class="input-hint">{{ t('admin.accounts.upstreamProviderHint') }}</p>
+      </div>
+
       <!-- Platform Selection - Segmented Control Style -->
       <div>
         <label class="input-label">{{ t('admin.accounts.platform') }}</label>
@@ -3242,6 +3259,7 @@ const tempUnschedPresets = computed(() => [
 const form = reactive({
   name: '',
   notes: '',
+  upstream_provider: '',
   platform: 'anthropic' as AccountPlatform,
   type: 'oauth' as AccountType, // Will be 'oauth', 'setup-token', or 'apikey'
   credentials: {} as Record<string, unknown>,

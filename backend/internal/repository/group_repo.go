@@ -71,6 +71,11 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		builder = builder.SetModelRouting(groupIn.ModelRouting)
 	}
 
+	// 设置模型别名映射
+	if groupIn.ModelAliases != nil {
+		builder = builder.SetModelAliases(groupIn.ModelAliases)
+	}
+
 	// 设置支持的模型系列（始终设置，空数组表示不限制）
 	builder = builder.SetSupportedModelScopes(groupIn.SupportedModelScopes)
 
@@ -188,6 +193,13 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		builder = builder.SetModelRouting(groupIn.ModelRouting)
 	} else {
 		builder = builder.ClearModelRouting()
+	}
+
+	// 处理 ModelAliases：nil 时清除，否则设置
+	if groupIn.ModelAliases != nil {
+		builder = builder.SetModelAliases(groupIn.ModelAliases)
+	} else {
+		builder = builder.ClearModelAliases()
 	}
 
 	// 处理 SupportedModelScopes（始终设置，空数组表示不限制）

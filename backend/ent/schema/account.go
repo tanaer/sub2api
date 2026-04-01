@@ -86,6 +86,14 @@ func (Account) Fields() []ent.Field {
 			Default(func() map[string]any { return map[string]any{} }).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 
+		// upstream_provider: 上游供应商标识（如 zhipu, kimi, xunfei, minimax, volcengine, aliyun 等）
+		// 用于针对不同上游做差异化的错误处理和请求适配
+		field.String("upstream_provider").
+			MaxLen(50).
+			Optional().
+			Nillable().
+			Comment("上游供应商标识，用于差异化处理"),
+
 		// proxy_id: 关联的代理配置 ID（可选）
 		// 用于需要通过特定代理访问 API 的场景
 		field.Int64("proxy_id").

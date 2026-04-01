@@ -14,6 +14,7 @@ var requestMetadataKey = requestMetadataContextKey{}
 type RequestMetadata struct {
 	IsMaxTokensOneHaikuRequest *bool
 	ThinkingEnabled            *bool
+	GLMRequestTraits           *GLMRequestTraits
 	PrefetchedStickyAccountID  *int64
 	PrefetchedStickyGroupID    *int64
 	SingleAccountRetry         *bool
@@ -86,6 +87,13 @@ func WithThinkingEnabled(ctx context.Context, value bool, bridgeOldKeys bool) co
 	})
 }
 
+func WithGLMRequestTraits(ctx context.Context, traits GLMRequestTraits) context.Context {
+	return updateRequestMetadata(ctx, false, func(md *RequestMetadata) {
+		v := traits
+		md.GLMRequestTraits = &v
+	}, nil)
+}
+
 func WithPrefetchedStickySession(ctx context.Context, accountID, groupID int64, bridgeOldKeys bool) context.Context {
 	return updateRequestMetadata(ctx, bridgeOldKeys, func(md *RequestMetadata) {
 		account := accountID
@@ -142,6 +150,13 @@ func ThinkingEnabledFromContext(ctx context.Context) (bool, bool) {
 		return value, true
 	}
 	return false, false
+}
+
+func GLMRequestTraitsFromContext(ctx context.Context) (GLMRequestTraits, bool) {
+	if md := metadataFromContext(ctx); md != nil && md.GLMRequestTraits != nil {
+		return *md.GLMRequestTraits, true
+	}
+	return GLMRequestTraits{}, false
 }
 
 func PrefetchedStickyGroupIDFromContext(ctx context.Context) (int64, bool) {

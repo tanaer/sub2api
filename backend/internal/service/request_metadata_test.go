@@ -12,6 +12,7 @@ func TestRequestMetadataWriteAndRead_NoBridge(t *testing.T) {
 	ctx := context.Background()
 	ctx = WithIsMaxTokensOneHaikuRequest(ctx, true, false)
 	ctx = WithThinkingEnabled(ctx, true, false)
+	ctx = WithGLMRequestTraits(ctx, GLMRequestTraits{HasTools: true, HasToolResult: true, HasContextMgmt: true})
 	ctx = WithPrefetchedStickySession(ctx, 123, 456, false)
 	ctx = WithSingleAccountRetry(ctx, true, false)
 	ctx = WithAccountSwitchCount(ctx, 2, false)
@@ -23,6 +24,12 @@ func TestRequestMetadataWriteAndRead_NoBridge(t *testing.T) {
 	thinking, ok := ThinkingEnabledFromContext(ctx)
 	require.True(t, ok)
 	require.True(t, thinking)
+
+	glmTraits, ok := GLMRequestTraitsFromContext(ctx)
+	require.True(t, ok)
+	require.True(t, glmTraits.HasTools)
+	require.True(t, glmTraits.HasToolResult)
+	require.True(t, glmTraits.HasContextMgmt)
 
 	accountID, ok := PrefetchedStickyAccountIDFromContext(ctx)
 	require.True(t, ok)
@@ -116,4 +123,10 @@ func TestRequestMetadataRead_PreferMetadataOverLegacy(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, thinking)
 	require.Equal(t, false, ctx.Value(ctxkey.ThinkingEnabled))
+}
+
+func TestRequestMetadataRead_GLMTraitsMissing(t *testing.T) {
+	traits, ok := GLMRequestTraitsFromContext(context.Background())
+	require.False(t, ok)
+	require.Equal(t, GLMRequestTraits{}, traits)
 }

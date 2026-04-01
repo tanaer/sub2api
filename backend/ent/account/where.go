@@ -90,6 +90,11 @@ func Type(v string) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldType, v))
 }
 
+// UpstreamProvider applies equality check predicate on the "upstream_provider" field. It's identical to UpstreamProviderEQ.
+func UpstreamProvider(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldUpstreamProvider, v))
+}
+
 // ProxyID applies equality check predicate on the "proxy_id" field. It's identical to ProxyIDEQ.
 func ProxyID(v int64) predicate.Account {
 	return predicate.Account(sql.FieldEQ(FieldProxyID, v))
@@ -583,6 +588,81 @@ func TypeEqualFold(v string) predicate.Account {
 // TypeContainsFold applies the ContainsFold predicate on the "type" field.
 func TypeContainsFold(v string) predicate.Account {
 	return predicate.Account(sql.FieldContainsFold(FieldType, v))
+}
+
+// UpstreamProviderEQ applies the EQ predicate on the "upstream_provider" field.
+func UpstreamProviderEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldEQ(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderNEQ applies the NEQ predicate on the "upstream_provider" field.
+func UpstreamProviderNEQ(v string) predicate.Account {
+	return predicate.Account(sql.FieldNEQ(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderIn applies the In predicate on the "upstream_provider" field.
+func UpstreamProviderIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldIn(FieldUpstreamProvider, vs...))
+}
+
+// UpstreamProviderNotIn applies the NotIn predicate on the "upstream_provider" field.
+func UpstreamProviderNotIn(vs ...string) predicate.Account {
+	return predicate.Account(sql.FieldNotIn(FieldUpstreamProvider, vs...))
+}
+
+// UpstreamProviderGT applies the GT predicate on the "upstream_provider" field.
+func UpstreamProviderGT(v string) predicate.Account {
+	return predicate.Account(sql.FieldGT(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderGTE applies the GTE predicate on the "upstream_provider" field.
+func UpstreamProviderGTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldGTE(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderLT applies the LT predicate on the "upstream_provider" field.
+func UpstreamProviderLT(v string) predicate.Account {
+	return predicate.Account(sql.FieldLT(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderLTE applies the LTE predicate on the "upstream_provider" field.
+func UpstreamProviderLTE(v string) predicate.Account {
+	return predicate.Account(sql.FieldLTE(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderContains applies the Contains predicate on the "upstream_provider" field.
+func UpstreamProviderContains(v string) predicate.Account {
+	return predicate.Account(sql.FieldContains(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderHasPrefix applies the HasPrefix predicate on the "upstream_provider" field.
+func UpstreamProviderHasPrefix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasPrefix(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderHasSuffix applies the HasSuffix predicate on the "upstream_provider" field.
+func UpstreamProviderHasSuffix(v string) predicate.Account {
+	return predicate.Account(sql.FieldHasSuffix(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderIsNil applies the IsNil predicate on the "upstream_provider" field.
+func UpstreamProviderIsNil() predicate.Account {
+	return predicate.Account(sql.FieldIsNull(FieldUpstreamProvider))
+}
+
+// UpstreamProviderNotNil applies the NotNil predicate on the "upstream_provider" field.
+func UpstreamProviderNotNil() predicate.Account {
+	return predicate.Account(sql.FieldNotNull(FieldUpstreamProvider))
+}
+
+// UpstreamProviderEqualFold applies the EqualFold predicate on the "upstream_provider" field.
+func UpstreamProviderEqualFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldEqualFold(FieldUpstreamProvider, v))
+}
+
+// UpstreamProviderContainsFold applies the ContainsFold predicate on the "upstream_provider" field.
+func UpstreamProviderContainsFold(v string) predicate.Account {
+	return predicate.Account(sql.FieldContainsFold(FieldUpstreamProvider, v))
 }
 
 // ProxyIDEQ applies the EQ predicate on the "proxy_id" field.

@@ -48,6 +48,10 @@ type Group struct {
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled bool
 
+	// 模型别名映射（支持 * 通配符）
+	// key: 请求模型模式（如 "claude-opus-*"），value: 目标模型名（如 "glm-4-plus"）
+	ModelAliases map[string]string
+
 	// MCP XML 协议注入开关（仅 antigravity 平台使用）
 	MCPXMLInject bool
 
@@ -140,6 +144,35 @@ func IsGroupContextValid(group *Group) bool {
 		return false
 	}
 	return true
+}
+
+// ResolveModelAlias 根据模型别名映射将请求模型转换为目标模型。
+// 匹配规则：精确匹配优先，通配符匹配次之（最长前缀优先）。
+// 如果没有匹配规则，返回原始模型名。
+func (g *Group) ResolveModelAlias(requestedModel string) string {
+	if len(g.ModelAliases) == 0 || requestedModel == "" {
+		return requestedModel
+	}
+
+	// 1. 精确匹配优先
+	if target, ok := g.ModelAliases[requestedModel]; ok {
+		return target
+	}
+
+	// 2. 通配符匹配（最长前缀优先）
+	bestPattern := ""
+	bestTarget := ""
+	for pattern, target := range g.ModelAliases {
+		if matchModelPattern(pattern, requestedModel) && len(pattern) > len(bestPattern) {
+			bestPattern = pattern
+			bestTarget = target
+		}
+	}
+	if bestTarget != "" {
+		return bestTarget
+	}
+
+	return requestedModel
 }
 
 // GetRoutingAccountIDs 根据请求模型获取路由账号 ID 列表

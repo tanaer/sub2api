@@ -1014,6 +1014,39 @@
           </button>
         </div>
 
+        <!-- 模型别名映射 -->
+        <div class="border-t pt-4 mt-4">
+          <div class="mb-1.5 flex items-center gap-1">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.groups.modelAliases.title') }}
+            </label>
+            <div class="group relative inline-flex">
+              <Icon name="questionCircle" size="sm" :stroke-width="2" class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400" />
+              <div class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+                <div class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800">
+                  <p class="text-xs leading-relaxed text-gray-300">{{ t('admin.groups.modelAliases.tooltip') }}</p>
+                  <div class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">{{ t('admin.groups.modelAliases.hint') }}</p>
+          <div class="space-y-2">
+            <div v-for="(rule, index) in createModelAliasRules" :key="index" class="flex items-center gap-2">
+              <input v-model="rule.pattern" type="text" class="input text-sm flex-1" :placeholder="t('admin.groups.modelAliases.patternPlaceholder')" />
+              <span class="text-gray-400 text-sm">→</span>
+              <input v-model="rule.target" type="text" class="input text-sm flex-1" :placeholder="t('admin.groups.modelAliases.targetPlaceholder')" />
+              <button type="button" @click="removeCreateAliasRule(index)" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors" :title="t('admin.groups.modelAliases.removeRule')">
+                <Icon name="trash" size="sm" />
+              </button>
+            </div>
+          </div>
+          <button type="button" @click="addCreateAliasRule" class="mt-2 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+            <Icon name="plus" size="sm" />
+            {{ t('admin.groups.modelAliases.addRule') }}
+          </button>
+        </div>
+
       </form>
 
       <template #footer>
@@ -1814,6 +1847,39 @@
           </button>
         </div>
 
+        <!-- 模型别名映射 -->
+        <div class="border-t pt-4 mt-4">
+          <div class="mb-1.5 flex items-center gap-1">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.groups.modelAliases.title') }}
+            </label>
+            <div class="group relative inline-flex">
+              <Icon name="questionCircle" size="sm" :stroke-width="2" class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400" />
+              <div class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+                <div class="rounded-lg bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800">
+                  <p class="text-xs leading-relaxed text-gray-300">{{ t('admin.groups.modelAliases.tooltip') }}</p>
+                  <div class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">{{ t('admin.groups.modelAliases.hint') }}</p>
+          <div class="space-y-2">
+            <div v-for="(rule, index) in editModelAliasRules" :key="index" class="flex items-center gap-2">
+              <input v-model="rule.pattern" type="text" class="input text-sm flex-1" :placeholder="t('admin.groups.modelAliases.patternPlaceholder')" />
+              <span class="text-gray-400 text-sm">→</span>
+              <input v-model="rule.target" type="text" class="input text-sm flex-1" :placeholder="t('admin.groups.modelAliases.targetPlaceholder')" />
+              <button type="button" @click="removeEditAliasRule(index)" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors" :title="t('admin.groups.modelAliases.removeRule')">
+                <Icon name="trash" size="sm" />
+              </button>
+            </div>
+          </div>
+          <button type="button" @click="addEditAliasRule" class="mt-2 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+            <Icon name="plus" size="sm" />
+            {{ t('admin.groups.modelAliases.addRule') }}
+          </button>
+        </div>
+
       </form>
 
       <template #footer>
@@ -2207,6 +2273,36 @@ const createForm = reactive({
   copy_accounts_from_group_ids: [] as number[]
 })
 
+// 模型别名映射规则
+interface ModelAliasRule {
+  pattern: string
+  target: string
+}
+const createModelAliasRules = ref<ModelAliasRule[]>([])
+const editModelAliasRules = ref<ModelAliasRule[]>([])
+
+const addCreateAliasRule = () => { createModelAliasRules.value.push({ pattern: '', target: '' }) }
+const removeCreateAliasRule = (index: number) => { createModelAliasRules.value.splice(index, 1) }
+const addEditAliasRule = () => { editModelAliasRules.value.push({ pattern: '', target: '' }) }
+const removeEditAliasRule = (index: number) => { editModelAliasRules.value.splice(index, 1) }
+
+const convertAliasRulesToApiFormat = (rules: ModelAliasRule[]): Record<string, string> => {
+  const result: Record<string, string> = {}
+  for (const rule of rules) {
+    const pattern = rule.pattern.trim()
+    const target = rule.target.trim()
+    if (pattern && target) {
+      result[pattern] = target
+    }
+  }
+  return result
+}
+
+const convertApiFormatToAliasRules = (aliases: Record<string, string> | null | undefined): ModelAliasRule[] => {
+  if (!aliases || Object.keys(aliases).length === 0) return []
+  return Object.entries(aliases).map(([pattern, target]) => ({ pattern, target }))
+}
+
 // 简单账号类型（用于模型路由选择）
 interface SimpleAccount {
   id: number
@@ -2598,6 +2694,7 @@ const closeCreateModal = () => {
   createForm.mcp_xml_inject = true
   createForm.copy_accounts_from_group_ids = []
   createModelRoutingRules.value = []
+  createModelAliasRules.value = []
 }
 
 const normalizeOptionalLimit = (value: number | string | null | undefined): number | null => {
@@ -2632,7 +2729,8 @@ const handleCreateGroup = async () => {
       weekly_limit_usd: normalizeOptionalLimit(createForm.weekly_limit_usd as number | string | null),
       monthly_limit_usd: normalizeOptionalLimit(createForm.monthly_limit_usd as number | string | null),
       sora_storage_quota_bytes: createQuotaGb ? Math.round(createQuotaGb * 1024 * 1024 * 1024) : 0,
-      model_routing: convertRoutingRulesToApiFormat(createModelRoutingRules.value)
+      model_routing: convertRoutingRulesToApiFormat(createModelRoutingRules.value),
+      model_aliases: convertAliasRulesToApiFormat(createModelAliasRules.value)
     }
     // v-model.number 清空输入框时产生 ""，转为 null 让后端设为无限制
     const emptyToNull = (v: any) => v === '' ? null : v
@@ -2690,6 +2788,8 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.copy_accounts_from_group_ids = [] // 复制账号字段每次编辑时重置为空
   // 加载模型路由规则（异步加载账号名称）
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(group.model_routing)
+  // 加载模型别名映射
+  editModelAliasRules.value = convertApiFormatToAliasRules((group as any).model_aliases)
   showEditModal.value = true
 }
 
@@ -2701,6 +2801,7 @@ const closeEditModal = () => {
   showEditModal.value = false
   editingGroup.value = null
   editModelRoutingRules.value = []
+  editModelAliasRules.value = []
   editForm.copy_accounts_from_group_ids = []
 }
 
@@ -2726,7 +2827,8 @@ const handleUpdateGroup = async () => {
         editForm.fallback_group_id_on_invalid_request === null
           ? 0
           : editForm.fallback_group_id_on_invalid_request,
-      model_routing: convertRoutingRulesToApiFormat(editModelRoutingRules.value)
+      model_routing: convertRoutingRulesToApiFormat(editModelRoutingRules.value),
+      model_aliases: convertAliasRulesToApiFormat(editModelAliasRules.value)
     }
     // v-model.number 清空输入框时产生 ""，转为 null 让后端设为无限制
     const emptyToNull = (v: any) => v === '' ? null : v

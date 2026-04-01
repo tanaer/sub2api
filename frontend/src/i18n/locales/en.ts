@@ -1705,6 +1705,17 @@ export default {
         hint: 'Multiple groups can be selected, accounts will be deduplicated',
         hintEdit: '⚠️ Warning: This will replace all existing account bindings'
       },
+      modelAliases: {
+        title: 'Model Alias Mapping',
+        tooltip: 'Automatically map user-requested model names to actual upstream model names. Supports wildcard matching (longest prefix wins). Responses will still show the original model name requested by the user.',
+        addRule: 'Add Mapping Rule',
+        pattern: 'Request Model Pattern',
+        patternPlaceholder: 'claude-opus-*',
+        target: 'Map To Model',
+        targetPlaceholder: 'GLM-4.7',
+        removeRule: 'Remove Rule',
+        hint: 'Example: claude-opus-* → GLM-4.7 means all models starting with claude-opus will be mapped to GLM-4.7',
+      },
       modelRouting: {
         title: 'Model Routing',
         tooltip: 'Configure specific model requests to be routed to designated accounts. Supports wildcard matching, e.g., claude-opus-* matches all opus models.',
@@ -1932,6 +1943,9 @@ export default {
       notes: 'Notes',
       notesPlaceholder: 'Enter notes',
       notesHint: 'Notes are optional',
+      upstreamProvider: 'Upstream Provider',
+      upstreamProviderNone: 'Not specified',
+      upstreamProviderHint: 'Select the actual upstream service provider for differentiated error handling and request adaptation',
       allPlatforms: 'All Platforms',
       allTypes: 'All Types',
       allStatus: 'All Status',

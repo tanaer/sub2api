@@ -160,7 +160,9 @@ type CreateGroupInput struct {
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled bool // 是否启用模型路由
-	MCPXMLInject        *bool
+	// 模型别名映射（支持通配符）
+	ModelAliases map[string]string
+	MCPXMLInject *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string
 	// Sora 存储配额
@@ -202,7 +204,9 @@ type UpdateGroupInput struct {
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled *bool // 是否启用模型路由
-	MCPXMLInject        *bool
+	// 模型别名映射（支持通配符）
+	ModelAliases map[string]string
+	MCPXMLInject *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string
 	// Sora 存储配额
@@ -217,11 +221,12 @@ type UpdateGroupInput struct {
 }
 
 type CreateAccountInput struct {
-	Name               string
-	Notes              *string
-	Platform           string
-	Type               string
-	Credentials        map[string]any
+	Name             string
+	Notes            *string
+	Platform         string
+	Type             string
+	UpstreamProvider string
+	Credentials      map[string]any
 	Extra              map[string]any
 	ProxyID            *int64
 	Concurrency        int
@@ -242,6 +247,7 @@ type UpdateAccountInput struct {
 	Name                  string
 	Notes                 *string
 	Type                  string // Account type: oauth, setup-token, apikey
+	UpstreamProvider      *string
 	Credentials           map[string]any
 	Extra                 map[string]any
 	ProxyID               *int64
@@ -964,6 +970,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		FallbackGroupID:                 input.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
 		ModelRouting:                    input.ModelRouting,
+		ModelAliases:                    input.ModelAliases,
 		MCPXMLInject:                    mcpXMLInject,
 		SupportedModelScopes:            input.SupportedModelScopes,
 		SoraStorageQuotaBytes:           input.SoraStorageQuotaBytes,
@@ -1193,6 +1200,10 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.ModelRoutingEnabled != nil {
 		group.ModelRoutingEnabled = *input.ModelRoutingEnabled
+	}
+	// 模型别名映射
+	if input.ModelAliases != nil {
+		group.ModelAliases = input.ModelAliases
 	}
 	if input.MCPXMLInject != nil {
 		group.MCPXMLInject = *input.MCPXMLInject
@@ -1636,9 +1647,10 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	account := &Account{
 		Name:        input.Name,
 		Notes:       normalizeAccountNotes(input.Notes),
-		Platform:    input.Platform,
-		Type:        input.Type,
-		Credentials: input.Credentials,
+		Platform:         input.Platform,
+		Type:             input.Type,
+		UpstreamProvider: input.UpstreamProvider,
+		Credentials:      input.Credentials,
 		Extra:       input.Extra,
 		ProxyID:     input.ProxyID,
 		Concurrency: input.Concurrency,
@@ -1724,6 +1736,9 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	}
 	if input.Type != "" {
 		account.Type = input.Type
+	}
+	if input.UpstreamProvider != nil {
+		account.UpstreamProvider = *input.UpstreamProvider
 	}
 	if input.Notes != nil {
 		account.Notes = normalizeAccountNotes(input.Notes)

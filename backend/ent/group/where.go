@@ -1520,6 +1520,16 @@ func ModelRoutingEnabledNEQ(v bool) predicate.Group {
 	return predicate.Group(sql.FieldNEQ(FieldModelRoutingEnabled, v))
 }
 
+// ModelAliasesIsNil applies the IsNil predicate on the "model_aliases" field.
+func ModelAliasesIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldModelAliases))
+}
+
+// ModelAliasesNotNil applies the NotNil predicate on the "model_aliases" field.
+func ModelAliasesNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldModelAliases))
+}
+
 // McpXMLInjectEQ applies the EQ predicate on the "mcp_xml_inject" field.
 func McpXMLInjectEQ(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldMcpXMLInject, v))

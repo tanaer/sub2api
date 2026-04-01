@@ -9,6 +9,8 @@ redis_data/
 
 # Environment configuration (contains sensitive information)
 .env
+.pg_sync.env
+.pg_sync_state.env
 
 # Backup files
 *.backup

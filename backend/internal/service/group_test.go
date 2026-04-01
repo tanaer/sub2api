@@ -90,3 +90,87 @@ func TestGroup_GetImagePrice_PartialConfig(t *testing.T) {
 	require.Nil(t, group.GetImagePrice("2K"))
 	require.Nil(t, group.GetImagePrice("4K"))
 }
+
+func TestGroup_ResolveModelAlias(t *testing.T) {
+	tests := []struct {
+		name      string
+		aliases   map[string]string
+		input     string
+		expected  string
+	}{
+		{
+			name:     "nil aliases returns original",
+			aliases:  nil,
+			input:    "claude-opus-4-6",
+			expected: "claude-opus-4-6",
+		},
+		{
+			name:     "empty aliases returns original",
+			aliases:  map[string]string{},
+			input:    "claude-opus-4-6",
+			expected: "claude-opus-4-6",
+		},
+		{
+			name:     "empty model returns empty",
+			aliases:  map[string]string{"claude-*": "glm-4-flash"},
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "exact match",
+			aliases:  map[string]string{"claude-opus-4-6": "glm-4-plus"},
+			input:    "claude-opus-4-6",
+			expected: "glm-4-plus",
+		},
+		{
+			name:     "wildcard match",
+			aliases:  map[string]string{"claude-opus-*": "glm-4-plus"},
+			input:    "claude-opus-4-6",
+			expected: "glm-4-plus",
+		},
+		{
+			name: "longest wildcard wins",
+			aliases: map[string]string{
+				"claude-*":       "glm-4-flash",
+				"claude-opus-*":  "glm-4-plus",
+			},
+			input:    "claude-opus-4-6",
+			expected: "glm-4-plus",
+		},
+		{
+			name: "exact match over wildcard",
+			aliases: map[string]string{
+				"claude-opus-*":  "glm-4-plus",
+				"claude-opus-4-6": "glm-4-0520",
+			},
+			input:    "claude-opus-4-6",
+			expected: "glm-4-0520",
+		},
+		{
+			name: "no match returns original",
+			aliases: map[string]string{
+				"claude-opus-*": "glm-4-plus",
+			},
+			input:    "gpt-5.4",
+			expected: "gpt-5.4",
+		},
+		{
+			name: "multiple wildcards choose longest",
+			aliases: map[string]string{
+				"claude-*":                    "glm-4-flash",
+				"claude-haiku-*":              "glm-4-flash-lite",
+				"claude-haiku-4-5-*":          "glm-4-flash-v2",
+			},
+			input:    "claude-haiku-4-5-20251001",
+			expected: "glm-4-flash-v2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &Group{ModelAliases: tt.aliases}
+			result := g.ResolveModelAlias(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

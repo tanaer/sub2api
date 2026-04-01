@@ -1792,6 +1792,17 @@ export default {
         hint: '可选多个分组，账号会自动去重',
         hintEdit: '⚠️ 注意：这会替换当前分组的所有账号绑定'
       },
+      modelAliases: {
+        title: '模型别名映射',
+        tooltip: '将用户请求的模型名自动映射到实际上游模型名。支持通配符匹配（最长前缀优先）。响应中仍会显示用户原始请求的模型名。',
+        addRule: '添加映射规则',
+        pattern: '请求模型模式',
+        patternPlaceholder: 'claude-opus-*',
+        target: '映射到模型',
+        targetPlaceholder: 'GLM-4.7',
+        removeRule: '删除规则',
+        hint: '示例：claude-opus-* → GLM-4.7 表示所有 claude-opus 开头的模型映射到 GLM-4.7',
+      },
       modelRouting: {
         title: '模型路由配置',
         tooltip:
@@ -2013,6 +2024,9 @@ export default {
       notes: '备注',
       notesPlaceholder: '请输入备注',
       notesHint: '备注可选',
+      upstreamProvider: '上游供应商',
+      upstreamProviderNone: '未指定',
+      upstreamProviderHint: '选择上游实际提供服务的平台，用于差异化错误处理和请求适配',
       // Filter options
       allPlatforms: '全部平台',
       allTypes: '全部类型',

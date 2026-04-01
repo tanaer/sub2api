@@ -1697,13 +1697,23 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	originalBody := body
 	reqModel, reqStream, promptCacheKey := extractOpenAIRequestMetaFromBody(body)
 	originalModel := reqModel
+	// 如果 handler 层做了模型别名解析，用用户原始模型名作为 originalModel
+	if c != nil {
+		if userOriginal, exists := c.Get("gateway_user_original_model"); exists {
+			if s, ok := userOriginal.(string); ok && s != "" {
+				originalModel = s
+			}
+		}
+	}
 	reqBody, err := getOpenAIRequestBodyMap(c, body)
 	if err != nil {
 		return nil, err
 	}
 	if v, ok := reqBody["model"].(string); ok {
 		reqModel = v
-		originalModel = reqModel
+		if originalModel == reqModel || originalModel == "" {
+			originalModel = reqModel
+		}
 	}
 	if v, ok := reqBody["stream"].(bool); ok {
 		reqStream = v

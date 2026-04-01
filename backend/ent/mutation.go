@@ -2434,6 +2434,7 @@ type AccountMutation struct {
 	_type                     *string
 	credentials               *map[string]interface{}
 	extra                     *map[string]interface{}
+	upstream_provider         *string
 	concurrency               *int
 	addconcurrency            *int
 	load_factor               *int
@@ -2916,6 +2917,55 @@ func (m *AccountMutation) OldExtra(ctx context.Context) (v map[string]interface{
 // ResetExtra resets all changes to the "extra" field.
 func (m *AccountMutation) ResetExtra() {
 	m.extra = nil
+}
+
+// SetUpstreamProvider sets the "upstream_provider" field.
+func (m *AccountMutation) SetUpstreamProvider(s string) {
+	m.upstream_provider = &s
+}
+
+// UpstreamProvider returns the value of the "upstream_provider" field in the mutation.
+func (m *AccountMutation) UpstreamProvider() (r string, exists bool) {
+	v := m.upstream_provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpstreamProvider returns the old "upstream_provider" field's value of the Account entity.
+// If the Account object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountMutation) OldUpstreamProvider(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpstreamProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpstreamProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpstreamProvider: %w", err)
+	}
+	return oldValue.UpstreamProvider, nil
+}
+
+// ClearUpstreamProvider clears the value of the "upstream_provider" field.
+func (m *AccountMutation) ClearUpstreamProvider() {
+	m.upstream_provider = nil
+	m.clearedFields[account.FieldUpstreamProvider] = struct{}{}
+}
+
+// UpstreamProviderCleared returns if the "upstream_provider" field was cleared in this mutation.
+func (m *AccountMutation) UpstreamProviderCleared() bool {
+	_, ok := m.clearedFields[account.FieldUpstreamProvider]
+	return ok
+}
+
+// ResetUpstreamProvider resets all changes to the "upstream_provider" field.
+func (m *AccountMutation) ResetUpstreamProvider() {
+	m.upstream_provider = nil
+	delete(m.clearedFields, account.FieldUpstreamProvider)
 }
 
 // SetProxyID sets the "proxy_id" field.
@@ -4021,7 +4071,7 @@ func (m *AccountMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AccountMutation) Fields() []string {
-	fields := make([]string, 0, 28)
+	fields := make([]string, 0, 29)
 	if m.created_at != nil {
 		fields = append(fields, account.FieldCreatedAt)
 	}
@@ -4048,6 +4098,9 @@ func (m *AccountMutation) Fields() []string {
 	}
 	if m.extra != nil {
 		fields = append(fields, account.FieldExtra)
+	}
+	if m.upstream_provider != nil {
+		fields = append(fields, account.FieldUpstreamProvider)
 	}
 	if m.proxy != nil {
 		fields = append(fields, account.FieldProxyID)
@@ -4132,6 +4185,8 @@ func (m *AccountMutation) Field(name string) (ent.Value, bool) {
 		return m.Credentials()
 	case account.FieldExtra:
 		return m.Extra()
+	case account.FieldUpstreamProvider:
+		return m.UpstreamProvider()
 	case account.FieldProxyID:
 		return m.ProxyID()
 	case account.FieldConcurrency:
@@ -4197,6 +4252,8 @@ func (m *AccountMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldCredentials(ctx)
 	case account.FieldExtra:
 		return m.OldExtra(ctx)
+	case account.FieldUpstreamProvider:
+		return m.OldUpstreamProvider(ctx)
 	case account.FieldProxyID:
 		return m.OldProxyID(ctx)
 	case account.FieldConcurrency:
@@ -4306,6 +4363,13 @@ func (m *AccountMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetExtra(v)
+		return nil
+	case account.FieldUpstreamProvider:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpstreamProvider(v)
 		return nil
 	case account.FieldProxyID:
 		v, ok := value.(int64)
@@ -4527,6 +4591,9 @@ func (m *AccountMutation) ClearedFields() []string {
 	if m.FieldCleared(account.FieldNotes) {
 		fields = append(fields, account.FieldNotes)
 	}
+	if m.FieldCleared(account.FieldUpstreamProvider) {
+		fields = append(fields, account.FieldUpstreamProvider)
+	}
 	if m.FieldCleared(account.FieldProxyID) {
 		fields = append(fields, account.FieldProxyID)
 	}
@@ -4585,6 +4652,9 @@ func (m *AccountMutation) ClearField(name string) error {
 		return nil
 	case account.FieldNotes:
 		m.ClearNotes()
+		return nil
+	case account.FieldUpstreamProvider:
+		m.ClearUpstreamProvider()
 		return nil
 	case account.FieldProxyID:
 		m.ClearProxyID()
@@ -4659,6 +4729,9 @@ func (m *AccountMutation) ResetField(name string) error {
 		return nil
 	case account.FieldExtra:
 		m.ResetExtra()
+		return nil
+	case account.FieldUpstreamProvider:
+		m.ResetUpstreamProvider()
 		return nil
 	case account.FieldProxyID:
 		m.ResetProxyID()
@@ -8422,6 +8495,7 @@ type GroupMutation struct {
 	addfallback_group_id_on_invalid_request *int64
 	model_routing                           *map[string][]int64
 	model_routing_enabled                   *bool
+	model_aliases                           *map[string]string
 	mcp_xml_inject                          *bool
 	supported_model_scopes                  *[]string
 	appendsupported_model_scopes            []string
@@ -10081,6 +10155,55 @@ func (m *GroupMutation) ResetModelRoutingEnabled() {
 	m.model_routing_enabled = nil
 }
 
+// SetModelAliases sets the "model_aliases" field.
+func (m *GroupMutation) SetModelAliases(value map[string]string) {
+	m.model_aliases = &value
+}
+
+// ModelAliases returns the value of the "model_aliases" field in the mutation.
+func (m *GroupMutation) ModelAliases() (r map[string]string, exists bool) {
+	v := m.model_aliases
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelAliases returns the old "model_aliases" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldModelAliases(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelAliases is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelAliases requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelAliases: %w", err)
+	}
+	return oldValue.ModelAliases, nil
+}
+
+// ClearModelAliases clears the value of the "model_aliases" field.
+func (m *GroupMutation) ClearModelAliases() {
+	m.model_aliases = nil
+	m.clearedFields[group.FieldModelAliases] = struct{}{}
+}
+
+// ModelAliasesCleared returns if the "model_aliases" field was cleared in this mutation.
+func (m *GroupMutation) ModelAliasesCleared() bool {
+	_, ok := m.clearedFields[group.FieldModelAliases]
+	return ok
+}
+
+// ResetModelAliases resets all changes to the "model_aliases" field.
+func (m *GroupMutation) ResetModelAliases() {
+	m.model_aliases = nil
+	delete(m.clearedFields, group.FieldModelAliases)
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (m *GroupMutation) SetMcpXMLInject(b bool) {
 	m.mcp_xml_inject = &b
@@ -10726,7 +10849,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 35)
+	fields := make([]string, 0, 36)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -10810,6 +10933,9 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.model_routing_enabled != nil {
 		fields = append(fields, group.FieldModelRoutingEnabled)
+	}
+	if m.model_aliases != nil {
+		fields = append(fields, group.FieldModelAliases)
 	}
 	if m.mcp_xml_inject != nil {
 		fields = append(fields, group.FieldMcpXMLInject)
@@ -10896,6 +11022,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelRouting()
 	case group.FieldModelRoutingEnabled:
 		return m.ModelRoutingEnabled()
+	case group.FieldModelAliases:
+		return m.ModelAliases()
 	case group.FieldMcpXMLInject:
 		return m.McpXMLInject()
 	case group.FieldSupportedModelScopes:
@@ -10975,6 +11103,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldModelRouting(ctx)
 	case group.FieldModelRoutingEnabled:
 		return m.OldModelRoutingEnabled(ctx)
+	case group.FieldModelAliases:
+		return m.OldModelAliases(ctx)
 	case group.FieldMcpXMLInject:
 		return m.OldMcpXMLInject(ctx)
 	case group.FieldSupportedModelScopes:
@@ -11193,6 +11323,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelRoutingEnabled(v)
+		return nil
+	case group.FieldModelAliases:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelAliases(v)
 		return nil
 	case group.FieldMcpXMLInject:
 		v, ok := value.(bool)
@@ -11516,6 +11653,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldModelRouting) {
 		fields = append(fields, group.FieldModelRouting)
 	}
+	if m.FieldCleared(group.FieldModelAliases) {
+		fields = append(fields, group.FieldModelAliases)
+	}
 	return fields
 }
 
@@ -11577,6 +11717,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ClearModelRouting()
+		return nil
+	case group.FieldModelAliases:
+		m.ClearModelAliases()
 		return nil
 	}
 	return fmt.Errorf("unknown Group nullable field %s", name)
@@ -11669,6 +11812,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldModelRoutingEnabled:
 		m.ResetModelRoutingEnabled()
+		return nil
+	case group.FieldModelAliases:
+		m.ResetModelAliases()
 		return nil
 	case group.FieldMcpXMLInject:
 		m.ResetMcpXMLInject()

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func TestParseGatewayRequest(t *testing.T) {
@@ -41,6 +42,28 @@ func TestParseGatewayRequest_ThinkingAdaptiveEnabled(t *testing.T) {
 	require.True(t, parsed.ThinkingEnabled)
 }
 
+func TestParseGatewayRequest_GLMTraits(t *testing.T) {
+	body := []byte(`{
+		"model":"glm-5.1",
+		"tools":[{"name":"weather","input_schema":{"type":"object"}}],
+		"context_management":{"edits":[{"type":"clear_thinking_20251015"}]},
+		"messages":[
+			{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"weather","input":{"city":"shanghai"}}]},
+			{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"sunny"}]}
+		]
+	}`)
+	parsed, err := ParseGatewayRequest(body, domain.PlatformAnthropic)
+	require.NoError(t, err)
+	require.True(t, parsed.HasTools)
+	require.True(t, parsed.HasToolResult)
+	require.True(t, parsed.HasContextMgmt)
+
+	traits := GLMRequestTraitsFromParsedRequest(parsed)
+	require.True(t, traits.HasTools)
+	require.True(t, traits.HasToolResult)
+	require.True(t, traits.HasContextMgmt)
+}
+
 func TestParseGatewayRequest_MaxTokens(t *testing.T) {
 	body := []byte(`{"model":"claude-haiku-4-5","max_tokens":1}`)
 	parsed, err := ParseGatewayRequest(body, "")
@@ -53,6 +76,29 @@ func TestParseGatewayRequest_MaxTokensNonIntegralIgnored(t *testing.T) {
 	parsed, err := ParseGatewayRequest(body, "")
 	require.NoError(t, err)
 	require.Equal(t, 0, parsed.MaxTokens)
+}
+
+func TestStripMiniMaxAnthropicIgnoredFieldsForRetry(t *testing.T) {
+	input := []byte(`{
+		"model":"glm-5.1",
+		"service_tier":"priority",
+		"top_k":20,
+		"stop_sequences":["END"],
+		"container":{"id":"c1"},
+		"mcp_servers":[{"name":"m1"}],
+		"context_management":{"edits":[{"type":"clear_thinking_20251015"}]},
+		"messages":[{"role":"user","content":"hello"}]
+	}`)
+
+	out := StripMiniMaxAnthropicIgnoredFieldsForRetry(input)
+	require.NotEqual(t, string(input), string(out))
+	require.False(t, gjson.GetBytes(out, "service_tier").Exists())
+	require.False(t, gjson.GetBytes(out, "top_k").Exists())
+	require.False(t, gjson.GetBytes(out, "stop_sequences").Exists())
+	require.False(t, gjson.GetBytes(out, "container").Exists())
+	require.False(t, gjson.GetBytes(out, "mcp_servers").Exists())
+	require.False(t, gjson.GetBytes(out, "context_management").Exists())
+	require.Equal(t, "glm-5.1", gjson.GetBytes(out, "model").String())
 }
 
 func TestParseGatewayRequest_SystemNull(t *testing.T) {

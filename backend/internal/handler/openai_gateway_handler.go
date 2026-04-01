@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.uber.org/zap"
 )
 
@@ -157,6 +158,18 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+
+	// 模型别名解析
+	if apiKey.Group != nil {
+		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			reqLog.Info("openai.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
+			c.Set(gatewayUserOriginalModelKey, reqModel)
+			reqModel = resolved
+			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
+				body = updated
+			}
+		}
+	}
 
 	streamResult := gjson.GetBytes(body, "stream")
 	if streamResult.Exists() && streamResult.Type != gjson.True && streamResult.Type != gjson.False {
@@ -541,6 +554,19 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+
+	// 模型别名解析
+	if apiKey.Group != nil {
+		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			reqLog.Info("openai_messages.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
+			c.Set(gatewayUserOriginalModelKey, reqModel)
+			reqModel = resolved
+			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
+				body = updated
+			}
+		}
+	}
+
 	routingModel := service.NormalizeOpenAICompatRequestedModel(reqModel)
 	reqStream := gjson.GetBytes(body, "stream").Bool()
 
