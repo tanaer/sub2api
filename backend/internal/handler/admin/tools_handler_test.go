@@ -133,6 +133,8 @@ func setupToolsHandlerRouter(handler *ToolsHandler) *gin.Engine {
 		tools.POST("/api-key-lookup", handler.LookupAPIKeys)
 		tools.GET("/redeem-presets", handler.GetRedeemPresets)
 		tools.PUT("/redeem-presets", handler.UpdateRedeemPresets)
+		tools.GET("/redeem-templates", handler.GetRedeemTemplates)
+		tools.PUT("/redeem-templates", handler.UpdateRedeemTemplates)
 		tools.POST("/redeem-presets/:id/generate", handler.GenerateRedeemPreset)
 	}
 	return router
@@ -453,8 +455,17 @@ func TestToolsHandler_GenerateRedeemPreset_RendersTemplateAndUsesPresetRules(t *
 			SortOrder:    1,
 			Type:         service.RedeemTypeBalance,
 			Value:        50,
-			Template:     "密钥：{{code}}\n请尽快兑换",
+			TemplateID:   "template-guide",
 			ValidityDays: 30,
+		},
+	}))
+	require.NoError(t, settingService.SetWorkbenchRedeemTemplates(context.Background(), []service.WorkbenchRedeemTemplate{
+		{
+			ID:        "template-guide",
+			Name:      "默认指引",
+			Enabled:   true,
+			SortOrder: 1,
+			Content:   "密钥：{{code}}\n请尽快兑换",
 		},
 	}))
 

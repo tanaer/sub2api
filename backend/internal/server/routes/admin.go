@@ -107,6 +107,8 @@ func registerAdminToolRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		tools.POST("/api-key-lookup", h.Admin.Tools.LookupAPIKeys)
 		tools.GET("/redeem-presets", h.Admin.Tools.GetRedeemPresets)
 		tools.PUT("/redeem-presets", h.Admin.Tools.UpdateRedeemPresets)
+		tools.GET("/redeem-templates", h.Admin.Tools.GetRedeemTemplates)
+		tools.PUT("/redeem-templates", h.Admin.Tools.UpdateRedeemTemplates)
 		tools.POST("/redeem-presets/:id/generate", h.Admin.Tools.GenerateRedeemPreset)
 	}
 }

@@ -17,6 +17,7 @@
           <div class="flex flex-wrap gap-3">
             <button class="btn btn-secondary" @click="loadPresets">刷新预设</button>
             <button class="btn btn-primary" @click="openPresetManager">管理预设</button>
+            <button class="btn btn-secondary" @click="openTemplateManager">管理模板</button>
           </div>
         </div>
       </section>
@@ -371,17 +372,38 @@
                   <span>启用此预设</span>
                 </label>
 
-                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h4 class="text-sm font-semibold text-slate-900">选择话术模板</h4>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">
+                          话术模板独立管理，预设只选择要使用的模板。
+                        </p>
+                      </div>
+                      <button class="btn btn-secondary" @click="openTemplateManager">管理模板</button>
+                    </div>
+
+                    <label class="mt-4 block">
+                      <span class="mb-2 block text-sm font-medium text-slate-700">话术模板</span>
+                      <select v-model="activePreset.template_id" class="input">
+                        <option value="">请选择模板</option>
+                        <option v-for="template in templates" :key="template.id" :value="template.id">
+                          {{ template.name }}{{ template.enabled ? '' : '（停用）' }}
+                        </option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                     <div>
-                      <h4 class="text-sm font-semibold text-slate-900">话术模板</h4>
+                      <h4 class="text-sm font-semibold text-slate-900">模板预览</h4>
                       <p class="mt-1 text-xs leading-5 text-slate-500">
                         当前只支持变量 <code class="rounded bg-slate-200 px-1.5 py-0.5 text-[11px]">{{ templateVariableLabel }}</code>
                       </p>
                     </div>
-                    <button class="btn btn-secondary" @click="openTemplateEditor">编辑模板</button>
+                    <pre class="mt-4 whitespace-pre-wrap break-words rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800">{{ resolvePresetTemplatePreview(activePreset) }}</pre>
                   </div>
-                  <pre class="mt-4 whitespace-pre-wrap break-words rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800">{{ activePreset.template || templateVariableLabel }}</pre>
                 </div>
 
                 <div class="flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-4">
@@ -406,24 +428,101 @@
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="showTemplateEditor && activePreset" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-950/45" @click="showTemplateEditor = false"></div>
-        <div class="relative z-10 w-full max-w-2xl rounded-[28px] bg-white p-5 shadow-2xl sm:p-6">
-          <div class="flex items-center justify-between gap-3">
+      <div v-if="showTemplateManager" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-950/45" @click="closeTemplateManager"></div>
+        <div class="relative z-10 flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
             <div>
-              <h3 class="text-lg font-semibold text-slate-900">编辑模板</h3>
+              <h3 class="text-lg font-semibold text-slate-900">模板管理</h3>
               <p class="mt-1 text-sm text-slate-500">支持多行文本，变量只支持 {{ templateVariableLabel }}。</p>
             </div>
-            <button class="btn btn-secondary" @click="showTemplateEditor = false">关闭</button>
+            <button class="btn btn-secondary" @click="closeTemplateManager">关闭</button>
           </div>
-          <textarea
-            ref="templateTextareaRef"
-            v-model="activePreset.template"
-            class="mt-4 min-h-[260px] w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
-          />
-          <div class="mt-4 flex flex-wrap justify-between gap-3">
-            <button class="btn btn-secondary" @click="insertTemplateVariable">插入 {{ templateVariableLabel }}</button>
-            <button class="btn btn-primary" @click="showTemplateEditor = false">完成</button>
+
+          <div class="grid min-h-0 flex-1 gap-0 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside class="border-b border-slate-200 bg-slate-50 p-4 lg:border-b-0 lg:border-r">
+              <button class="btn btn-primary w-full" @click="addTemplateDraft">新增模板</button>
+              <div class="mt-4 space-y-2">
+                <button
+                  v-for="template in templateDrafts"
+                  :key="template.id"
+                  class="w-full rounded-2xl border px-3 py-3 text-left transition"
+                  :class="
+                    activeTemplateId === template.id
+                      ? 'border-teal-400 bg-white shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  "
+                  @click="activeTemplateId = template.id"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="truncate text-sm font-medium text-slate-900">{{ template.name || '未命名模板' }}</span>
+                    <span
+                      class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      :class="template.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'"
+                    >
+                      {{ template.enabled ? '启用' : '停用' }}
+                    </span>
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500">{{ templateSummary(template) }}</p>
+                </button>
+              </div>
+            </aside>
+
+            <div class="min-h-0 overflow-y-auto p-5 sm:p-6">
+              <div v-if="activeTemplate" class="space-y-5">
+                <div class="grid gap-4 md:grid-cols-2">
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-medium text-slate-700">模板名称</span>
+                    <input v-model="activeTemplate.name" class="input" type="text" placeholder="例如：默认话术" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-medium text-slate-700">模板 ID</span>
+                    <input v-model="activeTemplate.id" class="input" type="text" placeholder="唯一标识" />
+                  </label>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-medium text-slate-700">排序</span>
+                    <input v-model.number="activeTemplate.sort_order" class="input" type="number" />
+                  </label>
+                  <label class="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <input v-model="activeTemplate.enabled" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                    <span>启用此模板</span>
+                  </label>
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 class="text-sm font-semibold text-slate-900">模板内容</h4>
+                      <p class="mt-1 text-xs leading-5 text-slate-500">可点击插入变量到当前光标位置。</p>
+                    </div>
+                    <button class="btn btn-secondary" @click="insertTemplateVariable">插入 {{ templateVariableLabel }}</button>
+                  </div>
+                  <textarea
+                    ref="templateTextareaRef"
+                    v-model="activeTemplate.content"
+                    class="mt-4 min-h-[260px] w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                  />
+                </div>
+
+                <div class="flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-4">
+                  <button class="btn btn-secondary" :disabled="templateDrafts.length <= 1" @click="removeActiveTemplate">
+                    删除当前模板
+                  </button>
+                  <div class="flex flex-wrap gap-3">
+                    <button class="btn btn-secondary" @click="resetTemplateDrafts">重置</button>
+                    <button class="btn btn-primary" :disabled="savingTemplates" @click="saveTemplateDrafts">
+                      {{ savingTemplates ? '保存中...' : '保存模板' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                先新增一个模板开始配置。
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -444,6 +543,7 @@ import type {
   WorkbenchLookupResponse,
   WorkbenchRedeemPreset,
   WorkbenchRedeemPresetGenerateResponse,
+  WorkbenchRedeemTemplate,
 } from '@/types'
 
 const { t } = useI18n()
@@ -456,6 +556,7 @@ const lookupResults = ref<WorkbenchLookupResponse | null>(null)
 const togglingUserId = ref<number | null>(null)
 
 const presets = ref<WorkbenchRedeemPreset[]>([])
+const templates = ref<WorkbenchRedeemTemplate[]>([])
 const generatingPresetId = ref<string | null>(null)
 const generatedResult = ref<WorkbenchRedeemPresetGenerateResponse | null>(null)
 
@@ -464,7 +565,10 @@ const savingPresets = ref(false)
 const presetDrafts = ref<WorkbenchRedeemPreset[]>([])
 const activePresetId = ref<string | null>(null)
 
-const showTemplateEditor = ref(false)
+const showTemplateManager = ref(false)
+const savingTemplates = ref(false)
+const templateDrafts = ref<WorkbenchRedeemTemplate[]>([])
+const activeTemplateId = ref<string | null>(null)
 const templateTextareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const groups = ref<AdminGroup[]>([])
@@ -480,8 +584,12 @@ const activePreset = computed<WorkbenchRedeemPreset | undefined>(() =>
   presetDrafts.value.find((preset) => preset.id === activePresetId.value),
 )
 
+const activeTemplate = computed<WorkbenchRedeemTemplate | undefined>(() =>
+  templateDrafts.value.find((template) => template.id === activeTemplateId.value),
+)
+
 onMounted(async () => {
-  await loadPresets()
+  await Promise.all([loadPresets(), loadTemplates()])
 })
 
 async function loadPresets() {
@@ -489,6 +597,14 @@ async function loadPresets() {
     presets.value = sortPresets(await adminAPI.tools.getRedeemPresets())
   } catch (error) {
     appStore.showError(getErrorMessage(error, '加载预设失败'))
+  }
+}
+
+async function loadTemplates() {
+  try {
+    templates.value = sortTemplates(await adminAPI.tools.getRedeemTemplates())
+  } catch (error) {
+    appStore.showError(getErrorMessage(error, '加载模板失败'))
   }
 }
 
@@ -598,7 +714,6 @@ function openPresetManager() {
 
 function closePresetManager() {
   showPresetManager.value = false
-  showTemplateEditor.value = false
 }
 
 function resetPresetDrafts() {
@@ -638,32 +753,71 @@ async function savePresetDrafts() {
   }
 }
 
-function openTemplateEditor() {
-  if (!activePreset.value) {
-    return
-  }
-  showTemplateEditor.value = true
+function openTemplateManager() {
+  resetTemplateDrafts()
+  showTemplateManager.value = true
   void nextTick(() => {
     templateTextareaRef.value?.focus()
   })
 }
 
+function closeTemplateManager() {
+  showTemplateManager.value = false
+}
+
+function resetTemplateDrafts() {
+  templateDrafts.value = sortTemplates(templates.value).map(cloneTemplate)
+  if (!templateDrafts.value.length) {
+    templateDrafts.value = [createEmptyTemplate()]
+  }
+  activeTemplateId.value = templateDrafts.value[0]?.id ?? null
+}
+
+function addTemplateDraft() {
+  const template = createEmptyTemplate()
+  templateDrafts.value = sortTemplates([...templateDrafts.value, template])
+  activeTemplateId.value = template.id
+}
+
+function removeActiveTemplate() {
+  if (!activeTemplate.value || templateDrafts.value.length <= 1) {
+    return
+  }
+  templateDrafts.value = templateDrafts.value.filter((template) => template.id !== activeTemplate.value?.id)
+  activeTemplateId.value = templateDrafts.value[0]?.id ?? null
+}
+
+async function saveTemplateDrafts() {
+  savingTemplates.value = true
+  try {
+    const saved = await adminAPI.tools.updateRedeemTemplates(sortTemplates(templateDrafts.value.map(cloneTemplate)))
+    templates.value = sortTemplates(saved)
+    templateDrafts.value = sortTemplates(saved).map(cloneTemplate)
+    activeTemplateId.value = templateDrafts.value[0]?.id ?? null
+    appStore.showSuccess('模板已保存')
+  } catch (error) {
+    appStore.showError(getErrorMessage(error, '保存模板失败'))
+  } finally {
+    savingTemplates.value = false
+  }
+}
+
 async function insertTemplateVariable() {
-  if (!activePreset.value) {
+  if (!activeTemplate.value) {
     return
   }
   const textarea = templateTextareaRef.value
   const token = '{{code}}'
 
   if (!textarea) {
-    activePreset.value.template = `${activePreset.value.template || ''}${token}`
+    activeTemplate.value.content = `${activeTemplate.value.content || ''}${token}`
     return
   }
 
-  const start = textarea.selectionStart ?? activePreset.value.template.length
+  const start = textarea.selectionStart ?? activeTemplate.value.content.length
   const end = textarea.selectionEnd ?? start
-  const current = activePreset.value.template || ''
-  activePreset.value.template = `${current.slice(0, start)}${token}${current.slice(end)}`
+  const current = activeTemplate.value.content || ''
+  activeTemplate.value.content = `${current.slice(0, start)}${token}${current.slice(end)}`
 
   await nextTick()
   textarea.focus()
@@ -696,20 +850,42 @@ function showPresetValidity(type: RedeemCodeType) {
 }
 
 function presetSummary(preset: WorkbenchRedeemPreset) {
+  const templateName = resolveTemplateName(preset.template_id)
   switch (preset.type) {
     case 'balance':
-      return `余额 ${preset.value}`
+      return `余额 ${preset.value}${templateName ? ` · ${templateName}` : ''}`
     case 'concurrency':
-      return `并发 ${preset.value}`
+      return `并发 ${preset.value}${templateName ? ` · ${templateName}` : ''}`
     case 'subscription':
-      return `订阅 · ${preset.validity_days || 30} 天`
+      return `订阅 · ${preset.validity_days || 30} 天${templateName ? ` · ${templateName}` : ''}`
     case 'invitation':
-      return '邀请码'
+      return templateName ? `邀请码 · ${templateName}` : '邀请码'
     case 'group_request_quota':
-      return `分组次数 ${preset.value} · ${preset.validity_days || 30} 天`
+      return `分组次数 ${preset.value} · ${preset.validity_days || 30} 天${templateName ? ` · ${templateName}` : ''}`
     default:
       return preset.type
   }
+}
+
+function templateSummary(template: WorkbenchRedeemTemplate) {
+  return template.content ? template.content.split('\n')[0] : templateVariableLabel
+}
+
+function resolveTemplateName(templateID?: string) {
+  if (!templateID) {
+    return ''
+  }
+  return templates.value.find((template) => template.id === templateID)?.name || ''
+}
+
+function resolvePresetTemplatePreview(preset: WorkbenchRedeemPreset) {
+  if (preset.template_id) {
+    const content = templates.value.find((template) => template.id === preset.template_id)?.content
+    if (content) {
+      return content
+    }
+  }
+  return preset.template || '请选择一个话术模板'
 }
 
 function userStatusLabel(status?: WorkbenchLookupItem['user_status']) {
@@ -809,10 +985,22 @@ function sortPresets(items: WorkbenchRedeemPreset[]) {
   )
 }
 
+function sortTemplates(items: WorkbenchRedeemTemplate[]) {
+  return [...items].sort(
+    (left, right) => left.sort_order - right.sort_order || left.name.localeCompare(right.name),
+  )
+}
+
 function clonePreset(preset: WorkbenchRedeemPreset): WorkbenchRedeemPreset {
   return {
     ...preset,
     group_id: preset.group_id ?? undefined,
+  }
+}
+
+function cloneTemplate(template: WorkbenchRedeemTemplate): WorkbenchRedeemTemplate {
+  return {
+    ...template,
   }
 }
 
@@ -825,7 +1013,16 @@ function createEmptyPreset(): WorkbenchRedeemPreset {
     type: 'balance',
     value: 1,
     validity_days: 30,
-    template: '{{code}}',
+  }
+}
+
+function createEmptyTemplate(): WorkbenchRedeemTemplate {
+  return {
+    id: `template-${Date.now()}`,
+    name: '新模板',
+    enabled: true,
+    sort_order: templateDrafts.value.length + 1,
+    content: '{{code}}',
   }
 }
 

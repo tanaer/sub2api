@@ -57,3 +57,53 @@ func (s *SettingService) SetWorkbenchRedeemPresets(ctx context.Context, presets 
 
 	return nil
 }
+
+// GetWorkbenchRedeemTemplates 获取运营工具页的话术模板。
+func (s *SettingService) GetWorkbenchRedeemTemplates(ctx context.Context) ([]WorkbenchRedeemTemplate, error) {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyWorkbenchRedeemTemplates)
+	if err != nil {
+		if errors.Is(err, ErrSettingNotFound) {
+			return []WorkbenchRedeemTemplate{}, nil
+		}
+		return nil, fmt.Errorf("get workbench redeem templates: %w", err)
+	}
+
+	if value == "" {
+		return []WorkbenchRedeemTemplate{}, nil
+	}
+
+	var templates []WorkbenchRedeemTemplate
+	if err := json.Unmarshal([]byte(value), &templates); err != nil {
+		return nil, fmt.Errorf("parse workbench redeem templates: %w", err)
+	}
+
+	sort.SliceStable(templates, func(i, j int) bool {
+		if templates[i].SortOrder != templates[j].SortOrder {
+			return templates[i].SortOrder < templates[j].SortOrder
+		}
+		if templates[i].Name != templates[j].Name {
+			return templates[i].Name < templates[j].Name
+		}
+		return templates[i].ID < templates[j].ID
+	})
+
+	return templates, nil
+}
+
+// SetWorkbenchRedeemTemplates 保存运营工具页的话术模板。
+func (s *SettingService) SetWorkbenchRedeemTemplates(ctx context.Context, templates []WorkbenchRedeemTemplate) error {
+	if templates == nil {
+		templates = []WorkbenchRedeemTemplate{}
+	}
+
+	raw, err := json.Marshal(templates)
+	if err != nil {
+		return fmt.Errorf("marshal workbench redeem templates: %w", err)
+	}
+
+	if err := s.settingRepo.Set(ctx, SettingKeyWorkbenchRedeemTemplates, string(raw)); err != nil {
+		return fmt.Errorf("set workbench redeem templates: %w", err)
+	}
+
+	return nil
+}

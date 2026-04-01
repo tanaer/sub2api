@@ -132,6 +132,7 @@ const (
 
 	// 运营工具
 	SettingKeyWorkbenchRedeemPresets = "workbench_redeem_presets" // 运营工具页的一键兑换码预设（JSON）
+	SettingKeyWorkbenchRedeemTemplates = "workbench_redeem_templates" // 运营工具页的话术模板（JSON）
 
 	// Gemini 配额策略（JSON）
 	SettingKeyGeminiQuotaPolicy = "gemini_quota_policy"

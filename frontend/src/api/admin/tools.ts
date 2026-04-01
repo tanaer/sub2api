@@ -3,6 +3,7 @@ import type {
   WorkbenchLookupResponse,
   WorkbenchRedeemPreset,
   WorkbenchRedeemPresetGenerateResponse,
+  WorkbenchRedeemTemplate,
 } from '@/types'
 
 export async function lookupAPIKeys(rawText: string): Promise<WorkbenchLookupResponse> {
@@ -24,6 +25,21 @@ export async function updateRedeemPresets(
   return data
 }
 
+export async function getRedeemTemplates(): Promise<WorkbenchRedeemTemplate[]> {
+  const { data } = await apiClient.get<WorkbenchRedeemTemplate[]>('/admin/tools/redeem-templates')
+  return data
+}
+
+export async function updateRedeemTemplates(
+  templates: WorkbenchRedeemTemplate[],
+): Promise<WorkbenchRedeemTemplate[]> {
+  const { data } = await apiClient.put<WorkbenchRedeemTemplate[]>(
+    '/admin/tools/redeem-templates',
+    templates,
+  )
+  return data
+}
+
 export async function generateRedeemPreset(
   id: string,
 ): Promise<WorkbenchRedeemPresetGenerateResponse> {
@@ -37,6 +53,8 @@ export const toolsAPI = {
   lookupAPIKeys,
   getRedeemPresets,
   updateRedeemPresets,
+  getRedeemTemplates,
+  updateRedeemTemplates,
   generateRedeemPreset,
 }
 

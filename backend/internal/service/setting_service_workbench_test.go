@@ -95,6 +95,37 @@ func TestSettingService_WorkbenchRedeemPresets_SetAndGet(t *testing.T) {
 	}, got)
 }
 
+func TestSettingService_WorkbenchRedeemTemplates_SetAndGet(t *testing.T) {
+	repo := &workbenchSettingRepoStub{}
+	svc := NewSettingService(repo, &config.Config{})
+	expected := []WorkbenchRedeemTemplate{
+		{
+			ID:        "template-b",
+			Name:      "B模板",
+			Enabled:   true,
+			SortOrder: 20,
+			Content:   "密钥：{{code}}",
+		},
+		{
+			ID:        "template-a",
+			Name:      "A模板",
+			Enabled:   true,
+			SortOrder: 10,
+			Content:   "{{code}}",
+		},
+	}
+
+	err := svc.SetWorkbenchRedeemTemplates(context.Background(), expected)
+	require.NoError(t, err)
+
+	got, err := svc.GetWorkbenchRedeemTemplates(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []WorkbenchRedeemTemplate{
+		expected[1],
+		expected[0],
+	}, got)
+}
+
 func workbenchInt64Ptr(v int64) *int64 {
 	return &v
 }

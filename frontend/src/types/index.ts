@@ -1158,7 +1158,16 @@ export interface WorkbenchRedeemPreset {
   value: number
   group_id?: number | null
   validity_days: number
-  template: string
+  template_id?: string
+  template?: string
+}
+
+export interface WorkbenchRedeemTemplate {
+  id: string
+  name: string
+  enabled: boolean
+  sort_order: number
+  content: string
 }
 
 export interface WorkbenchRedeemPresetGenerateResponse {

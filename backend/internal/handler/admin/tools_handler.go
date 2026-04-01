@@ -69,6 +69,7 @@ type lookupAPIKeyResponse struct {
 }
 
 type updateWorkbenchRedeemPresetsRequest []service.WorkbenchRedeemPreset
+type updateWorkbenchRedeemTemplatesRequest []service.WorkbenchRedeemTemplate
 
 type generateWorkbenchRedeemPresetResponse struct {
 	Code            string                        `json:"code"`
@@ -174,6 +175,38 @@ func (h *ToolsHandler) UpdateRedeemPresets(c *gin.Context) {
 	response.Success(c, presets)
 }
 
+// GetRedeemTemplates returns shared workbench message templates.
+func (h *ToolsHandler) GetRedeemTemplates(c *gin.Context) {
+	templates, err := h.settingService.GetWorkbenchRedeemTemplates(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, templates)
+}
+
+// UpdateRedeemTemplates updates shared workbench message templates.
+func (h *ToolsHandler) UpdateRedeemTemplates(c *gin.Context) {
+	var req updateWorkbenchRedeemTemplatesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	templates, err := normalizeWorkbenchRedeemTemplates([]service.WorkbenchRedeemTemplate(req))
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.settingService.SetWorkbenchRedeemTemplates(c.Request.Context(), templates); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, templates)
+}
+
 // GenerateRedeemPreset generates a redeem code from a saved preset and renders its message template.
 func (h *ToolsHandler) GenerateRedeemPreset(c *gin.Context) {
 	presetID := strings.TrimSpace(c.Param("id"))
@@ -214,7 +247,13 @@ func (h *ToolsHandler) GenerateRedeemPreset(c *gin.Context) {
 		return
 	}
 
-	renderedMessage := renderWorkbenchTemplate(preset.Template, codes[0].Code)
+	templateContent, err := h.resolveWorkbenchTemplateContent(c.Request.Context(), preset)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	renderedMessage := renderWorkbenchTemplate(templateContent, codes[0].Code)
 	response.Success(c, generateWorkbenchRedeemPresetResponse{
 		Code:            codes[0].Code,
 		RenderedMessage: renderedMessage,
@@ -331,7 +370,8 @@ func normalizeWorkbenchRedeemPresets(presets []service.WorkbenchRedeemPreset) ([
 		item := presets[i]
 		item.ID = strings.TrimSpace(item.ID)
 		item.Name = strings.TrimSpace(item.Name)
-		item.Template = normalizeWorkbenchTemplate(item.Template)
+		item.TemplateID = strings.TrimSpace(item.TemplateID)
+		item.Template = normalizeWorkbenchOptionalTemplate(item.Template)
 		item.Type = strings.TrimSpace(item.Type)
 
 		if item.ID == "" {
@@ -344,8 +384,13 @@ func normalizeWorkbenchRedeemPresets(presets []service.WorkbenchRedeemPreset) ([
 		if item.Name == "" {
 			return nil, errors.New("preset name is required")
 		}
-		if err := validateWorkbenchTemplate(item.Template); err != nil {
-			return nil, err
+		if item.TemplateID == "" && item.Template == "" {
+			return nil, errors.New("preset template_id is required")
+		}
+		if item.Template != "" {
+			if err := validateWorkbenchTemplate(item.Template); err != nil {
+				return nil, err
+			}
 		}
 
 		switch item.Type {
@@ -393,6 +438,43 @@ func normalizeWorkbenchRedeemPresets(presets []service.WorkbenchRedeemPreset) ([
 	return normalized, nil
 }
 
+func normalizeWorkbenchRedeemTemplates(templates []service.WorkbenchRedeemTemplate) ([]service.WorkbenchRedeemTemplate, error) {
+	normalized := make([]service.WorkbenchRedeemTemplate, 0, len(templates))
+	seenIDs := make(map[string]struct{}, len(templates))
+
+	for i := range templates {
+		item := templates[i]
+		item.ID = strings.TrimSpace(item.ID)
+		item.Name = strings.TrimSpace(item.Name)
+		item.Content = normalizeWorkbenchTemplate(item.Content)
+
+		if item.ID == "" {
+			return nil, errors.New("template id is required")
+		}
+		if _, ok := seenIDs[item.ID]; ok {
+			return nil, errors.New("template id must be unique")
+		}
+		seenIDs[item.ID] = struct{}{}
+		if item.Name == "" {
+			return nil, errors.New("template name is required")
+		}
+		if err := validateWorkbenchTemplate(item.Content); err != nil {
+			return nil, err
+		}
+
+		normalized = append(normalized, item)
+	}
+
+	sort.SliceStable(normalized, func(i, j int) bool {
+		if normalized[i].SortOrder != normalized[j].SortOrder {
+			return normalized[i].SortOrder < normalized[j].SortOrder
+		}
+		return normalized[i].ID < normalized[j].ID
+	})
+
+	return normalized, nil
+}
+
 func findWorkbenchRedeemPreset(presets []service.WorkbenchRedeemPreset, presetID string) (service.WorkbenchRedeemPreset, bool) {
 	for i := range presets {
 		if presets[i].ID == presetID {
@@ -402,8 +484,37 @@ func findWorkbenchRedeemPreset(presets []service.WorkbenchRedeemPreset, presetID
 	return service.WorkbenchRedeemPreset{}, false
 }
 
+func findWorkbenchRedeemTemplate(templates []service.WorkbenchRedeemTemplate, templateID string) (service.WorkbenchRedeemTemplate, bool) {
+	for i := range templates {
+		if templates[i].ID == templateID {
+			return templates[i], true
+		}
+	}
+	return service.WorkbenchRedeemTemplate{}, false
+}
+
 func renderWorkbenchTemplate(template string, code string) string {
 	return strings.ReplaceAll(normalizeWorkbenchTemplate(template), "{{code}}", code)
+}
+
+func (h *ToolsHandler) resolveWorkbenchTemplateContent(ctx context.Context, preset service.WorkbenchRedeemPreset) (string, error) {
+	if preset.TemplateID != "" {
+		templates, err := h.settingService.GetWorkbenchRedeemTemplates(ctx)
+		if err != nil {
+			return "", err
+		}
+		template, ok := findWorkbenchRedeemTemplate(templates, preset.TemplateID)
+		if !ok {
+			return "", errors.New("redeem template not found")
+		}
+		return template.Content, nil
+	}
+
+	if preset.Template != "" {
+		return preset.Template, nil
+	}
+
+	return "{{code}}", nil
 }
 
 func normalizeWorkbenchTemplate(template string) string {
@@ -414,6 +525,12 @@ func normalizeWorkbenchTemplate(template string) string {
 		return "{{code}}"
 	}
 	return template
+}
+
+func normalizeWorkbenchOptionalTemplate(template string) string {
+	template = strings.ReplaceAll(template, "\r\n", "\n")
+	template = strings.ReplaceAll(template, "\r", "\n")
+	return strings.TrimSpace(template)
 }
 
 func validateWorkbenchTemplate(template string) error {

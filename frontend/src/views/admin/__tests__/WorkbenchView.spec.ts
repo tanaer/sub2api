@@ -6,6 +6,7 @@ import WorkbenchView from '../WorkbenchView.vue'
 const {
   lookupAPIKeys,
   getRedeemPresets,
+  getRedeemTemplates,
   generateRedeemPreset,
   toggleUserStatus,
   getAllGroups,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
   lookupAPIKeys: vi.fn(),
   getRedeemPresets: vi.fn(),
+  getRedeemTemplates: vi.fn(),
   generateRedeemPreset: vi.fn(),
   toggleUserStatus: vi.fn(),
   getAllGroups: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock('@/api/admin', () => ({
     tools: {
       lookupAPIKeys,
       getRedeemPresets,
+      getRedeemTemplates,
       generateRedeemPreset,
     },
     users: {
@@ -58,6 +61,7 @@ describe('WorkbenchView', () => {
   beforeEach(() => {
     lookupAPIKeys.mockReset()
     getRedeemPresets.mockReset()
+    getRedeemTemplates.mockReset()
     generateRedeemPreset.mockReset()
     toggleUserStatus.mockReset()
     getAllGroups.mockReset()
@@ -73,7 +77,16 @@ describe('WorkbenchView', () => {
         type: 'balance',
         value: 50,
         validity_days: 30,
-        template: '密钥：{{code}}',
+        template_id: 'template-basic',
+      },
+    ])
+    getRedeemTemplates.mockResolvedValue([
+      {
+        id: 'template-basic',
+        name: '默认话术',
+        enabled: true,
+        sort_order: 1,
+        content: '密钥：{{code}}',
       },
     ])
     getAllGroups.mockResolvedValue([])
@@ -175,7 +188,7 @@ describe('WorkbenchView', () => {
         type: 'balance',
         value: 50,
         validity_days: 30,
-        template: '密钥：{{code}}',
+        template_id: 'template-basic',
       },
     })
 
@@ -201,5 +214,27 @@ describe('WorkbenchView', () => {
 
     await wrapper.get('[data-testid="copy-generated-message"]').trigger('click')
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith('密钥：R-TEST-001')
+  })
+
+  it('manages templates separately and lets presets choose one template', async () => {
+    const wrapper = mount(WorkbenchView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const managePresetButton = wrapper.findAll('button').find((button) => button.text() === '管理预设')
+    expect(managePresetButton).toBeTruthy()
+    await managePresetButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('选择话术模板')
+    expect(wrapper.text()).toContain('默认话术')
+    expect(wrapper.text()).toContain('管理模板')
   })
 })
