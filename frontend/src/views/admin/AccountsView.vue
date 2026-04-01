@@ -15,7 +15,7 @@
             :loading="loading"
             @refresh="handleManualRefresh"
             @sync="showSync = true"
-            @create="showCreate = true"
+            @create="openCreateModal"
           >
             <template #after>
               <!-- Auto Refresh Dropdown -->
@@ -261,6 +261,17 @@
           </template>
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
+              <button
+                @click="handleCopy(row)"
+                :disabled="copyingAccountId === row.id"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-dark-700 dark:hover:text-sky-400"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75A2.25 2.25 0 0111.25 10.5h6.5A2.25 2.25 0 0120 12.75v6.5A2.25 2.25 0 0117.75 21h-6.5A2.25 2.25 0 019 18.75v-6.5z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5V6.75A2.25 2.25 0 0012.75 4.5h-6.5A2.25 2.25 0 004 6.75v6.5A2.25 2.25 0 006.25 15H9" />
+                </svg>
+                <span class="text-xs">{{ t('common.copy') }}</span>
+              </button>
               <button @click="handleEdit(row)" class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                 <span class="text-xs">{{ t('common.edit') }}</span>
@@ -280,7 +291,7 @@
       </template>
       <template #pagination><Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" /></template>
     </TablePageLayout>
-    <CreateAccountModal :show="showCreate" :proxies="proxies" :groups="groups" @close="showCreate = false" @created="reload" />
+    <CreateAccountModal :show="showCreate" :template-account="createTemplateAcc" :proxies="proxies" :groups="groups" @close="closeCreateModal" @created="reload" />
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
@@ -379,6 +390,7 @@ const showTest = ref(false)
 const showStats = ref(false)
 const showErrorPassthrough = ref(false)
 const showTLSFingerprintProfiles = ref(false)
+const createTemplateAcc = ref<Account | null>(null)
 const edAcc = ref<Account | null>(null)
 const tempUnschedAcc = ref<Account | null>(null)
 const deletingAcc = ref<Account | null>(null)
@@ -389,6 +401,7 @@ const showSchedulePanel = ref(false)
 const scheduleAcc = ref<Account | null>(null)
 const scheduleModelOptions = ref<SelectOption[]>([])
 const togglingSchedulable = ref<number | null>(null)
+const copyingAccountId = ref<number | null>(null)
 const menu = reactive<{show:boolean, acc:Account|null, pos:{top:number, left:number}|null}>({ show: false, acc: null, pos: null })
 const exportingData = ref(false)
 
@@ -911,6 +924,27 @@ const cols = computed(() =>
 )
 
 const handleEdit = (a: Account) => { edAcc.value = a; showEdit.value = true }
+const openCreateModal = () => {
+  createTemplateAcc.value = null
+  showCreate.value = true
+}
+const closeCreateModal = () => {
+  showCreate.value = false
+  createTemplateAcc.value = null
+}
+const handleCopy = async (a: Account) => {
+  if (copyingAccountId.value === a.id) return
+  copyingAccountId.value = a.id
+  try {
+    createTemplateAcc.value = await adminAPI.accounts.getById(a.id)
+    showCreate.value = true
+  } catch (error: any) {
+    console.error('Failed to load account details for copy:', error)
+    appStore.showError(error?.message || t('common.error'))
+  } finally {
+    copyingAccountId.value = null
+  }
+}
 const openMenu = (a: Account, e: MouseEvent) => {
   menu.acc = a
 

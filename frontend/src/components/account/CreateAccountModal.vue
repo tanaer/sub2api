@@ -2900,6 +2900,7 @@ import { useAntigravityOAuth } from '@/composables/useAntigravityOAuth'
 import type {
   Proxy,
   AdminGroup,
+  Account,
   AccountPlatform,
   AccountType,
   CheckMixedChannelResponse,
@@ -2921,6 +2922,7 @@ import {
   OPENAI_WS_MODE_OFF,
   OPENAI_WS_MODE_PASSTHROUGH,
   isOpenAIWSModeEnabled,
+  resolveOpenAIWSModeFromExtra,
   resolveOpenAIWSModeConcurrencyHintKey,
   type OpenAIWSMode
 } from '@/utils/openaiWsMode'
@@ -2964,6 +2966,7 @@ const apiKeyHint = computed(() => {
 
 interface Props {
   show: boolean
+  templateAccount?: Account | null
   proxies: Proxy[]
   groups: AdminGroup[]
 }
@@ -3289,6 +3292,315 @@ const canExchangeCode = computed(() => {
   return authCode.trim() && oauth.sessionId.value && !oauth.loading.value
 })
 
+const clonePlainRecord = (value?: Record<string, unknown> | null): Record<string, unknown> => {
+  if (!value) return {}
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>
+}
+
+const clonePlainArray = <T>(value?: T[] | null): T[] => {
+  if (!Array.isArray(value)) return []
+  return JSON.parse(JSON.stringify(value)) as T[]
+}
+
+const normalizeTemplateType = (account: Account) => {
+  if (account.platform === 'antigravity' && account.type === 'upstream') {
+    return 'apikey' as AccountType
+  }
+  return account.type
+}
+
+const isTemplateCompatibleWithCurrentSelection = (account?: Account | null) => {
+  if (!account || account.platform !== form.platform) {
+    return false
+  }
+
+  const normalizedType = normalizeTemplateType(account)
+  if (form.platform === 'antigravity') {
+    return antigravityAccountType.value === 'upstream' ? normalizedType === 'apikey' : normalizedType === 'oauth'
+  }
+
+  return normalizedType === form.type
+}
+
+const canSubmitCopiedOAuthDirectly = computed(() => {
+  const template = props.templateAccount
+  if (!template || !isTemplateCompatibleWithCurrentSelection(template)) {
+    return false
+  }
+  const normalizedType = normalizeTemplateType(template)
+  return normalizedType === 'oauth' || normalizedType === 'setup-token'
+})
+
+const getCurrentTemplateCredentials = () => {
+  if (!isTemplateCompatibleWithCurrentSelection(props.templateAccount)) {
+    return {}
+  }
+  return clonePlainRecord((props.templateAccount?.credentials || {}) as Record<string, unknown>)
+}
+
+const getCurrentTemplateExtra = () => {
+  if (!isTemplateCompatibleWithCurrentSelection(props.templateAccount)) {
+    return {}
+  }
+  return clonePlainRecord((props.templateAccount?.extra || {}) as Record<string, unknown>)
+}
+
+function toPositiveNumber(value: unknown) {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) {
+    return null
+  }
+  return Math.trunc(num)
+}
+
+function formatTempUnschedKeywords(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .join(', ')
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  return ''
+}
+
+function loadTempUnschedRulesFromTemplate(credentials?: Record<string, unknown>) {
+  tempUnschedEnabled.value = credentials?.temp_unschedulable_enabled === true
+  const rawRules = credentials?.temp_unschedulable_rules
+  if (!Array.isArray(rawRules)) {
+    tempUnschedRules.value = []
+    return
+  }
+
+  tempUnschedRules.value = rawRules.map((rule) => {
+    const entry = rule as Record<string, unknown>
+    return {
+      error_code: toPositiveNumber(entry.error_code),
+      keywords: formatTempUnschedKeywords(entry.keywords),
+      duration_minutes: toPositiveNumber(entry.duration_minutes),
+      description: typeof entry.description === 'string' ? entry.description : ''
+    }
+  })
+}
+
+function loadQuotaControlSettingsFromTemplate(account: Account) {
+  windowCostEnabled.value = false
+  windowCostLimit.value = null
+  windowCostStickyReserve.value = null
+  sessionLimitEnabled.value = false
+  maxSessions.value = null
+  sessionIdleTimeout.value = null
+  rpmLimitEnabled.value = false
+  baseRpm.value = null
+  rpmStrategy.value = 'tiered'
+  rpmStickyBuffer.value = null
+  userMsgQueueMode.value = ''
+  tlsFingerprintEnabled.value = false
+  sessionIdMaskingEnabled.value = false
+  cacheTTLOverrideEnabled.value = false
+  cacheTTLOverrideTarget.value = '5m'
+
+  if (account.platform !== 'anthropic' || (account.type !== 'oauth' && account.type !== 'setup-token')) {
+    return
+  }
+
+  if (account.window_cost_limit != null && account.window_cost_limit > 0) {
+    windowCostEnabled.value = true
+    windowCostLimit.value = account.window_cost_limit
+    windowCostStickyReserve.value = account.window_cost_sticky_reserve ?? 10
+  }
+
+  if (account.max_sessions != null && account.max_sessions > 0) {
+    sessionLimitEnabled.value = true
+    maxSessions.value = account.max_sessions
+    sessionIdleTimeout.value = account.session_idle_timeout_minutes ?? 5
+  }
+
+  if (account.base_rpm != null && account.base_rpm > 0) {
+    rpmLimitEnabled.value = true
+    baseRpm.value = account.base_rpm
+    rpmStrategy.value = (account.rpm_strategy as 'tiered' | 'sticky_exempt') || 'tiered'
+    rpmStickyBuffer.value = account.rpm_sticky_buffer ?? null
+  }
+
+  userMsgQueueMode.value = account.user_msg_queue_mode ?? ''
+  tlsFingerprintEnabled.value = account.enable_tls_fingerprint === true
+  sessionIdMaskingEnabled.value = account.session_id_masking_enabled === true
+  if (account.cache_ttl_override_enabled === true) {
+    cacheTTLOverrideEnabled.value = true
+    cacheTTLOverrideTarget.value = account.cache_ttl_override_target || '5m'
+  }
+}
+
+function syncFormFromTemplate(account: Account) {
+  const credentials = clonePlainRecord((account.credentials || {}) as Record<string, unknown>)
+  const extra = clonePlainRecord((account.extra || {}) as Record<string, unknown>)
+  const normalizedType = normalizeTemplateType(account)
+  const platformDefaultUrl =
+    account.platform === 'openai' || account.platform === 'sora'
+      ? 'https://api.openai.com'
+      : account.platform === 'gemini'
+        ? 'https://generativelanguage.googleapis.com'
+        : 'https://api.anthropic.com'
+
+  step.value = 1
+  form.name = account.name
+  form.notes = account.notes || ''
+  form.platform = account.platform
+  form.proxy_id = account.proxy_id
+  form.concurrency = account.concurrency
+  form.load_factor = account.load_factor ?? null
+  form.priority = account.priority
+  form.rate_multiplier = account.rate_multiplier ?? 1
+  form.group_ids = clonePlainArray(account.group_ids)
+  form.expires_at = account.expires_at ?? null
+  autoPauseOnExpired.value = account.auto_pause_on_expired === true
+
+  accountCategory.value = 'oauth-based'
+  addMethod.value = normalizedType === 'setup-token' ? 'setup-token' : 'oauth'
+  if (account.platform === 'anthropic') {
+    if (account.type === 'bedrock') {
+      accountCategory.value = 'bedrock'
+    } else if (normalizedType === 'apikey') {
+      accountCategory.value = 'apikey'
+    }
+  } else if (account.platform === 'openai' || account.platform === 'gemini') {
+    accountCategory.value = normalizedType === 'apikey' ? 'apikey' : 'oauth-based'
+  } else if (account.platform === 'sora') {
+    soraAccountType.value = normalizedType === 'apikey' ? 'apikey' : 'oauth'
+    accountCategory.value = normalizedType === 'apikey' ? 'apikey' : 'oauth-based'
+  } else if (account.platform === 'antigravity') {
+    antigravityAccountType.value = normalizedType === 'apikey' ? 'upstream' : 'oauth'
+  }
+
+  apiKeyBaseUrl.value = (credentials.base_url as string) || platformDefaultUrl
+  apiKeyValue.value = typeof credentials.api_key === 'string' ? credentials.api_key : ''
+  upstreamBaseUrl.value = (credentials.base_url as string) || ''
+  upstreamApiKey.value = typeof credentials.api_key === 'string' ? credentials.api_key : ''
+
+  editQuotaLimit.value = typeof extra.quota_limit === 'number' && extra.quota_limit > 0 ? extra.quota_limit : null
+  editQuotaDailyLimit.value = typeof extra.quota_daily_limit === 'number' && extra.quota_daily_limit > 0 ? extra.quota_daily_limit : null
+  editQuotaWeeklyLimit.value = typeof extra.quota_weekly_limit === 'number' && extra.quota_weekly_limit > 0 ? extra.quota_weekly_limit : null
+  editDailyResetMode.value = (extra.quota_daily_reset_mode as 'rolling' | 'fixed') || null
+  editDailyResetHour.value = (extra.quota_daily_reset_hour as number) ?? null
+  editWeeklyResetMode.value = (extra.quota_weekly_reset_mode as 'rolling' | 'fixed') || null
+  editWeeklyResetDay.value = (extra.quota_weekly_reset_day as number) ?? null
+  editWeeklyResetHour.value = (extra.quota_weekly_reset_hour as number) ?? null
+  editResetTimezone.value = (extra.quota_reset_timezone as string) || null
+
+  interceptWarmupRequests.value = credentials.intercept_warmup_requests === true
+  mixedScheduling.value = extra.mixed_scheduling === true
+  allowOverages.value = extra.allow_overages === true
+  openaiPassthroughEnabled.value = false
+  openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  codexCLIOnlyEnabled.value = false
+  anthropicPassthroughEnabled.value = false
+
+  if (account.platform === 'openai') {
+    openaiPassthroughEnabled.value = extra.openai_passthrough === true || extra.openai_oauth_passthrough === true
+    openaiOAuthResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
+      modeKey: 'openai_oauth_responses_websockets_v2_mode',
+      enabledKey: 'openai_oauth_responses_websockets_v2_enabled',
+      fallbackEnabledKeys: ['responses_websockets_v2_enabled', 'openai_ws_enabled'],
+      defaultMode: OPENAI_WS_MODE_OFF
+    })
+    openaiAPIKeyResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
+      modeKey: 'openai_apikey_responses_websockets_v2_mode',
+      enabledKey: 'openai_apikey_responses_websockets_v2_enabled',
+      fallbackEnabledKeys: ['responses_websockets_v2_enabled', 'openai_ws_enabled'],
+      defaultMode: OPENAI_WS_MODE_OFF
+    })
+    if (normalizedType === 'oauth') {
+      codexCLIOnlyEnabled.value = extra.codex_cli_only === true
+    }
+  }
+
+  if (account.platform === 'anthropic' && normalizedType === 'apikey') {
+    anthropicPassthroughEnabled.value = extra.anthropic_passthrough === true
+  }
+
+  modelRestrictionMode.value = 'whitelist'
+  allowedModels.value = []
+  modelMappings.value = []
+  const rawModelMapping = credentials.model_mapping as Record<string, string> | undefined
+  if (rawModelMapping && typeof rawModelMapping === 'object') {
+    const entries = Object.entries(rawModelMapping)
+    const isWhitelistMode = entries.length > 0 && entries.every(([from, to]) => from === to)
+    if (isWhitelistMode) {
+      modelRestrictionMode.value = 'whitelist'
+      allowedModels.value = entries.map(([from]) => from)
+    } else {
+      modelRestrictionMode.value = 'mapping'
+      modelMappings.value = entries.map(([from, to]) => ({ from, to }))
+    }
+  }
+
+  antigravityModelRestrictionMode.value = 'mapping'
+  antigravityWhitelistModels.value = []
+  antigravityModelMappings.value = []
+  if (account.platform === 'antigravity') {
+    if (rawModelMapping && typeof rawModelMapping === 'object') {
+      antigravityModelMappings.value = Object.entries(rawModelMapping).map(([from, to]) => ({ from, to }))
+    }
+  }
+
+  poolModeEnabled.value = credentials.pool_mode === true
+  poolModeRetryCount.value = normalizePoolModeRetryCount(
+    Number(credentials.pool_mode_retry_count ?? DEFAULT_POOL_MODE_RETRY_COUNT)
+  )
+  customErrorCodesEnabled.value = credentials.custom_error_codes_enabled === true
+  selectedErrorCodes.value = Array.isArray(credentials.custom_error_codes)
+    ? credentials.custom_error_codes
+        .map((code) => Number(code))
+        .filter((code) => Number.isFinite(code))
+    : []
+  customErrorCodeInput.value = null
+
+  bedrockAuthMode.value = ((credentials.auth_mode as 'sigv4' | 'apikey') || 'sigv4')
+  bedrockAccessKeyId.value = (credentials.aws_access_key_id as string) || ''
+  bedrockSecretAccessKey.value = (credentials.aws_secret_access_key as string) || ''
+  bedrockSessionToken.value = (credentials.aws_session_token as string) || ''
+  bedrockRegion.value = (credentials.aws_region as string) || 'us-east-1'
+  bedrockForceGlobal.value = (credentials.aws_force_global as string) === 'true'
+  bedrockApiKeyValue.value = (credentials.api_key as string) || ''
+
+  tempUnschedEnabled.value = false
+  tempUnschedRules.value = []
+  loadTempUnschedRulesFromTemplate(credentials)
+  loadQuotaControlSettingsFromTemplate(account)
+
+  geminiOAuthType.value = ((credentials.oauth_type as 'code_assist' | 'google_one' | 'ai_studio') || 'code_assist')
+  const tierID = typeof credentials.tier_id === 'string' ? credentials.tier_id : ''
+  if (tierID === 'google_ai_pro' || tierID === 'google_ai_ultra' || tierID === 'google_one_free') {
+    geminiTierGoogleOne.value = tierID
+  } else {
+    geminiTierGoogleOne.value = 'google_one_free'
+  }
+  if (tierID === 'gcp_enterprise' || tierID === 'gcp_standard') {
+    geminiTierGcp.value = tierID
+  } else {
+    geminiTierGcp.value = 'gcp_standard'
+  }
+  if (tierID === 'aistudio_paid' || tierID === 'aistudio_free') {
+    geminiTierAIStudio.value = tierID
+  } else {
+    geminiTierAIStudio.value = 'aistudio_free'
+  }
+
+  oauth.resetState()
+  openaiOAuth.resetState()
+  soraOAuth.resetState()
+  geminiOAuth.resetState()
+  antigravityOAuth.resetState()
+  oauthFlowRef.value?.reset()
+  antigravityMixedChannelConfirmed.value = false
+  clearMixedChannelDialog()
+}
+
 // Watchers
 watch(
   () => props.show,
@@ -3315,7 +3627,21 @@ watch(
     } else {
       resetForm()
     }
-  }
+  },
+  { immediate: true }
+)
+
+watch(
+  [() => props.show, () => props.templateAccount],
+  ([show, templateAccount], [wasShow, previousTemplate]) => {
+    if (!show || !templateAccount) {
+      return
+    }
+    if (!wasShow || templateAccount !== previousTemplate) {
+      syncFormFromTemplate(templateAccount)
+    }
+  },
+  { immediate: true }
 )
 
 // Sync form.type based on accountCategory, addMethod, and platform-specific type
@@ -3363,9 +3689,11 @@ watch(
     // Antigravity: 默认使用映射模式并填充默认映射
     if (newPlatform === 'antigravity') {
       antigravityModelRestrictionMode.value = 'mapping'
-      fetchAntigravityDefaultMappings().then(mappings => {
-        antigravityModelMappings.value = [...mappings]
-      })
+      if (!(props.templateAccount && props.templateAccount.platform === 'antigravity')) {
+        fetchAntigravityDefaultMappings().then(mappings => {
+          antigravityModelMappings.value = [...mappings]
+        })
+      }
       antigravityWhitelistModels.value = []
       accountCategory.value = 'oauth-based'
       antigravityAccountType.value = 'oauth'
@@ -3651,7 +3979,7 @@ const buildMixedChannelDetails = (resp?: CheckMixedChannelResponse) => {
   }
 }
 
-const clearMixedChannelDialog = () => {
+function clearMixedChannelDialog() {
   showMixedChannelWarning.value = false
   mixedChannelWarningDetails.value = null
   mixedChannelWarningRawMessage.value = ''
@@ -3804,7 +4132,9 @@ const resetForm = () => {
   cacheTTLOverrideTarget.value = '5m'
   customBaseUrlEnabled.value = false
   customBaseUrl.value = ''
+  mixedScheduling.value = false
   allowOverages.value = false
+  soraAccountType.value = 'oauth'
   antigravityAccountType.value = 'oauth'
   upstreamBaseUrl.value = ''
   upstreamApiKey.value = ''
@@ -3877,6 +4207,63 @@ const buildAnthropicExtra = (base?: Record<string, unknown>): Record<string, unk
   return Object.keys(extra).length > 0 ? extra : undefined
 }
 
+const buildAnthropicOAuthExtraFromState = (base?: Record<string, unknown>): Record<string, unknown> | undefined => {
+  const extra: Record<string, unknown> = { ...(base || {}) }
+
+  delete extra.window_cost_limit
+  delete extra.window_cost_sticky_reserve
+  delete extra.max_sessions
+  delete extra.session_idle_timeout_minutes
+  delete extra.base_rpm
+  delete extra.rpm_strategy
+  delete extra.rpm_sticky_buffer
+  delete extra.user_msg_queue_mode
+  delete extra.enable_tls_fingerprint
+  delete extra.session_id_masking_enabled
+  delete extra.cache_ttl_override_enabled
+  delete extra.cache_ttl_override_target
+
+  if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {
+    extra.window_cost_limit = windowCostLimit.value
+    extra.window_cost_sticky_reserve = windowCostStickyReserve.value ?? 10
+  }
+
+  if (sessionLimitEnabled.value && maxSessions.value != null && maxSessions.value > 0) {
+    extra.max_sessions = maxSessions.value
+    extra.session_idle_timeout_minutes = sessionIdleTimeout.value ?? 5
+  }
+
+  if (rpmLimitEnabled.value) {
+    const DEFAULT_BASE_RPM = 15
+    extra.base_rpm = (baseRpm.value != null && baseRpm.value > 0)
+      ? baseRpm.value
+      : DEFAULT_BASE_RPM
+    extra.rpm_strategy = rpmStrategy.value
+    if (rpmStickyBuffer.value != null && rpmStickyBuffer.value > 0) {
+      extra.rpm_sticky_buffer = rpmStickyBuffer.value
+    }
+  }
+
+  if (userMsgQueueMode.value) {
+    extra.user_msg_queue_mode = userMsgQueueMode.value
+  }
+
+  if (tlsFingerprintEnabled.value) {
+    extra.enable_tls_fingerprint = true
+  }
+
+  if (sessionIdMaskingEnabled.value) {
+    extra.session_id_masking_enabled = true
+  }
+
+  if (cacheTTLOverrideEnabled.value) {
+    extra.cache_ttl_override_enabled = true
+    extra.cache_ttl_override_target = cacheTTLOverrideTarget.value
+  }
+
+  return Object.keys(extra).length > 0 ? extra : undefined
+}
+
 const buildSoraExtra = (
   base?: Record<string, unknown>,
   linkedOpenAIAccountId?: string | number
@@ -3931,7 +4318,7 @@ const handleMixedChannelCancel = () => {
   clearMixedChannelDialog()
 }
 
-const normalizePoolModeRetryCount = (value: number) => {
+function normalizePoolModeRetryCount(value: number) {
   if (!Number.isFinite(value)) {
     return DEFAULT_POOL_MODE_RETRY_COUNT
   }
@@ -3945,9 +4332,75 @@ const normalizePoolModeRetryCount = (value: number) => {
   return normalized
 }
 
+const handleSubmitCopiedOAuthTemplate = async () => {
+  if (!form.name.trim()) {
+    appStore.showError(t('admin.accounts.pleaseEnterAccountName'))
+    return
+  }
+
+  const credentials = getCurrentTemplateCredentials()
+  if (Object.keys(credentials).length === 0) {
+    appStore.showError(t('admin.accounts.failedToCreate'))
+    return
+  }
+
+  if (form.platform === 'openai') {
+    if (!isOpenAIModelRestrictionDisabled.value) {
+      const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
+      if (modelMapping) {
+        credentials.model_mapping = modelMapping
+      } else {
+        delete credentials.model_mapping
+      }
+    } else {
+      delete credentials.model_mapping
+    }
+
+    const extra = buildOpenAIExtra(getCurrentTemplateExtra())
+    await createAccountAndFinish('openai', form.type, credentials, extra)
+    return
+  }
+
+  if (form.platform === 'sora') {
+    const extra = buildSoraExtra(getCurrentTemplateExtra())
+    await createAccountAndFinish('sora', form.type, credentials, extra)
+    return
+  }
+
+  if (form.platform === 'gemini') {
+    credentials.oauth_type = geminiOAuthType.value
+    credentials.tier_id = geminiSelectedTier.value
+    await createAccountAndFinish('gemini', form.type, credentials, getCurrentTemplateExtra())
+    return
+  }
+
+  if (form.platform === 'antigravity') {
+    applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
+    const modelMapping = buildModelMappingObject('mapping', [], antigravityModelMappings.value)
+    if (modelMapping) {
+      credentials.model_mapping = modelMapping
+    } else {
+      delete credentials.model_mapping
+    }
+    await createAccountAndFinish('antigravity', form.type, credentials, buildAntigravityExtra())
+    return
+  }
+
+  applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
+  if (!applyTempUnschedConfig(credentials)) {
+    return
+  }
+  const extra = buildAnthropicOAuthExtraFromState(getCurrentTemplateExtra())
+  await createAccountAndFinish(form.platform, form.type, credentials, extra)
+}
+
 const handleSubmit = async () => {
   // For OAuth-based type, handle OAuth flow (goes to step 2)
   if (isOAuthFlow.value) {
+    if (canSubmitCopiedOAuthDirectly.value) {
+      await handleSubmitCopiedOAuthTemplate()
+      return
+    }
     if (!form.name.trim()) {
       appStore.showError(t('admin.accounts.pleaseEnterAccountName'))
       return
@@ -3969,10 +4422,19 @@ const handleSubmit = async () => {
       return
     }
 
-    const credentials: Record<string, unknown> = {
-      auth_mode: bedrockAuthMode.value,
-      aws_region: bedrockRegion.value.trim() || 'us-east-1',
-    }
+    const credentials: Record<string, unknown> = getCurrentTemplateCredentials()
+    delete credentials.api_key
+    delete credentials.aws_access_key_id
+    delete credentials.aws_secret_access_key
+    delete credentials.aws_session_token
+    delete credentials.aws_force_global
+    delete credentials.model_mapping
+    delete credentials.pool_mode
+    delete credentials.pool_mode_retry_count
+    delete credentials.intercept_warmup_requests
+
+    credentials.auth_mode = bedrockAuthMode.value
+    credentials.aws_region = bedrockRegion.value.trim() || 'us-east-1'
 
     if (bedrockAuthMode.value === 'sigv4') {
       if (!bedrockAccessKeyId.value.trim()) {
@@ -4014,6 +4476,7 @@ const handleSubmit = async () => {
       credentials.pool_mode_retry_count = normalizePoolModeRetryCount(poolModeRetryCount.value)
     }
 
+    delete credentials.intercept_warmup_requests
     applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
 
     await createAccountAndFinish('anthropic', 'bedrock' as AccountType, credentials)
@@ -4036,10 +4499,11 @@ const handleSubmit = async () => {
     }
 
     // Build upstream credentials (and optional model restriction)
-    const credentials: Record<string, unknown> = {
-      base_url: upstreamBaseUrl.value.trim(),
-      api_key: upstreamApiKey.value.trim()
-    }
+    const credentials: Record<string, unknown> = getCurrentTemplateCredentials()
+    delete credentials.model_mapping
+    delete credentials.intercept_warmup_requests
+    credentials.base_url = upstreamBaseUrl.value.trim()
+    credentials.api_key = upstreamApiKey.value.trim()
 
     // Antigravity 只使用映射模式
     const antigravityModelMapping = buildModelMappingObject(
@@ -4086,10 +4550,15 @@ const handleSubmit = async () => {
         : 'https://api.anthropic.com'
 
   // Build credentials with optional model mapping
-  const credentials: Record<string, unknown> = {
-    base_url: apiKeyBaseUrl.value.trim() || defaultBaseUrl,
-    api_key: apiKeyValue.value.trim()
-  }
+  const credentials: Record<string, unknown> = getCurrentTemplateCredentials()
+  delete credentials.model_mapping
+  delete credentials.pool_mode
+  delete credentials.pool_mode_retry_count
+  delete credentials.custom_error_codes_enabled
+  delete credentials.custom_error_codes
+  delete credentials.intercept_warmup_requests
+  credentials.base_url = apiKeyBaseUrl.value.trim() || defaultBaseUrl
+  credentials.api_key = apiKeyValue.value.trim()
   if (form.platform === 'gemini') {
     credentials.tier_id = geminiTierAIStudio.value
   }
@@ -4119,15 +4588,8 @@ const handleSubmit = async () => {
     return
   }
 
-  form.credentials = credentials
-  const extra = buildAnthropicExtra(buildOpenAIExtra())
-
-  await doCreateAccount({
-    ...form,
-    group_ids: form.group_ids,
-    extra,
-    auto_pause_on_expired: autoPauseOnExpired.value
-  })
+  const extra = buildAnthropicExtra(buildOpenAIExtra(getCurrentTemplateExtra()))
+  await createAccountAndFinish(form.platform, 'apikey', credentials, extra)
 }
 
 const goBackToBasicInfo = () => {
@@ -4266,6 +4728,15 @@ const createAccountAndFinish = async (
   let finalExtra = extra
   if (type === 'apikey' || type === 'bedrock') {
     const quotaExtra: Record<string, unknown> = { ...(extra || {}) }
+    delete quotaExtra.quota_limit
+    delete quotaExtra.quota_daily_limit
+    delete quotaExtra.quota_weekly_limit
+    delete quotaExtra.quota_daily_reset_mode
+    delete quotaExtra.quota_daily_reset_hour
+    delete quotaExtra.quota_weekly_reset_mode
+    delete quotaExtra.quota_weekly_reset_day
+    delete quotaExtra.quota_weekly_reset_hour
+    delete quotaExtra.quota_reset_timezone
     if (editQuotaLimit.value != null && editQuotaLimit.value > 0) {
       quotaExtra.quota_limit = editQuotaLimit.value
     }
