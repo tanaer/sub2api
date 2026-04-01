@@ -52,6 +52,24 @@ type geminiUsageTotalsBatchProvider interface {
 
 const geminiPrecheckCacheTTL = time.Minute
 
+const anthropic429FallbackCooldown = 30 * time.Second
+
+var anthropic429BodyKeywords = []string{
+	"accountquotaexceeded",
+	"toomanyrequests",
+	"达到速率限制",
+	"访问量过大",
+	"控制请求频率",
+	"稍后再试",
+	"usage quota",
+	"quota exceeded",
+	"rate limit",
+	"rate_limit",
+	"rate-limited",
+	"rate limited",
+	"too many requests",
+}
+
 // NewRateLimitService 创建RateLimitService实例
 func NewRateLimitService(accountRepo AccountRepository, usageRepo UsageLogRepository, cfg *config.Config, geminiQuotaService *GeminiQuotaService, tempUnschedCache TempUnschedCache) *RateLimitService {
 	return &RateLimitService{
@@ -769,8 +787,33 @@ func (s *RateLimitService) handle429(ctx context.Context, account *Account, head
 		}
 
 		// Anthropic 平台：没有限流重置时间的 429 可能是非真实限流（如 Extra usage required），
-		// 不标记账号限流状态，直接透传错误给客户端
+		// 但如果响应体本身已明确指向限流，仍然做一个短暂冷却，避免同一账号被反复选中。
 		if account.Platform == PlatformAnthropic {
+			if resetAt := parseAnthropicRateLimitResetTimeFromBody(responseBody); resetAt != nil {
+				if err := s.accountRepo.SetRateLimited(ctx, account.ID, *resetAt); err != nil {
+					slog.Warn("rate_limit_set_failed", "account_id", account.ID, "error", err)
+					return
+				}
+				slog.Warn("anthropic_429_reset_parsed_from_body",
+					"account_id", account.ID,
+					"platform", account.Platform,
+					"reset_at", *resetAt,
+					"upstream_msg", truncateForLog(responseBody, 256))
+				return
+			}
+			if looksLikeAnthropicRateLimitBody(responseBody) {
+				resetAt := time.Now().Add(anthropic429FallbackCooldown)
+				if err := s.accountRepo.SetRateLimited(ctx, account.ID, resetAt); err != nil {
+					slog.Warn("rate_limit_set_failed", "account_id", account.ID, "error", err)
+					return
+				}
+				slog.Warn("anthropic_429_no_reset_time_using_fallback_cooldown",
+					"account_id", account.ID,
+					"platform", account.Platform,
+					"cooldown", anthropic429FallbackCooldown,
+					"upstream_msg", truncateForLog(responseBody, 256))
+				return
+			}
 			slog.Warn("rate_limit_429_no_reset_time_skipped",
 				"account_id", account.ID,
 				"platform", account.Platform,
@@ -814,6 +857,76 @@ func (s *RateLimitService) handle429(ctx context.Context, account *Account, head
 	}
 
 	slog.Info("account_rate_limited", "account_id", account.ID, "reset_at", resetAt)
+}
+
+func parseAnthropicRateLimitResetTimeFromBody(responseBody []byte) *time.Time {
+	candidates := []string{
+		strings.TrimSpace(extractUpstreamErrorMessage(responseBody)),
+		strings.TrimSpace(string(responseBody)),
+	}
+	for _, candidate := range candidates {
+		resetAt := parseResetTimeFromMessage(candidate)
+		if resetAt != nil {
+			return resetAt
+		}
+	}
+	return nil
+}
+
+func parseResetTimeFromMessage(message string) *time.Time {
+	if message == "" {
+		return nil
+	}
+
+	lower := strings.ToLower(message)
+	idx := strings.Index(lower, "reset at ")
+	if idx < 0 {
+		return nil
+	}
+
+	resetText := strings.TrimSpace(message[idx+len("reset at "):])
+	if end := strings.Index(resetText, "."); end >= 0 {
+		resetText = resetText[:end]
+	}
+	resetText = strings.TrimSpace(resetText)
+	if resetText == "" {
+		return nil
+	}
+
+	layouts := []string{
+		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05 -0700",
+		"2006-01-02 15:04:05 MST",
+	}
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, resetText); err == nil {
+			return &parsed
+		}
+	}
+	return nil
+}
+
+func looksLikeAnthropicRateLimitBody(responseBody []byte) bool {
+	if strings.EqualFold(strings.TrimSpace(extractUpstreamErrorCode(responseBody)), "1302") {
+		return true
+	}
+
+	candidates := []string{
+		sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(responseBody))),
+		sanitizeUpstreamErrorMessage(strings.TrimSpace(string(responseBody))),
+	}
+	for _, candidate := range candidates {
+		candidate = strings.ToLower(candidate)
+		if candidate == "" {
+			continue
+		}
+		for _, keyword := range anthropic429BodyKeywords {
+			if strings.Contains(candidate, keyword) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // calculateOpenAI429ResetTime 从 OpenAI 429 响应头计算正确的重置时间
