@@ -17,6 +17,9 @@ type stubAdminService struct {
 	proxies              []service.Proxy
 	proxyCounts          []service.ProxyWithAccountCount
 	redeems              []service.RedeemCode
+	createdGroup         *service.CreateGroupInput
+	updatedGroupID       int64
+	updatedGroup         *service.UpdateGroupInput
 	createdAccounts      []*service.CreateAccountInput
 	createdProxies       []*service.CreateProxyInput
 	updatedProxyIDs      []int64
@@ -158,12 +161,29 @@ func (s *stubAdminService) GetGroup(ctx context.Context, id int64) (*service.Gro
 }
 
 func (s *stubAdminService) CreateGroup(ctx context.Context, input *service.CreateGroupInput) (*service.Group, error) {
-	group := service.Group{ID: 200, Name: input.Name, Status: service.StatusActive}
+	s.createdGroup = input
+	group := service.Group{
+		ID:                 200,
+		Name:               input.Name,
+		Status:             service.StatusActive,
+		UseKeyInstructions: input.UseKeyInstructions,
+	}
 	return &group, nil
 }
 
 func (s *stubAdminService) UpdateGroup(ctx context.Context, id int64, input *service.UpdateGroupInput) (*service.Group, error) {
-	group := service.Group{ID: id, Name: input.Name, Status: service.StatusActive}
+	s.updatedGroupID = id
+	s.updatedGroup = input
+	useKeyInstructions := ""
+	if input.UseKeyInstructions != nil {
+		useKeyInstructions = *input.UseKeyInstructions
+	}
+	group := service.Group{
+		ID:                 id,
+		Name:               input.Name,
+		Status:             service.StatusActive,
+		UseKeyInstructions: useKeyInstructions,
+	}
 	return &group, nil
 }
 

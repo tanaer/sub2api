@@ -134,15 +134,16 @@ type UpdateUserInput struct {
 }
 
 type CreateGroupInput struct {
-	Name             string
-	Description      string
-	Platform         string
-	RateMultiplier   float64
-	IsExclusive      bool
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name               string
+	Description        string
+	UseKeyInstructions string
+	Platform           string
+	RateMultiplier     float64
+	IsExclusive        bool
+	SubscriptionType   string   // standard/subscription
+	DailyLimitUSD      *float64 // 日限额 (USD)
+	WeeklyLimitUSD     *float64 // 周限额 (USD)
+	MonthlyLimitUSD    *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	ImagePrice1K *float64
 	ImagePrice2K *float64
@@ -174,16 +175,17 @@ type CreateGroupInput struct {
 }
 
 type UpdateGroupInput struct {
-	Name             string
-	Description      string
-	Platform         string
-	RateMultiplier   *float64 // 使用指针以支持设置为0
-	IsExclusive      *bool
-	Status           string
-	SubscriptionType string   // standard/subscription
-	DailyLimitUSD    *float64 // 日限额 (USD)
-	WeeklyLimitUSD   *float64 // 周限额 (USD)
-	MonthlyLimitUSD  *float64 // 月限额 (USD)
+	Name               string
+	Description        string
+	UseKeyInstructions *string
+	Platform           string
+	RateMultiplier     *float64 // 使用指针以支持设置为0
+	IsExclusive        *bool
+	Status             string
+	SubscriptionType   string   // standard/subscription
+	DailyLimitUSD      *float64 // 日限额 (USD)
+	WeeklyLimitUSD     *float64 // 周限额 (USD)
+	MonthlyLimitUSD    *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
 	ImagePrice1K *float64
 	ImagePrice2K *float64
@@ -942,6 +944,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	group := &Group{
 		Name:                            input.Name,
 		Description:                     input.Description,
+		UseKeyInstructions:              input.UseKeyInstructions,
 		Platform:                        platform,
 		RateMultiplier:                  input.RateMultiplier,
 		IsExclusive:                     input.IsExclusive,
@@ -1104,6 +1107,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.Platform != "" {
 		group.Platform = input.Platform
+	}
+	if input.UseKeyInstructions != nil {
+		group.UseKeyInstructions = *input.UseKeyInstructions
 	}
 	if input.RateMultiplier != nil {
 		group.RateMultiplier = *input.RateMultiplier

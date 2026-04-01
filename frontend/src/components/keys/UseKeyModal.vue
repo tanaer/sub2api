@@ -24,8 +24,8 @@
       <!-- Platform-specific content -->
       <template v-else>
         <!-- Description -->
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          {{ platformDescription }}
+        <p class="whitespace-pre-line text-sm text-gray-600 dark:text-gray-400">
+          {{ displayInstructions }}
         </p>
 
         <!-- Client Tabs -->
@@ -146,6 +146,7 @@ interface Props {
   apiKey: string
   baseUrl: string
   platform: GroupPlatform | null
+  customInstructions?: string | null
   allowMessagesDispatch?: boolean
 }
 
@@ -319,6 +320,15 @@ const currentTabs = computed(() => {
   return shellTabs
 })
 
+const hasCustomInstructions = computed(() => !!props.customInstructions?.trim())
+
+const displayInstructions = computed(() => {
+  if (hasCustomInstructions.value) {
+    return props.customInstructions!.trim()
+  }
+  return platformDescription.value
+})
+
 const platformDescription = computed(() => {
   switch (props.platform) {
     case 'openai':
@@ -355,7 +365,7 @@ const platformNote = computed(() => {
   }
 })
 
-const showPlatformNote = computed(() => activeClientTab.value !== 'opencode')
+const showPlatformNote = computed(() => !hasCustomInstructions.value && activeClientTab.value !== 'opencode')
 
 const escapeHtml = (value: string) => value
   .replace(/&/g, '&amp;')

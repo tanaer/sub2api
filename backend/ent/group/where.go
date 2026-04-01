@@ -80,6 +80,11 @@ func Description(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldDescription, v))
 }
 
+// UseKeyInstructions applies equality check predicate on the "use_key_instructions" field. It's identical to UseKeyInstructionsEQ.
+func UseKeyInstructions(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUseKeyInstructions, v))
+}
+
 // RateMultiplier applies equality check predicate on the "rate_multiplier" field. It's identical to RateMultiplierEQ.
 func RateMultiplier(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRateMultiplier, v))
@@ -483,6 +488,81 @@ func DescriptionEqualFold(v string) predicate.Group {
 // DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
 func DescriptionContainsFold(v string) predicate.Group {
 	return predicate.Group(sql.FieldContainsFold(FieldDescription, v))
+}
+
+// UseKeyInstructionsEQ applies the EQ predicate on the "use_key_instructions" field.
+func UseKeyInstructionsEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsNEQ applies the NEQ predicate on the "use_key_instructions" field.
+func UseKeyInstructionsNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsIn applies the In predicate on the "use_key_instructions" field.
+func UseKeyInstructionsIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldUseKeyInstructions, vs...))
+}
+
+// UseKeyInstructionsNotIn applies the NotIn predicate on the "use_key_instructions" field.
+func UseKeyInstructionsNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldUseKeyInstructions, vs...))
+}
+
+// UseKeyInstructionsGT applies the GT predicate on the "use_key_instructions" field.
+func UseKeyInstructionsGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsGTE applies the GTE predicate on the "use_key_instructions" field.
+func UseKeyInstructionsGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsLT applies the LT predicate on the "use_key_instructions" field.
+func UseKeyInstructionsLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsLTE applies the LTE predicate on the "use_key_instructions" field.
+func UseKeyInstructionsLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsContains applies the Contains predicate on the "use_key_instructions" field.
+func UseKeyInstructionsContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsHasPrefix applies the HasPrefix predicate on the "use_key_instructions" field.
+func UseKeyInstructionsHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsHasSuffix applies the HasSuffix predicate on the "use_key_instructions" field.
+func UseKeyInstructionsHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsIsNil applies the IsNil predicate on the "use_key_instructions" field.
+func UseKeyInstructionsIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldUseKeyInstructions))
+}
+
+// UseKeyInstructionsNotNil applies the NotNil predicate on the "use_key_instructions" field.
+func UseKeyInstructionsNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldUseKeyInstructions))
+}
+
+// UseKeyInstructionsEqualFold applies the EqualFold predicate on the "use_key_instructions" field.
+func UseKeyInstructionsEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldUseKeyInstructions, v))
+}
+
+// UseKeyInstructionsContainsFold applies the ContainsFold predicate on the "use_key_instructions" field.
+func UseKeyInstructionsContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldUseKeyInstructions, v))
 }
 
 // RateMultiplierEQ applies the EQ predicate on the "rate_multiplier" field.

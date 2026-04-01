@@ -17,6 +17,32 @@ vi.mock('@/composables/useClipboard', () => ({
 import UseKeyModal from '../UseKeyModal.vue'
 
 describe('UseKeyModal', () => {
+  it('renders custom instructions and hides default platform copy when provided', () => {
+    const wrapper = mount(UseKeyModal, {
+      props: {
+        show: true,
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.com/v1',
+        platform: 'openai',
+        customInstructions: '这是 OpenAI 高级分组的专属接入说明'
+      },
+      global: {
+        stubs: {
+          BaseDialog: {
+            template: '<div><slot /><slot name="footer" /></div>'
+          },
+          Icon: {
+            template: '<span />'
+          }
+        }
+      }
+    })
+
+    expect(wrapper.text()).toContain('这是 OpenAI 高级分组的专属接入说明')
+    expect(wrapper.text()).not.toContain('keys.useKeyModal.openai.description')
+    expect(wrapper.text()).not.toContain('keys.useKeyModal.openai.note')
+  })
+
   it('renders updated GPT-5.4 mini/nano names in OpenCode config', async () => {
     const wrapper = mount(UseKeyModal, {
       props: {

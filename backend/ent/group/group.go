@@ -25,6 +25,8 @@ const (
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
+	// FieldUseKeyInstructions holds the string denoting the use_key_instructions field in the database.
+	FieldUseKeyInstructions = "use_key_instructions"
 	// FieldRateMultiplier holds the string denoting the rate_multiplier field in the database.
 	FieldRateMultiplier = "rate_multiplier"
 	// FieldIsExclusive holds the string denoting the is_exclusive field in the database.
@@ -163,6 +165,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldName,
 	FieldDescription,
+	FieldUseKeyInstructions,
 	FieldRateMultiplier,
 	FieldIsExclusive,
 	FieldStatus,
@@ -302,6 +305,11 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
+}
+
+// ByUseKeyInstructions orders the results by the use_key_instructions field.
+func ByUseKeyInstructions(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUseKeyInstructions, opts...).ToFunc()
 }
 
 // ByRateMultiplier orders the results by the rate_multiplier field.

@@ -376,6 +376,7 @@ export interface Group {
   id: number
   name: string
   description: string | null
+  use_key_instructions: string | null
   platform: GroupPlatform
   rate_multiplier: number
   is_exclusive: boolean
@@ -495,6 +496,7 @@ export interface UpdateApiKeyRequest {
 export interface CreateGroupRequest {
   name: string
   description?: string | null
+  use_key_instructions?: string | null
   platform?: GroupPlatform
   rate_multiplier?: number
   is_exclusive?: boolean
@@ -525,6 +527,7 @@ export interface CreateGroupRequest {
 export interface UpdateGroupRequest {
   name?: string
   description?: string | null
+  use_key_instructions?: string | null
   platform?: GroupPlatform
   rate_multiplier?: number
   is_exclusive?: boolean

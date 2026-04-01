@@ -42,6 +42,11 @@ func (Group) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "text"}),
+		field.String("use_key_instructions").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "text"}).
+			Comment("用户侧使用密钥弹层的自定义说明"),
 		field.Float("rate_multiplier").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),

@@ -90,6 +90,20 @@ func (_c *GroupCreate) SetNillableDescription(v *string) *GroupCreate {
 	return _c
 }
 
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (_c *GroupCreate) SetUseKeyInstructions(v string) *GroupCreate {
+	_c.mutation.SetUseKeyInstructions(v)
+	return _c
+}
+
+// SetNillableUseKeyInstructions sets the "use_key_instructions" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableUseKeyInstructions(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetUseKeyInstructions(*v)
+	}
+	return _c
+}
+
 // SetRateMultiplier sets the "rate_multiplier" field.
 func (_c *GroupCreate) SetRateMultiplier(v float64) *GroupCreate {
 	_c.mutation.SetRateMultiplier(v)
@@ -819,6 +833,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldDescription, field.TypeString, value)
 		_node.Description = &value
 	}
+	if value, ok := _c.mutation.UseKeyInstructions(); ok {
+		_spec.SetField(group.FieldUseKeyInstructions, field.TypeString, value)
+		_node.UseKeyInstructions = &value
+	}
 	if value, ok := _c.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 		_node.RateMultiplier = value
@@ -1148,6 +1166,24 @@ func (u *GroupUpsert) UpdateDescription() *GroupUpsert {
 // ClearDescription clears the value of the "description" field.
 func (u *GroupUpsert) ClearDescription() *GroupUpsert {
 	u.SetNull(group.FieldDescription)
+	return u
+}
+
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (u *GroupUpsert) SetUseKeyInstructions(v string) *GroupUpsert {
+	u.Set(group.FieldUseKeyInstructions, v)
+	return u
+}
+
+// UpdateUseKeyInstructions sets the "use_key_instructions" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateUseKeyInstructions() *GroupUpsert {
+	u.SetExcluded(group.FieldUseKeyInstructions)
+	return u
+}
+
+// ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
+func (u *GroupUpsert) ClearUseKeyInstructions() *GroupUpsert {
+	u.SetNull(group.FieldUseKeyInstructions)
 	return u
 }
 
@@ -1785,6 +1821,27 @@ func (u *GroupUpsertOne) UpdateDescription() *GroupUpsertOne {
 func (u *GroupUpsertOne) ClearDescription() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDescription()
+	})
+}
+
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (u *GroupUpsertOne) SetUseKeyInstructions(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUseKeyInstructions(v)
+	})
+}
+
+// UpdateUseKeyInstructions sets the "use_key_instructions" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateUseKeyInstructions() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUseKeyInstructions()
+	})
+}
+
+// ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
+func (u *GroupUpsertOne) ClearUseKeyInstructions() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearUseKeyInstructions()
 	})
 }
 
@@ -2675,6 +2732,27 @@ func (u *GroupUpsertBulk) UpdateDescription() *GroupUpsertBulk {
 func (u *GroupUpsertBulk) ClearDescription() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearDescription()
+	})
+}
+
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (u *GroupUpsertBulk) SetUseKeyInstructions(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetUseKeyInstructions(v)
+	})
+}
+
+// UpdateUseKeyInstructions sets the "use_key_instructions" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateUseKeyInstructions() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateUseKeyInstructions()
+	})
+}
+
+// ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
+func (u *GroupUpsertBulk) ClearUseKeyInstructions() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearUseKeyInstructions()
 	})
 }
 

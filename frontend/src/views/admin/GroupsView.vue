@@ -289,6 +289,16 @@
           ></textarea>
         </div>
         <div>
+          <label class="input-label">{{ t('admin.groups.form.useKeyInstructions') }}</label>
+          <textarea
+            v-model="createForm.use_key_instructions"
+            rows="4"
+            class="input"
+            :placeholder="t('admin.groups.useKeyInstructionsPlaceholder')"
+          ></textarea>
+          <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
+        </div>
+        <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
           <Select
             v-model="createForm.platform"
@@ -1070,6 +1080,16 @@
         <div>
           <label class="input-label">{{ t('admin.groups.form.description') }}</label>
           <textarea v-model="editForm.description" rows="3" class="input"></textarea>
+        </div>
+        <div>
+          <label class="input-label">{{ t('admin.groups.form.useKeyInstructions') }}</label>
+          <textarea
+            v-model="editForm.use_key_instructions"
+            rows="4"
+            class="input"
+            :placeholder="t('admin.groups.useKeyInstructionsPlaceholder')"
+          ></textarea>
+          <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
@@ -2149,6 +2169,7 @@ const sortableGroups = ref<AdminGroup[]>([])
 const createForm = reactive({
   name: '',
   description: '',
+  use_key_instructions: '',
   platform: 'anthropic' as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -2395,6 +2416,7 @@ const convertApiFormatToRoutingRules = async (apiFormat: Record<string, number[]
 const editForm = reactive({
   name: '',
   description: '',
+  use_key_instructions: '',
   platform: 'anthropic' as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -2549,6 +2571,7 @@ const closeCreateModal = () => {
   clearAllAccountSearchState()
   createForm.name = ''
   createForm.description = ''
+  createForm.use_key_instructions = ''
   createForm.platform = 'anthropic'
   createForm.rate_multiplier = 1.0
   createForm.is_exclusive = false
@@ -2637,6 +2660,7 @@ const handleEdit = async (group: AdminGroup) => {
   editingGroup.value = group
   editForm.name = group.name
   editForm.description = group.description || ''
+  editForm.use_key_instructions = group.use_key_instructions || ''
   editForm.platform = group.platform
   editForm.rate_multiplier = group.rate_multiplier
   editForm.is_exclusive = group.is_exclusive

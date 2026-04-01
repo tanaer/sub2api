@@ -95,6 +95,26 @@ func (_u *GroupUpdate) ClearDescription() *GroupUpdate {
 	return _u
 }
 
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (_u *GroupUpdate) SetUseKeyInstructions(v string) *GroupUpdate {
+	_u.mutation.SetUseKeyInstructions(v)
+	return _u
+}
+
+// SetNillableUseKeyInstructions sets the "use_key_instructions" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableUseKeyInstructions(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetUseKeyInstructions(*v)
+	}
+	return _u
+}
+
+// ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
+func (_u *GroupUpdate) ClearUseKeyInstructions() *GroupUpdate {
+	_u.mutation.ClearUseKeyInstructions()
+	return _u
+}
+
 // SetRateMultiplier sets the "rate_multiplier" field.
 func (_u *GroupUpdate) SetRateMultiplier(v float64) *GroupUpdate {
 	_u.mutation.ResetRateMultiplier()
@@ -1004,6 +1024,12 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(group.FieldDescription, field.TypeString)
 	}
+	if value, ok := _u.mutation.UseKeyInstructions(); ok {
+		_spec.SetField(group.FieldUseKeyInstructions, field.TypeString, value)
+	}
+	if _u.mutation.UseKeyInstructionsCleared() {
+		_spec.ClearField(group.FieldUseKeyInstructions, field.TypeString)
+	}
 	if value, ok := _u.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 	}
@@ -1554,6 +1580,26 @@ func (_u *GroupUpdateOne) SetNillableDescription(v *string) *GroupUpdateOne {
 // ClearDescription clears the value of the "description" field.
 func (_u *GroupUpdateOne) ClearDescription() *GroupUpdateOne {
 	_u.mutation.ClearDescription()
+	return _u
+}
+
+// SetUseKeyInstructions sets the "use_key_instructions" field.
+func (_u *GroupUpdateOne) SetUseKeyInstructions(v string) *GroupUpdateOne {
+	_u.mutation.SetUseKeyInstructions(v)
+	return _u
+}
+
+// SetNillableUseKeyInstructions sets the "use_key_instructions" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableUseKeyInstructions(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetUseKeyInstructions(*v)
+	}
+	return _u
+}
+
+// ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
+func (_u *GroupUpdateOne) ClearUseKeyInstructions() *GroupUpdateOne {
+	_u.mutation.ClearUseKeyInstructions()
 	return _u
 }
 
@@ -2495,6 +2541,12 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(group.FieldDescription, field.TypeString)
+	}
+	if value, ok := _u.mutation.UseKeyInstructions(); ok {
+		_spec.SetField(group.FieldUseKeyInstructions, field.TypeString, value)
+	}
+	if _u.mutation.UseKeyInstructionsCleared() {
+		_spec.ClearField(group.FieldUseKeyInstructions, field.TypeString)
 	}
 	if value, ok := _u.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
