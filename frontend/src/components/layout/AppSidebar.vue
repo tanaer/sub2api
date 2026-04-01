@@ -227,6 +227,21 @@ const ChartIcon = {
     )
 }
 
+const WrenchScrewdriverIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M11.42 6.36a6.75 6.75 0 008.22 8.22l-5.18 5.18a2.25 2.25 0 01-3.182 0l-1.636-1.636a2.25 2.25 0 010-3.182l5.18-5.18a6.75 6.75 0 00-8.22-8.22l2.17 2.17a1.5 1.5 0 010 2.122L6.36 8.28a1.5 1.5 0 01-2.121 0l-2.17-2.17z'
+        })
+      ]
+    )
+}
+
 const GiftIcon = {
   render: () =>
     h(
@@ -566,6 +581,7 @@ const adminNavItems = computed((): NavItem[] => {
     ...(adminSettingsStore.opsMonitoringEnabled
       ? [{ path: '/admin/ops', label: t('nav.ops'), icon: ChartIcon }]
       : []),
+    { path: '/admin/workbench', label: t('nav.workbench'), icon: WrenchScrewdriverIcon },
     { path: '/admin/users', label: t('nav.users'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },

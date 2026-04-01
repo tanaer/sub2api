@@ -1119,6 +1119,55 @@ export interface GenerateRedeemCodesRequest {
   validity_days?: number // 订阅类型专用
 }
 
+export interface WorkbenchLookupUserApiKey {
+  id: number
+  key: string
+  status: ApiKey['status']
+  created_at?: string | null
+  success_call_count: number
+}
+
+export interface WorkbenchLookupItem {
+  extracted_key: string
+  matched: boolean
+  api_key?: string
+  api_key_id?: number
+  user_id?: number
+  user_email?: string
+  username?: string
+  user_status?: User['status']
+  group_id?: number | null
+  latest_redeem_at?: string | null
+  success_call_count: number
+  api_keys: WorkbenchLookupUserApiKey[]
+}
+
+export interface WorkbenchLookupResponse {
+  extracted_keys: string[]
+  matched_count: number
+  unmatched_count: number
+  items: WorkbenchLookupItem[]
+}
+
+export interface WorkbenchRedeemPreset {
+  id: string
+  name: string
+  enabled: boolean
+  sort_order: number
+  type: RedeemCodeType
+  value: number
+  group_id?: number | null
+  validity_days: number
+  template: string
+}
+
+export interface WorkbenchRedeemPresetGenerateResponse {
+  code: string
+  rendered_message: string
+  redeem_code?: RedeemCode
+  preset: WorkbenchRedeemPreset
+}
+
 export interface RedeemCodeRequest {
   code: string
 }

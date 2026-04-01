@@ -255,6 +255,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/workbench',
+    name: 'AdminWorkbench',
+    component: () => import('@/views/admin/WorkbenchView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Ops Workbench',
+      titleKey: 'admin.workbench.title',
+      descriptionKey: 'admin.workbench.description'
+    }
+  },
+  {
     path: '/admin/users',
     name: 'AdminUsers',
     component: () => import('@/views/admin/UsersView.vue'),

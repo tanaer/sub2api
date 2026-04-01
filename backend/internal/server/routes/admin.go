@@ -85,6 +85,9 @@ func RegisterAdminRoutes(
 		// API Key 管理
 		registerAdminAPIKeyRoutes(admin, h)
 
+		// 运营工具
+		registerAdminToolRoutes(admin, h)
+
 		// 定时测试计划
 		registerScheduledTestRoutes(admin, h)
 	}
@@ -95,6 +98,16 @@ func registerAdminAPIKeyRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		apiKeys.PUT("/:id", h.Admin.APIKey.UpdateGroup)
 		apiKeys.PUT("/:id/request-quota", h.Admin.APIKey.UpdateRequestQuota)
+	}
+}
+
+func registerAdminToolRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	tools := admin.Group("/tools")
+	{
+		tools.POST("/api-key-lookup", h.Admin.Tools.LookupAPIKeys)
+		tools.GET("/redeem-presets", h.Admin.Tools.GetRedeemPresets)
+		tools.PUT("/redeem-presets", h.Admin.Tools.UpdateRedeemPresets)
+		tools.POST("/redeem-presets/:id/generate", h.Admin.Tools.GenerateRedeemPreset)
 	}
 }
 

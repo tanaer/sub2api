@@ -29,6 +29,7 @@ type AdminHandlers struct {
 	ErrorPassthrough      *admin.ErrorPassthroughHandler
 	TLSFingerprintProfile *admin.TLSFingerprintProfileHandler
 	APIKey                *admin.AdminAPIKeyHandler
+	Tools                 *admin.ToolsHandler
 	ScheduledTest         *admin.ScheduledTestHandler
 }
 

@@ -343,6 +343,7 @@ export default {
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',
+    workbench: '运营工具',
     promoCodes: '优惠码',
     settings: '系统设置',
     myAccount: '我的账户',
@@ -1028,6 +1029,10 @@ export default {
       systemSettings: '系统设置',
       configureSystem: '配置系统设置',
       failedToLoad: '加载仪表盘数据失败'
+    },
+    workbench: {
+      title: '运营工具',
+      description: 'API Key 智能查询与兑换码快捷生成'
     },
 
     backup: {

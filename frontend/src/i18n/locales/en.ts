@@ -343,6 +343,7 @@ export default {
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
+    workbench: 'Workbench',
     promoCodes: 'Promo Codes',
     settings: 'Settings',
     myAccount: 'My Account',
@@ -1006,6 +1007,10 @@ export default {
       requestsShort: 'Req',
       tokensShort: 'Tok',
       failedToLoad: 'Failed to load dashboard statistics'
+    },
+    workbench: {
+      title: 'Ops Workbench',
+      description: 'Smart API key lookup and quick redeem generation'
     },
 
     backup: {
