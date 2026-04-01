@@ -59,6 +59,17 @@ func TestAccountResolveModelRetryChain(t *testing.T) {
 			maxAttempts:    3,
 			expected:       []string{"gemini-2.5-pro"},
 		},
+		{
+			name: "known glm fallback typos are normalized before retrying",
+			credentials: map[string]any{
+				"model_fallbacks": map[string]any{
+					"glm-5.1": []any{"glm4.7", "GLM-4.7-FlashX", "glm4.5", "GLM-Z1-Air"},
+				},
+			},
+			requestedModel: "glm-5.1",
+			maxAttempts:    5,
+			expected:       []string{"glm-5.1", "glm-4.7", "GLM-4.7-FlashX", "glm-4.5", "GLM-Z1-Air"},
+		},
 	}
 
 	for _, tt := range tests {

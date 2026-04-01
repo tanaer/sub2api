@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const maxModelRetryChainAttempts = 3
+const maxModelRetryChainAttempts = 5
 
 var modelFallbackDegradeKeywords = []string{
 	"429",
@@ -22,6 +22,11 @@ var modelFallbackDegradeKeywords = []string{
 	"resource exhausted",
 	"resource_exhausted",
 	"too many requests",
+}
+
+var knownRetryModelAliases = map[string]string{
+	"glm4.5": "glm-4.5",
+	"glm4.7": "glm-4.7",
 }
 
 func buildModelRetryChain(account *Account, requestedModel string) []string {
@@ -39,7 +44,7 @@ func compactUniqueModels(models []string, maxAttempts int) []string {
 	seen := make(map[string]struct{}, len(models))
 	out := make([]string, 0, min(len(models), maxAttempts))
 	for _, model := range models {
-		model = strings.TrimSpace(model)
+		model = normalizeRetryModelName(model)
 		if model == "" {
 			continue
 		}
@@ -54,6 +59,17 @@ func compactUniqueModels(models []string, maxAttempts int) []string {
 		}
 	}
 	return out
+}
+
+func normalizeRetryModelName(model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return ""
+	}
+	if normalized, ok := knownRetryModelAliases[strings.ToLower(model)]; ok {
+		return normalized
+	}
+	return model
 }
 
 func shouldFallbackToNextModel(statusCode int, responseBody []byte) bool {
