@@ -4387,6 +4387,11 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	// 调试日志：记录即将转发的账号信息
 	logger.LegacyPrintf("service.gateway", "[Forward] Using account: ID=%d Name=%s Platform=%s Type=%s TLSFingerprint=%v Proxy=%s",
 		account.ID, account.Name, account.Platform, account.Type, tlsProfile, proxyURL)
+	// Pre-filter: strip Anthropic-specific extensions (thinking, cache_control) for non-native providers.
+	// Native Anthropic / Antigravity support these fields; all third-party Anthropic-compatible APIs reject them.
+	if IsGLMModel(reqModel) || account.ShouldStripAnthropicExtensions() {
+		body = StripAnthropicExtensionsForGLM(body)
+	}
 	// Pre-filter: strip empty text blocks (including nested in tool_result) to prevent upstream 400.
 	body = StripEmptyTextBlocks(body)
 

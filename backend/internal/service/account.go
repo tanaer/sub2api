@@ -721,6 +721,16 @@ type AccountGLMCapabilities struct {
 	ContextManagement bool
 }
 
+// ShouldStripAnthropicExtensions 判断是否需要在转发前剥除 Anthropic 专有字段（thinking / cache_control）。
+// 凡标记了具体上游供应商且不是原生 Anthropic 的账号，这些字段都不被支持。
+func (a *Account) ShouldStripAnthropicExtensions() bool {
+	if a == nil {
+		return false
+	}
+	p := strings.TrimSpace(a.UpstreamProvider)
+	return p != "" && p != "native"
+}
+
 func (a *Account) IsMiniMaxAnthropicAPIKey() bool {
 	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey {
 		return false

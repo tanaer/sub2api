@@ -1122,3 +1122,55 @@ func RectifyThinkingBudget(body []byte) ([]byte, bool) {
 
 	return modified, changed
 }
+
+// StripAnthropicExtensionsForGLM 移除 GLM/ZhiPu API 不支持的 Anthropic 专有字段：
+//   - 顶层 "thinking" 字段（GLM 不识别会返回 InvalidParameter 400）
+//   - messages 内 content 块中的 "cache_control" 字段（Anthropic 提示缓存，GLM 不支持）
+func StripAnthropicExtensionsForGLM(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	out := body
+
+	// 1. 剥除顶层 thinking 字段
+	if gjson.GetBytes(out, "thinking").Exists() {
+		if next, err := sjson.DeleteBytes(out, "thinking"); err == nil {
+			out = next
+		}
+	}
+
+	// 2. 收集 messages content 中所有 cache_control 路径
+	jsonStr := *(*string)(unsafe.Pointer(&out))
+	messages := gjson.Get(jsonStr, "messages")
+	if !messages.IsArray() {
+		return out
+	}
+
+	var cachePaths []string
+	msgIdx := 0
+	messages.ForEach(func(_, msg gjson.Result) bool {
+		content := msg.Get("content")
+		if content.IsArray() {
+			contentIdx := 0
+			content.ForEach(func(_, item gjson.Result) bool {
+				if item.Get("cache_control").Exists() {
+					cachePaths = append(cachePaths, fmt.Sprintf("messages.%d.content.%d.cache_control", msgIdx, contentIdx))
+				}
+				contentIdx++
+				return true
+			})
+		}
+		msgIdx++
+		return true
+	})
+
+	// 从后往前删，保证 JSON 路径索引不偏移
+	for i := len(cachePaths) - 1; i >= 0; i-- {
+		if next, ok := deleteJSONPathBytes(out, cachePaths[i]); ok {
+			out = next
+		}
+	}
+
+	return out
+}
