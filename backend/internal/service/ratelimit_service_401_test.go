@@ -53,7 +53,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 	t.Run("gemini", func(t *testing.T) {
 		repo := &rateLimitAccountRepoStub{}
 		invalidator := &tokenCacheInvalidatorRecorder{}
-		service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+		service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 		service.SetTokenCacheInvalidator(invalidator)
 		account := &Account{
 			ID:       100,
@@ -85,7 +85,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 		// HandleUpstreamError 中走 SetError 路径。
 		repo := &rateLimitAccountRepoStub{}
 		invalidator := &tokenCacheInvalidatorRecorder{}
-		service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+		service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 		service.SetTokenCacheInvalidator(invalidator)
 		account := &Account{
 			ID:       100,
@@ -105,7 +105,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 func TestRateLimitService_HandleUpstreamError_OAuth401InvalidatorError(t *testing.T) {
 	repo := &rateLimitAccountRepoStub{}
 	invalidator := &tokenCacheInvalidatorRecorder{err: errors.New("boom")}
-	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 	service.SetTokenCacheInvalidator(invalidator)
 	account := &Account{
 		ID:       101,
@@ -125,7 +125,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401InvalidatorError(t *testin
 func TestRateLimitService_HandleUpstreamError_NonOAuth401(t *testing.T) {
 	repo := &rateLimitAccountRepoStub{}
 	invalidator := &tokenCacheInvalidatorRecorder{}
-	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 	service.SetTokenCacheInvalidator(invalidator)
 	account := &Account{
 		ID:       102,
@@ -142,7 +142,7 @@ func TestRateLimitService_HandleUpstreamError_NonOAuth401(t *testing.T) {
 
 func TestRateLimitService_HandleUpstreamError_OAuth401UsesCredentialsUpdater(t *testing.T) {
 	repo := &rateLimitAccountRepoStub{}
-	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+	service := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 	account := &Account{
 		ID:       103,
 		Platform: PlatformOpenAI,

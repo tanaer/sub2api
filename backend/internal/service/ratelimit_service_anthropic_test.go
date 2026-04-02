@@ -274,7 +274,7 @@ func TestCalculateAnthropic429ResetTime_Only7dResetHeader(t *testing.T) {
 
 func TestHandle429_AnthropicWithoutResetHeaderButRateLimitBodyUsesFallbackCooldown(t *testing.T) {
 	repo := &anthropic429AccountRepo{}
-	svc := NewRateLimitService(repo, nil, nil, nil, nil)
+	svc := NewRateLimitService(repo, nil, nil, nil, nil, nil)
 	account := &Account{ID: 321, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
 	body := []byte(`{"error":{"type":"1302","message":"您的账户已达到速率限制，请您控制请求频率，您可联系管理员提升账户等级。"}}`)
 
@@ -301,7 +301,7 @@ func TestHandle429_AnthropicWithoutResetHeaderButRateLimitBodyUsesFallbackCooldo
 
 func TestHandle429_AnthropicWithoutResetHeaderButQuotaBodyParsesResetTime(t *testing.T) {
 	repo := &anthropic429AccountRepo{}
-	svc := NewRateLimitService(repo, nil, nil, nil, nil)
+	svc := NewRateLimitService(repo, nil, nil, nil, nil, nil)
 	account := &Account{ID: 777, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
 	body := []byte(`{"error":{"code":"AccountQuotaExceeded","message":"You have exceeded the monthly usage quota. It will reset at 2026-04-14 23:59:59 +0800 CST. We recommend upgrading your plan for more quota, or waiting for the reset. Request id: 021775028605020933bcb8fff5a6e275f05e6439785ee7938e92d","param":"","type":"TooManyRequests"}}`)
 
@@ -321,7 +321,7 @@ func TestHandle429_AnthropicWithoutResetHeaderButQuotaBodyParsesResetTime(t *tes
 
 func TestHandle429_AnthropicWithoutResetHeaderButHighTrafficBodyUsesFallbackCooldown(t *testing.T) {
 	repo := &anthropic429AccountRepo{}
-	svc := NewRateLimitService(repo, nil, nil, nil, nil)
+	svc := NewRateLimitService(repo, nil, nil, nil, nil, nil)
 	account := &Account{ID: 888, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
 	body := []byte(`{"error":{"type":"1305","message":"该模型当前访问量过大，请您稍后再试 (request id: 20260401073610846050136KnA11zRt)"},"type":"error"}`)
 
@@ -344,7 +344,7 @@ func TestHandle429_AnthropicWithoutResetHeaderButHighTrafficBodyUsesFallbackCool
 
 func TestHandle429_AnthropicWithoutResetHeaderAndNonRateLimitBodyStillSkips(t *testing.T) {
 	repo := &anthropic429AccountRepo{}
-	svc := NewRateLimitService(repo, nil, nil, nil, nil)
+	svc := NewRateLimitService(repo, nil, nil, nil, nil, nil)
 	account := &Account{ID: 654, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
 	body := []byte(`{"error":{"message":"Extra usage required to access this model"}}`)
 

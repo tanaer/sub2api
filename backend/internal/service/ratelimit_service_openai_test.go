@@ -162,7 +162,7 @@ func (r *openAI429SnapshotRepo) UpdateExtra(_ context.Context, _ int64, updates 
 
 func TestHandle429_OpenAIPersistsCodexSnapshotImmediately(t *testing.T) {
 	repo := &openAI429SnapshotRepo{}
-	svc := NewRateLimitService(repo, nil, nil, nil, nil)
+	svc := NewRateLimitService(repo, nil, nil, nil, nil, nil)
 	account := &Account{ID: 123, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
 
 	headers := http.Header{}

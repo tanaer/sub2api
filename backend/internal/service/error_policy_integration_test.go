@@ -145,7 +145,7 @@ func TestRetryLoop_ErrorPolicy_CustomErrorCodes(t *testing.T) {
 
 			upstream := &epFixedUpstream{statusCode: tt.upstreamStatus, body: tt.upstreamBody}
 			repo := &epAccountRepo{}
-			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 
 			account := &Account{
 				ID:          100,
@@ -219,7 +219,7 @@ func TestRetryLoop_ErrorPolicy_TempUnschedulable(t *testing.T) {
 
 		upstream := &epFixedUpstream{statusCode: 503, body: `overloaded`}
 		repo := &epAccountRepo{}
-		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 		svc := &AntigravityGatewayService{rateLimitService: rlSvc}
 
 		account := tempRulesAccount([]any{overloadedRule})
@@ -242,7 +242,7 @@ func TestRetryLoop_ErrorPolicy_TempUnschedulable(t *testing.T) {
 
 		upstream := &epFixedUpstream{statusCode: 429, body: `rate limited keyword`}
 		repo := &epAccountRepo{}
-		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 		svc := &AntigravityGatewayService{rateLimitService: rlSvc}
 
 		account := tempRulesAccount([]any{rateLimitRule})
@@ -265,7 +265,7 @@ func TestRetryLoop_ErrorPolicy_TempUnschedulable(t *testing.T) {
 
 		upstream := &epFixedUpstream{statusCode: 503, body: `random`}
 		repo := &epAccountRepo{}
-		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+		rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 		svc := &AntigravityGatewayService{rateLimitService: rlSvc}
 
 		account := tempRulesAccount([]any{overloadedRule})
@@ -335,7 +335,7 @@ func TestRetryLoop_ErrorPolicy_NoPolicy_OriginalBehavior(t *testing.T) {
 
 	upstream := &epFixedUpstream{statusCode: 429, body: `{"error":"rate limited"}`}
 	repo := &epAccountRepo{}
-	rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+	rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 	svc := &AntigravityGatewayService{rateLimitService: rlSvc}
 
 	// Plain OAuth account with no error policy configured
@@ -419,7 +419,7 @@ func TestCustomErrorCode599_SkippedErrors_Return500_NoRateLimit(t *testing.T) {
 				body:       `{"error":"some upstream error"}`,
 			}
 			repo := &epTrackingRepo{}
-			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 			svc := &AntigravityGatewayService{rateLimitService: rlSvc}
 
 			account := &Account{

@@ -318,11 +318,22 @@ func (s *GeminiMessagesCompatService) selectBestGeminiAccount(
 	var selected *Account
 	precheckResult := s.buildPreCheckUsageResultMap(ctx, accounts, requestedModel)
 
+	// 获取进程内熔断器
+	var cb *AccountCircuitBreaker
+	if s.rateLimitService != nil {
+		cb = s.rateLimitService.CircuitBreaker()
+	}
+
 	for i := range accounts {
 		acc := &accounts[i]
 
 		// 跳过被排除的账号
 		if _, excluded := excludedIDs[acc.ID]; excluded {
+			continue
+		}
+
+		// 进程内熔断器：立即跳过刚出错的账号
+		if cb != nil && cb.IsTripped(acc.ID) {
 			continue
 		}
 
@@ -723,6 +734,7 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 			return nil, s.writeClaudeError(c, http.StatusBadGateway, "upstream_error", err.Error())
 		}
 		requestIDHeader = idHeader
+		geminiUpstreamURL := safeUpstreamURL(upstreamReq.URL.String())
 
 		// Capture upstream request body for ops retry of this attempt.
 		if c != nil {
@@ -738,6 +750,7 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        geminiUpstreamURL,
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
@@ -1263,6 +1276,7 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 			return nil, s.writeGoogleError(c, http.StatusBadGateway, err.Error())
 		}
 		requestIDHeader = idHeader
+		geminiUpstreamURL := safeUpstreamURL(upstreamReq.URL.String())
 
 		// Capture upstream request body for ops retry of this attempt.
 		if c != nil {
@@ -1278,6 +1292,7 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        geminiUpstreamURL,
 				Kind:               "request_error",
 				Message:            safeErr,
 			})

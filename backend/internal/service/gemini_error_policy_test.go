@@ -172,7 +172,7 @@ func TestCheckErrorPolicy_GeminiAccounts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &errorPolicyRepoStub{}
-			svc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+			svc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 
 			result := svc.CheckErrorPolicy(context.Background(), tt.account, tt.statusCode, tt.body)
 			require.Equal(t, tt.expected, result)
@@ -284,7 +284,7 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &geminiErrorPolicyRepo{}
-			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+			rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
 			svc := &GeminiMessagesCompatService{
 				accountRepo:      repo,
 				rateLimitService: rlSvc,

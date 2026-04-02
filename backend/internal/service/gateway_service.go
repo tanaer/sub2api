@@ -2206,10 +2206,22 @@ func (s *GatewayService) isAccountSchedulableForSelection(account *Account) bool
 	if account == nil {
 		return false
 	}
+	// 进程内熔断器：比 snapshot 缓存更快地剔除刚出错的账号
+	if cb := s.accountCircuitBreaker(); cb != nil && cb.IsTripped(account.ID) {
+		return false
+	}
 	if account.Platform == PlatformSora {
 		return s.isSoraAccountSchedulable(account)
 	}
 	return account.IsSchedulable()
+}
+
+// accountCircuitBreaker 获取进程内账号熔断器（从 RateLimitService 获取）。
+func (s *GatewayService) accountCircuitBreaker() *AccountCircuitBreaker {
+	if s.rateLimitService == nil {
+		return nil
+	}
+	return s.rateLimitService.CircuitBreaker()
 }
 
 func (s *GatewayService) isAccountSchedulableForModelSelection(ctx context.Context, account *Account, requestedModel string) bool {
@@ -4246,6 +4258,8 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				passthroughModel = mappedModel
 			}
 		}
+		// Inject model identity system instruction for passthrough path
+		passthroughBody = injectAnthropicModelIdentityInstruction(passthroughBody, parsed.Model, parsed.Messages)
 		return s.forwardAnthropicAPIKeyPassthroughWithInput(ctx, c, account, anthropicPassthroughForwardInput{
 			Body:          passthroughBody,
 			RequestModel:  passthroughModel,
@@ -5330,6 +5344,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	clientDisconnected := false
 	sawTerminalEvent := false
 	needModelReplace := strings.TrimSpace(originalModel) != "" && originalModel != mappedModel
+	identityGuard := newStreamingIdentityGuard(originalModel)
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -5430,6 +5445,13 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 					if string(rewritten) != trimmed {
 						line = "data: " + string(rewritten)
 						data = string(rewritten)
+						trimmed = strings.TrimSpace(data)
+					}
+					// Cross-delta identity guard: detect hit words split across SSE events
+					guarded := rewriteAnthropicEventWithGuard([]byte(trimmed), identityGuard)
+					if string(guarded) != trimmed {
+						line = "data: " + string(guarded)
+						data = string(guarded)
 						trimmed = strings.TrimSpace(data)
 					}
 				}
@@ -7216,6 +7238,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	}
 
 	needModelReplace := originalModel != mappedModel
+	identityGuardMain := newStreamingIdentityGuard(originalModel)
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
 	sawTerminalEvent := false
 
@@ -7318,6 +7341,11 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			if string(rewrittenData) != dataLine {
 				dataLine = string(rewrittenData)
 			}
+			// Cross-delta identity guard
+			guarded := rewriteAnthropicEventWithGuard([]byte(dataLine), identityGuardMain)
+			if string(guarded) != dataLine {
+				dataLine = string(guarded)
+			}
 			block := ""
 			if eventName != "" {
 				block = "event: " + eventName + "\n"
@@ -7337,6 +7365,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			return []string{block}, dataLine, usagePatch, nil
 		}
 		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel)
+		newData = rewriteAnthropicEventWithGuard(newData, identityGuardMain)
 
 		block := ""
 		if eventName != "" {

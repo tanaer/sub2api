@@ -1196,6 +1196,11 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 
 	// 验证账号是否可用于当前请求
 	// Verify account is usable for current request
+	if s.rateLimitService != nil {
+		if cb := s.rateLimitService.CircuitBreaker(); cb != nil && cb.IsTripped(account.ID) {
+			return nil
+		}
+	}
 	if !account.IsSchedulable() || !account.IsOpenAI() {
 		return nil
 	}
@@ -1361,7 +1366,11 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 				if clearSticky {
 					_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 				}
-				if !clearSticky && account.IsSchedulable() && account.IsOpenAI() &&
+				cbOK := func() bool {
+					if s.rateLimitService == nil { return true }
+					cb := s.rateLimitService.CircuitBreaker(); return cb == nil || !cb.IsTripped(accountID)
+				}
+			if !clearSticky && cbOK() && account.IsSchedulable() && account.IsOpenAI() &&
 					(requestedModel == "" || account.IsModelSupported(requestedModel)) {
 					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel)
 					if account == nil {
@@ -1401,6 +1410,12 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 		acc := &accounts[i]
 		if isExcluded(acc.ID) {
 			continue
+		}
+		// 进程内熔断器：立即跳过刚出错的账号
+		if s.rateLimitService != nil {
+			if cb := s.rateLimitService.CircuitBreaker(); cb != nil && cb.IsTripped(acc.ID) {
+				continue
+			}
 		}
 		// Scheduler snapshots can be temporarily stale (bucket rebuild is throttled);
 		// re-check schedulability here so recently rate-limited/overloaded accounts
@@ -2277,6 +2292,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				AccountID:          account.ID,
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
@@ -2326,6 +2342,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 							AccountName:        account.Name,
 							UpstreamStatusCode: resp.StatusCode,
 							UpstreamRequestID:  resp.Header.Get("x-request-id"),
+							UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 							Kind:               "model_fallback",
 							Message:            upstreamMsg,
 							Detail:             nextModel,
@@ -2350,6 +2367,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					AccountName:        account.Name,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.Header.Get("x-request-id"),
+					UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 					Kind:               "failover",
 					Message:            upstreamMsg,
 					Detail:             upstreamDetail,
@@ -2526,6 +2544,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 				AccountName:        account.Name,
 				UpstreamStatusCode: 0,
 				Passthrough:        true,
+				UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
@@ -2555,6 +2574,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 						AccountName:        account.Name,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.Header.Get("x-request-id"),
+						UpstreamURL:        safeUpstreamURL(upstreamReq.URL.String()),
 						Passthrough:        true,
 						Kind:               "model_fallback",
 						Message:            sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody))),
@@ -2782,6 +2802,7 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 		AccountName:          account.Name,
 		UpstreamStatusCode:   resp.StatusCode,
 		UpstreamRequestID:    resp.Header.Get("x-request-id"),
+		UpstreamURL:          safeUpstreamURLFromResp(resp),
 		Passthrough:          true,
 		Kind:                 "http_error",
 		Message:              upstreamMsg,
@@ -2889,6 +2910,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	sawDone := false
 	sawTerminalEvent := false
 	upstreamRequestID := strings.TrimSpace(resp.Header.Get("x-request-id"))
+	identityGuardPT := newStreamingIdentityGuard(requestedModel)
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -2905,6 +2927,12 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel)
 			if !bytes.Equal(rewrittenData, []byte(data)) {
 				data = string(rewrittenData)
+				line = "data: " + data
+			}
+			// Cross-delta identity guard
+			guarded := rewriteResponsesEventWithGuard([]byte(data), identityGuardPT)
+			if !bytes.Equal(guarded, []byte(data)) {
+				data = string(guarded)
 				line = "data: " + data
 			}
 			dataBytes := []byte(data)
@@ -3216,6 +3244,8 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 		return nil, fmt.Errorf("upstream error: %d (passthrough rule matched) message=%s", resp.StatusCode, upstreamMsg)
 	}
 
+	upstreamURL := safeUpstreamURLFromResp(resp)
+
 	// Check custom error codes
 	if !account.ShouldHandleErrorCode(resp.StatusCode) {
 		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -3224,6 +3254,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 			AccountName:        account.Name,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.Header.Get("x-request-id"),
+			UpstreamURL:        upstreamURL,
 			Kind:               "http_error",
 			Message:            upstreamMsg,
 			Detail:             upstreamDetail,
@@ -3255,6 +3286,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 		AccountName:        account.Name,
 		UpstreamStatusCode: resp.StatusCode,
 		UpstreamRequestID:  resp.Header.Get("x-request-id"),
+		UpstreamURL:        upstreamURL,
 		Kind:               kind,
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
@@ -3349,6 +3381,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		upstreamDetail = truncateString(string(body), maxBytes)
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
+	compatUpstreamURL := safeUpstreamURLFromResp(resp)
 
 	// Apply error passthrough rules
 	if status, errType, errMsg, matched := applyErrorPassthroughRule(
@@ -3374,6 +3407,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			AccountName:        account.Name,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.Header.Get("x-request-id"),
+			UpstreamURL:        compatUpstreamURL,
 			Kind:               "http_error",
 			Message:            upstreamMsg,
 			Detail:             upstreamDetail,
@@ -3402,6 +3436,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		AccountName:        account.Name,
 		UpstreamStatusCode: resp.StatusCode,
 		UpstreamRequestID:  resp.Header.Get("x-request-id"),
+		UpstreamURL:        compatUpstreamURL,
 		Kind:               kind,
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
@@ -3540,6 +3575,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 	}
 
 	needModelReplace := originalModel != mappedModel
+	identityGuardStream := newStreamingIdentityGuard(originalModel)
 	resultWithUsage := func() *openaiStreamingResult {
 		return &openaiStreamingResult{usage: usage, firstTokenMs: firstTokenMs}
 	}
@@ -3595,6 +3631,12 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), originalModel)
 			if !bytes.Equal(rewrittenData, []byte(data)) {
 				data = string(rewrittenData)
+				line = "data: " + data
+			}
+			// Cross-delta identity guard
+			guarded := rewriteResponsesEventWithGuard([]byte(data), identityGuardStream)
+			if !bytes.Equal(guarded, []byte(data)) {
+				data = string(guarded)
 				line = "data: " + data
 			}
 

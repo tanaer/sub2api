@@ -25,6 +25,7 @@ type RateLimitService struct {
 	timeoutCounterCache   TimeoutCounterCache
 	settingService        *SettingService
 	tokenCacheInvalidator TokenCacheInvalidator
+	circuitBreaker        *AccountCircuitBreaker
 	usageCacheMu          sync.RWMutex
 	usageCache            map[int64]*geminiUsageCacheEntry
 }
@@ -71,13 +72,14 @@ var anthropic429BodyKeywords = []string{
 }
 
 // NewRateLimitService 创建RateLimitService实例
-func NewRateLimitService(accountRepo AccountRepository, usageRepo UsageLogRepository, cfg *config.Config, geminiQuotaService *GeminiQuotaService, tempUnschedCache TempUnschedCache) *RateLimitService {
+func NewRateLimitService(accountRepo AccountRepository, usageRepo UsageLogRepository, cfg *config.Config, geminiQuotaService *GeminiQuotaService, tempUnschedCache TempUnschedCache, circuitBreaker *AccountCircuitBreaker) *RateLimitService {
 	return &RateLimitService{
 		accountRepo:        accountRepo,
 		usageRepo:          usageRepo,
 		cfg:                cfg,
 		geminiQuotaService: geminiQuotaService,
 		tempUnschedCache:   tempUnschedCache,
+		circuitBreaker:     circuitBreaker,
 		usageCache:         make(map[int64]*geminiUsageCacheEntry),
 	}
 }
@@ -95,6 +97,11 @@ func (s *RateLimitService) SetSettingService(settingService *SettingService) {
 // SetTokenCacheInvalidator 设置 token 缓存清理器（可选依赖）
 func (s *RateLimitService) SetTokenCacheInvalidator(invalidator TokenCacheInvalidator) {
 	s.tokenCacheInvalidator = invalidator
+}
+
+// CircuitBreaker 返回账号熔断器实例（供调度选号时检查）。
+func (s *RateLimitService) CircuitBreaker() *AccountCircuitBreaker {
+	return s.circuitBreaker
 }
 
 // ErrorPolicyResult 表示错误策略检查的结果
@@ -269,6 +276,11 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 			slog.Warn("account_upstream_error", "account_id", account.ID, "status_code", statusCode)
 			shouldDisable = false
 		}
+	}
+
+	// 进程内熔断：立即将坏账号从调度中剔除，无需等待 outbox 异步重建。
+	if shouldDisable && s.circuitBreaker != nil {
+		s.circuitBreaker.Trip(account.ID)
 	}
 
 	return shouldDisable
