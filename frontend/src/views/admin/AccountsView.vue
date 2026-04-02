@@ -73,6 +73,16 @@
                 <span class="hidden md:inline">{{ t('admin.errorPassthrough.title') }}</span>
               </button>
 
+              <!-- Account Throttle Rules -->
+              <button
+                @click="showAccountThrottle = true"
+                class="btn btn-secondary"
+                :title="t('admin.accountThrottle.title')"
+              >
+                <Icon name="bolt" size="md" class="mr-1.5" />
+                <span class="hidden md:inline">{{ t('admin.accountThrottle.title') }}</span>
+              </button>
+
               <!-- Provider Timeout Config -->
               <button
                 @click="showProviderTimeout = true"
@@ -344,6 +354,7 @@
       </label>
     </ConfirmDialog>
     <ErrorPassthroughRulesModal :show="showErrorPassthrough" @close="showErrorPassthrough = false" />
+    <AccountThrottleRulesModal :show="showAccountThrottle" @close="showAccountThrottle = false" />
     <TLSFingerprintProfilesModal :show="showTLSFingerprintProfiles" @close="showTLSFingerprintProfiles = false" />
     <ProviderTimeoutModal :show="showProviderTimeout" @close="showProviderTimeout = false" />
     <SLAMonitorModal :show="showSLAMonitor" @close="showSLAMonitor = false" />
@@ -384,6 +395,7 @@ import AccountCapacityCell from '@/components/account/AccountCapacityCell.vue'
 import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
+import AccountThrottleRulesModal from '@/components/admin/AccountThrottleRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import ProviderTimeoutModal from '@/components/admin/ProviderTimeoutModal.vue'
 import SLAMonitorModal from '@/components/admin/SLAMonitorModal.vue'
@@ -427,6 +439,7 @@ const showReAuth = ref(false)
 const showTest = ref(false)
 const showStats = ref(false)
 const showErrorPassthrough = ref(false)
+const showAccountThrottle = ref(false)
 const showTLSFingerprintProfiles = ref(false)
 const showProviderTimeout = ref(false)
 const showSLAMonitor = ref(false)

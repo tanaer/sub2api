@@ -79,6 +79,9 @@ func RegisterAdminRoutes(
 		// 错误透传规则管理
 		registerErrorPassthroughRoutes(admin, h)
 
+		// 账户智能限流规则管理
+		registerAccountThrottleRoutes(admin, h)
+
 		// TLS 指纹模板管理
 		registerTLSFingerprintProfileRoutes(admin, h)
 
@@ -577,6 +580,17 @@ func registerErrorPassthroughRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 		rules.POST("", h.Admin.ErrorPassthrough.Create)
 		rules.PUT("/:id", h.Admin.ErrorPassthrough.Update)
 		rules.DELETE("/:id", h.Admin.ErrorPassthrough.Delete)
+	}
+}
+
+func registerAccountThrottleRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	rules := admin.Group("/account-throttle-rules")
+	{
+		rules.GET("", h.Admin.AccountThrottle.List)
+		rules.GET("/:id", h.Admin.AccountThrottle.GetByID)
+		rules.POST("", h.Admin.AccountThrottle.Create)
+		rules.PUT("/:id", h.Admin.AccountThrottle.Update)
+		rules.DELETE("/:id", h.Admin.AccountThrottle.Delete)
 	}
 }
 

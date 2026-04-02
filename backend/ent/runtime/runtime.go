@@ -7,6 +7,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/accountgroup"
+	"github.com/Wei-Shaw/sub2api/ent/accountthrottlerule"
 	"github.com/Wei-Shaw/sub2api/ent/announcement"
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
@@ -260,6 +261,81 @@ func init() {
 	accountgroupDescCreatedAt := accountgroupFields[3].Descriptor()
 	// accountgroup.DefaultCreatedAt holds the default value on creation for the created_at field.
 	accountgroup.DefaultCreatedAt = accountgroupDescCreatedAt.Default.(func() time.Time)
+	accountthrottleruleMixin := schema.AccountThrottleRule{}.Mixin()
+	accountthrottleruleMixinFields0 := accountthrottleruleMixin[0].Fields()
+	_ = accountthrottleruleMixinFields0
+	accountthrottleruleFields := schema.AccountThrottleRule{}.Fields()
+	_ = accountthrottleruleFields
+	// accountthrottleruleDescCreatedAt is the schema descriptor for created_at field.
+	accountthrottleruleDescCreatedAt := accountthrottleruleMixinFields0[0].Descriptor()
+	// accountthrottlerule.DefaultCreatedAt holds the default value on creation for the created_at field.
+	accountthrottlerule.DefaultCreatedAt = accountthrottleruleDescCreatedAt.Default.(func() time.Time)
+	// accountthrottleruleDescUpdatedAt is the schema descriptor for updated_at field.
+	accountthrottleruleDescUpdatedAt := accountthrottleruleMixinFields0[1].Descriptor()
+	// accountthrottlerule.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	accountthrottlerule.DefaultUpdatedAt = accountthrottleruleDescUpdatedAt.Default.(func() time.Time)
+	// accountthrottlerule.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	accountthrottlerule.UpdateDefaultUpdatedAt = accountthrottleruleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// accountthrottleruleDescName is the schema descriptor for name field.
+	accountthrottleruleDescName := accountthrottleruleFields[0].Descriptor()
+	// accountthrottlerule.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	accountthrottlerule.NameValidator = func() func(string) error {
+		validators := accountthrottleruleDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// accountthrottleruleDescEnabled is the schema descriptor for enabled field.
+	accountthrottleruleDescEnabled := accountthrottleruleFields[1].Descriptor()
+	// accountthrottlerule.DefaultEnabled holds the default value on creation for the enabled field.
+	accountthrottlerule.DefaultEnabled = accountthrottleruleDescEnabled.Default.(bool)
+	// accountthrottleruleDescPriority is the schema descriptor for priority field.
+	accountthrottleruleDescPriority := accountthrottleruleFields[2].Descriptor()
+	// accountthrottlerule.DefaultPriority holds the default value on creation for the priority field.
+	accountthrottlerule.DefaultPriority = accountthrottleruleDescPriority.Default.(int)
+	// accountthrottleruleDescMatchMode is the schema descriptor for match_mode field.
+	accountthrottleruleDescMatchMode := accountthrottleruleFields[4].Descriptor()
+	// accountthrottlerule.DefaultMatchMode holds the default value on creation for the match_mode field.
+	accountthrottlerule.DefaultMatchMode = accountthrottleruleDescMatchMode.Default.(string)
+	// accountthrottlerule.MatchModeValidator is a validator for the "match_mode" field. It is called by the builders before save.
+	accountthrottlerule.MatchModeValidator = accountthrottleruleDescMatchMode.Validators[0].(func(string) error)
+	// accountthrottleruleDescTriggerMode is the schema descriptor for trigger_mode field.
+	accountthrottleruleDescTriggerMode := accountthrottleruleFields[5].Descriptor()
+	// accountthrottlerule.DefaultTriggerMode holds the default value on creation for the trigger_mode field.
+	accountthrottlerule.DefaultTriggerMode = accountthrottleruleDescTriggerMode.Default.(string)
+	// accountthrottlerule.TriggerModeValidator is a validator for the "trigger_mode" field. It is called by the builders before save.
+	accountthrottlerule.TriggerModeValidator = accountthrottleruleDescTriggerMode.Validators[0].(func(string) error)
+	// accountthrottleruleDescAccumulatedCount is the schema descriptor for accumulated_count field.
+	accountthrottleruleDescAccumulatedCount := accountthrottleruleFields[6].Descriptor()
+	// accountthrottlerule.DefaultAccumulatedCount holds the default value on creation for the accumulated_count field.
+	accountthrottlerule.DefaultAccumulatedCount = accountthrottleruleDescAccumulatedCount.Default.(int)
+	// accountthrottleruleDescAccumulatedWindow is the schema descriptor for accumulated_window field.
+	accountthrottleruleDescAccumulatedWindow := accountthrottleruleFields[7].Descriptor()
+	// accountthrottlerule.DefaultAccumulatedWindow holds the default value on creation for the accumulated_window field.
+	accountthrottlerule.DefaultAccumulatedWindow = accountthrottleruleDescAccumulatedWindow.Default.(int)
+	// accountthrottleruleDescActionType is the schema descriptor for action_type field.
+	accountthrottleruleDescActionType := accountthrottleruleFields[8].Descriptor()
+	// accountthrottlerule.DefaultActionType holds the default value on creation for the action_type field.
+	accountthrottlerule.DefaultActionType = accountthrottleruleDescActionType.Default.(string)
+	// accountthrottlerule.ActionTypeValidator is a validator for the "action_type" field. It is called by the builders before save.
+	accountthrottlerule.ActionTypeValidator = accountthrottleruleDescActionType.Validators[0].(func(string) error)
+	// accountthrottleruleDescActionDuration is the schema descriptor for action_duration field.
+	accountthrottleruleDescActionDuration := accountthrottleruleFields[9].Descriptor()
+	// accountthrottlerule.DefaultActionDuration holds the default value on creation for the action_duration field.
+	accountthrottlerule.DefaultActionDuration = accountthrottleruleDescActionDuration.Default.(int)
+	// accountthrottleruleDescActionRecoverHour is the schema descriptor for action_recover_hour field.
+	accountthrottleruleDescActionRecoverHour := accountthrottleruleFields[10].Descriptor()
+	// accountthrottlerule.DefaultActionRecoverHour holds the default value on creation for the action_recover_hour field.
+	accountthrottlerule.DefaultActionRecoverHour = accountthrottleruleDescActionRecoverHour.Default.(int)
 	announcementFields := schema.Announcement{}.Fields()
 	_ = announcementFields
 	// announcementDescTitle is the schema descriptor for title field.

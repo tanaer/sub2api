@@ -4728,6 +4728,75 @@ export default {
       failedToToggle: 'Failed to toggle status'
     },
 
+    // Account Throttle Rules
+    accountThrottle: {
+      title: 'Smart Throttle Rules',
+      description: 'Configure rules to auto-throttle accounts based on upstream errors',
+      createRule: 'Create Rule',
+      editRule: 'Edit Rule',
+      noRules: 'No rules configured',
+      createFirstRule: 'Create your first smart throttle rule',
+      timesIn: ' in ',
+      seconds: 's',
+
+      columns: {
+        priority: 'Priority',
+        name: 'Name',
+        keywords: 'Keywords',
+        trigger: 'Trigger',
+        action: 'Action',
+        status: 'Status',
+        actions: 'Actions'
+      },
+
+      matchMode: {
+        contains: 'Contains',
+        exact: 'Exact'
+      },
+
+      triggerMode: {
+        immediate: 'Immediate',
+        accumulated: 'Accumulated'
+      },
+
+      actionType: {
+        duration: 'Duration',
+        scheduledRecovery: 'Scheduled Recovery'
+      },
+
+      form: {
+        name: 'Rule Name',
+        namePlaceholder: 'e.g., Quota Exceeded Throttle',
+        priority: 'Priority',
+        priorityHint: 'Lower values have higher priority',
+        description: 'Description',
+        descriptionPlaceholder: 'Describe the purpose of this rule...',
+        matchConditions: 'Match Conditions',
+        keywords: 'Keywords',
+        keywordsPlaceholder: 'One keyword per line\nquota exceeded\nrate limit',
+        keywordsHint: 'One keyword per line, case-insensitive',
+        keywordsRequired: 'At least one keyword is required',
+        matchMode: 'Match Mode',
+        platforms: 'Platforms',
+        platformsHint: 'Leave empty to apply to all platforms',
+        triggerConfig: 'Trigger Conditions',
+        immediateHint: 'Throttle on first match',
+        accumulatedHint: 'Throttle after N matches in window',
+        accumulatedCount: 'Match Count',
+        accumulatedWindow: 'Time Window',
+        accumulatedWindowUnit: 'seconds',
+        actionConfig: 'Throttle Action',
+        actionDuration: 'Duration',
+        actionDurationUnit: 'seconds',
+        actionRecoverHour: 'Recovery Hour'
+      },
+
+      createSuccess: 'Rule created successfully',
+      updateSuccess: 'Rule updated successfully',
+      deleteSuccess: 'Rule deleted successfully',
+      deleteConfirm: 'Are you sure you want to delete rule "{name}"?'
+    },
+
     // TLS Fingerprint Profiles
     tlsFingerprintProfiles: {
       title: 'TLS Fingerprint Profiles',

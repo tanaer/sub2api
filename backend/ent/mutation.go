@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/Wei-Shaw/sub2api/ent/account"
 	"github.com/Wei-Shaw/sub2api/ent/accountgroup"
+	"github.com/Wei-Shaw/sub2api/ent/accountthrottlerule"
 	"github.com/Wei-Shaw/sub2api/ent/announcement"
 	"github.com/Wei-Shaw/sub2api/ent/announcementread"
 	"github.com/Wei-Shaw/sub2api/ent/apikey"
@@ -50,6 +51,7 @@ const (
 	TypeAPIKey                  = "APIKey"
 	TypeAccount                 = "Account"
 	TypeAccountGroup            = "AccountGroup"
+	TypeAccountThrottleRule     = "AccountThrottleRule"
 	TypeAnnouncement            = "Announcement"
 	TypeAnnouncementRead        = "AnnouncementRead"
 	TypeErrorPassthroughRule    = "ErrorPassthroughRule"
@@ -5405,6 +5407,1350 @@ func (m *AccountGroupMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown AccountGroup edge %s", name)
+}
+
+// AccountThrottleRuleMutation represents an operation that mutates the AccountThrottleRule nodes in the graph.
+type AccountThrottleRuleMutation struct {
+	config
+	op                     Op
+	typ                    string
+	id                     *int64
+	created_at             *time.Time
+	updated_at             *time.Time
+	name                   *string
+	enabled                *bool
+	priority               *int
+	addpriority            *int
+	keywords               *[]string
+	appendkeywords         []string
+	match_mode             *string
+	trigger_mode           *string
+	accumulated_count      *int
+	addaccumulated_count   *int
+	accumulated_window     *int
+	addaccumulated_window  *int
+	action_type            *string
+	action_duration        *int
+	addaction_duration     *int
+	action_recover_hour    *int
+	addaction_recover_hour *int
+	platforms              *[]string
+	appendplatforms        []string
+	description            *string
+	clearedFields          map[string]struct{}
+	done                   bool
+	oldValue               func(context.Context) (*AccountThrottleRule, error)
+	predicates             []predicate.AccountThrottleRule
+}
+
+var _ ent.Mutation = (*AccountThrottleRuleMutation)(nil)
+
+// accountthrottleruleOption allows management of the mutation configuration using functional options.
+type accountthrottleruleOption func(*AccountThrottleRuleMutation)
+
+// newAccountThrottleRuleMutation creates new mutation for the AccountThrottleRule entity.
+func newAccountThrottleRuleMutation(c config, op Op, opts ...accountthrottleruleOption) *AccountThrottleRuleMutation {
+	m := &AccountThrottleRuleMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAccountThrottleRule,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAccountThrottleRuleID sets the ID field of the mutation.
+func withAccountThrottleRuleID(id int64) accountthrottleruleOption {
+	return func(m *AccountThrottleRuleMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AccountThrottleRule
+		)
+		m.oldValue = func(ctx context.Context) (*AccountThrottleRule, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AccountThrottleRule.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAccountThrottleRule sets the old AccountThrottleRule of the mutation.
+func withAccountThrottleRule(node *AccountThrottleRule) accountthrottleruleOption {
+	return func(m *AccountThrottleRuleMutation) {
+		m.oldValue = func(context.Context) (*AccountThrottleRule, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AccountThrottleRuleMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AccountThrottleRuleMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AccountThrottleRuleMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AccountThrottleRuleMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AccountThrottleRule.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *AccountThrottleRuleMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *AccountThrottleRuleMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *AccountThrottleRuleMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *AccountThrottleRuleMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *AccountThrottleRuleMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *AccountThrottleRuleMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetName sets the "name" field.
+func (m *AccountThrottleRuleMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *AccountThrottleRuleMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *AccountThrottleRuleMutation) ResetName() {
+	m.name = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *AccountThrottleRuleMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *AccountThrottleRuleMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *AccountThrottleRuleMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetPriority sets the "priority" field.
+func (m *AccountThrottleRuleMutation) SetPriority(i int) {
+	m.priority = &i
+	m.addpriority = nil
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *AccountThrottleRuleMutation) Priority() (r int, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPriority returns the old "priority" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldPriority(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPriority is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPriority requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPriority: %w", err)
+	}
+	return oldValue.Priority, nil
+}
+
+// AddPriority adds i to the "priority" field.
+func (m *AccountThrottleRuleMutation) AddPriority(i int) {
+	if m.addpriority != nil {
+		*m.addpriority += i
+	} else {
+		m.addpriority = &i
+	}
+}
+
+// AddedPriority returns the value that was added to the "priority" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedPriority() (r int, exists bool) {
+	v := m.addpriority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *AccountThrottleRuleMutation) ResetPriority() {
+	m.priority = nil
+	m.addpriority = nil
+}
+
+// SetKeywords sets the "keywords" field.
+func (m *AccountThrottleRuleMutation) SetKeywords(s []string) {
+	m.keywords = &s
+	m.appendkeywords = nil
+}
+
+// Keywords returns the value of the "keywords" field in the mutation.
+func (m *AccountThrottleRuleMutation) Keywords() (r []string, exists bool) {
+	v := m.keywords
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeywords returns the old "keywords" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldKeywords(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeywords is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeywords requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeywords: %w", err)
+	}
+	return oldValue.Keywords, nil
+}
+
+// AppendKeywords adds s to the "keywords" field.
+func (m *AccountThrottleRuleMutation) AppendKeywords(s []string) {
+	m.appendkeywords = append(m.appendkeywords, s...)
+}
+
+// AppendedKeywords returns the list of values that were appended to the "keywords" field in this mutation.
+func (m *AccountThrottleRuleMutation) AppendedKeywords() ([]string, bool) {
+	if len(m.appendkeywords) == 0 {
+		return nil, false
+	}
+	return m.appendkeywords, true
+}
+
+// ClearKeywords clears the value of the "keywords" field.
+func (m *AccountThrottleRuleMutation) ClearKeywords() {
+	m.keywords = nil
+	m.appendkeywords = nil
+	m.clearedFields[accountthrottlerule.FieldKeywords] = struct{}{}
+}
+
+// KeywordsCleared returns if the "keywords" field was cleared in this mutation.
+func (m *AccountThrottleRuleMutation) KeywordsCleared() bool {
+	_, ok := m.clearedFields[accountthrottlerule.FieldKeywords]
+	return ok
+}
+
+// ResetKeywords resets all changes to the "keywords" field.
+func (m *AccountThrottleRuleMutation) ResetKeywords() {
+	m.keywords = nil
+	m.appendkeywords = nil
+	delete(m.clearedFields, accountthrottlerule.FieldKeywords)
+}
+
+// SetMatchMode sets the "match_mode" field.
+func (m *AccountThrottleRuleMutation) SetMatchMode(s string) {
+	m.match_mode = &s
+}
+
+// MatchMode returns the value of the "match_mode" field in the mutation.
+func (m *AccountThrottleRuleMutation) MatchMode() (r string, exists bool) {
+	v := m.match_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMatchMode returns the old "match_mode" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldMatchMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMatchMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMatchMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMatchMode: %w", err)
+	}
+	return oldValue.MatchMode, nil
+}
+
+// ResetMatchMode resets all changes to the "match_mode" field.
+func (m *AccountThrottleRuleMutation) ResetMatchMode() {
+	m.match_mode = nil
+}
+
+// SetTriggerMode sets the "trigger_mode" field.
+func (m *AccountThrottleRuleMutation) SetTriggerMode(s string) {
+	m.trigger_mode = &s
+}
+
+// TriggerMode returns the value of the "trigger_mode" field in the mutation.
+func (m *AccountThrottleRuleMutation) TriggerMode() (r string, exists bool) {
+	v := m.trigger_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTriggerMode returns the old "trigger_mode" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldTriggerMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTriggerMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTriggerMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTriggerMode: %w", err)
+	}
+	return oldValue.TriggerMode, nil
+}
+
+// ResetTriggerMode resets all changes to the "trigger_mode" field.
+func (m *AccountThrottleRuleMutation) ResetTriggerMode() {
+	m.trigger_mode = nil
+}
+
+// SetAccumulatedCount sets the "accumulated_count" field.
+func (m *AccountThrottleRuleMutation) SetAccumulatedCount(i int) {
+	m.accumulated_count = &i
+	m.addaccumulated_count = nil
+}
+
+// AccumulatedCount returns the value of the "accumulated_count" field in the mutation.
+func (m *AccountThrottleRuleMutation) AccumulatedCount() (r int, exists bool) {
+	v := m.accumulated_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccumulatedCount returns the old "accumulated_count" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldAccumulatedCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccumulatedCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccumulatedCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccumulatedCount: %w", err)
+	}
+	return oldValue.AccumulatedCount, nil
+}
+
+// AddAccumulatedCount adds i to the "accumulated_count" field.
+func (m *AccountThrottleRuleMutation) AddAccumulatedCount(i int) {
+	if m.addaccumulated_count != nil {
+		*m.addaccumulated_count += i
+	} else {
+		m.addaccumulated_count = &i
+	}
+}
+
+// AddedAccumulatedCount returns the value that was added to the "accumulated_count" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedAccumulatedCount() (r int, exists bool) {
+	v := m.addaccumulated_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAccumulatedCount resets all changes to the "accumulated_count" field.
+func (m *AccountThrottleRuleMutation) ResetAccumulatedCount() {
+	m.accumulated_count = nil
+	m.addaccumulated_count = nil
+}
+
+// SetAccumulatedWindow sets the "accumulated_window" field.
+func (m *AccountThrottleRuleMutation) SetAccumulatedWindow(i int) {
+	m.accumulated_window = &i
+	m.addaccumulated_window = nil
+}
+
+// AccumulatedWindow returns the value of the "accumulated_window" field in the mutation.
+func (m *AccountThrottleRuleMutation) AccumulatedWindow() (r int, exists bool) {
+	v := m.accumulated_window
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccumulatedWindow returns the old "accumulated_window" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldAccumulatedWindow(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccumulatedWindow is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccumulatedWindow requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccumulatedWindow: %w", err)
+	}
+	return oldValue.AccumulatedWindow, nil
+}
+
+// AddAccumulatedWindow adds i to the "accumulated_window" field.
+func (m *AccountThrottleRuleMutation) AddAccumulatedWindow(i int) {
+	if m.addaccumulated_window != nil {
+		*m.addaccumulated_window += i
+	} else {
+		m.addaccumulated_window = &i
+	}
+}
+
+// AddedAccumulatedWindow returns the value that was added to the "accumulated_window" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedAccumulatedWindow() (r int, exists bool) {
+	v := m.addaccumulated_window
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAccumulatedWindow resets all changes to the "accumulated_window" field.
+func (m *AccountThrottleRuleMutation) ResetAccumulatedWindow() {
+	m.accumulated_window = nil
+	m.addaccumulated_window = nil
+}
+
+// SetActionType sets the "action_type" field.
+func (m *AccountThrottleRuleMutation) SetActionType(s string) {
+	m.action_type = &s
+}
+
+// ActionType returns the value of the "action_type" field in the mutation.
+func (m *AccountThrottleRuleMutation) ActionType() (r string, exists bool) {
+	v := m.action_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActionType returns the old "action_type" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldActionType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActionType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActionType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActionType: %w", err)
+	}
+	return oldValue.ActionType, nil
+}
+
+// ResetActionType resets all changes to the "action_type" field.
+func (m *AccountThrottleRuleMutation) ResetActionType() {
+	m.action_type = nil
+}
+
+// SetActionDuration sets the "action_duration" field.
+func (m *AccountThrottleRuleMutation) SetActionDuration(i int) {
+	m.action_duration = &i
+	m.addaction_duration = nil
+}
+
+// ActionDuration returns the value of the "action_duration" field in the mutation.
+func (m *AccountThrottleRuleMutation) ActionDuration() (r int, exists bool) {
+	v := m.action_duration
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActionDuration returns the old "action_duration" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldActionDuration(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActionDuration is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActionDuration requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActionDuration: %w", err)
+	}
+	return oldValue.ActionDuration, nil
+}
+
+// AddActionDuration adds i to the "action_duration" field.
+func (m *AccountThrottleRuleMutation) AddActionDuration(i int) {
+	if m.addaction_duration != nil {
+		*m.addaction_duration += i
+	} else {
+		m.addaction_duration = &i
+	}
+}
+
+// AddedActionDuration returns the value that was added to the "action_duration" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedActionDuration() (r int, exists bool) {
+	v := m.addaction_duration
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetActionDuration resets all changes to the "action_duration" field.
+func (m *AccountThrottleRuleMutation) ResetActionDuration() {
+	m.action_duration = nil
+	m.addaction_duration = nil
+}
+
+// SetActionRecoverHour sets the "action_recover_hour" field.
+func (m *AccountThrottleRuleMutation) SetActionRecoverHour(i int) {
+	m.action_recover_hour = &i
+	m.addaction_recover_hour = nil
+}
+
+// ActionRecoverHour returns the value of the "action_recover_hour" field in the mutation.
+func (m *AccountThrottleRuleMutation) ActionRecoverHour() (r int, exists bool) {
+	v := m.action_recover_hour
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActionRecoverHour returns the old "action_recover_hour" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldActionRecoverHour(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActionRecoverHour is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActionRecoverHour requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActionRecoverHour: %w", err)
+	}
+	return oldValue.ActionRecoverHour, nil
+}
+
+// AddActionRecoverHour adds i to the "action_recover_hour" field.
+func (m *AccountThrottleRuleMutation) AddActionRecoverHour(i int) {
+	if m.addaction_recover_hour != nil {
+		*m.addaction_recover_hour += i
+	} else {
+		m.addaction_recover_hour = &i
+	}
+}
+
+// AddedActionRecoverHour returns the value that was added to the "action_recover_hour" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedActionRecoverHour() (r int, exists bool) {
+	v := m.addaction_recover_hour
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetActionRecoverHour resets all changes to the "action_recover_hour" field.
+func (m *AccountThrottleRuleMutation) ResetActionRecoverHour() {
+	m.action_recover_hour = nil
+	m.addaction_recover_hour = nil
+}
+
+// SetPlatforms sets the "platforms" field.
+func (m *AccountThrottleRuleMutation) SetPlatforms(s []string) {
+	m.platforms = &s
+	m.appendplatforms = nil
+}
+
+// Platforms returns the value of the "platforms" field in the mutation.
+func (m *AccountThrottleRuleMutation) Platforms() (r []string, exists bool) {
+	v := m.platforms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPlatforms returns the old "platforms" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldPlatforms(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPlatforms is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPlatforms requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPlatforms: %w", err)
+	}
+	return oldValue.Platforms, nil
+}
+
+// AppendPlatforms adds s to the "platforms" field.
+func (m *AccountThrottleRuleMutation) AppendPlatforms(s []string) {
+	m.appendplatforms = append(m.appendplatforms, s...)
+}
+
+// AppendedPlatforms returns the list of values that were appended to the "platforms" field in this mutation.
+func (m *AccountThrottleRuleMutation) AppendedPlatforms() ([]string, bool) {
+	if len(m.appendplatforms) == 0 {
+		return nil, false
+	}
+	return m.appendplatforms, true
+}
+
+// ClearPlatforms clears the value of the "platforms" field.
+func (m *AccountThrottleRuleMutation) ClearPlatforms() {
+	m.platforms = nil
+	m.appendplatforms = nil
+	m.clearedFields[accountthrottlerule.FieldPlatforms] = struct{}{}
+}
+
+// PlatformsCleared returns if the "platforms" field was cleared in this mutation.
+func (m *AccountThrottleRuleMutation) PlatformsCleared() bool {
+	_, ok := m.clearedFields[accountthrottlerule.FieldPlatforms]
+	return ok
+}
+
+// ResetPlatforms resets all changes to the "platforms" field.
+func (m *AccountThrottleRuleMutation) ResetPlatforms() {
+	m.platforms = nil
+	m.appendplatforms = nil
+	delete(m.clearedFields, accountthrottlerule.FieldPlatforms)
+}
+
+// SetDescription sets the "description" field.
+func (m *AccountThrottleRuleMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *AccountThrottleRuleMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldDescription(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *AccountThrottleRuleMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[accountthrottlerule.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *AccountThrottleRuleMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[accountthrottlerule.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *AccountThrottleRuleMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, accountthrottlerule.FieldDescription)
+}
+
+// Where appends a list predicates to the AccountThrottleRuleMutation builder.
+func (m *AccountThrottleRuleMutation) Where(ps ...predicate.AccountThrottleRule) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AccountThrottleRuleMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AccountThrottleRuleMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AccountThrottleRule, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AccountThrottleRuleMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AccountThrottleRuleMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AccountThrottleRule).
+func (m *AccountThrottleRuleMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AccountThrottleRuleMutation) Fields() []string {
+	fields := make([]string, 0, 15)
+	if m.created_at != nil {
+		fields = append(fields, accountthrottlerule.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, accountthrottlerule.FieldUpdatedAt)
+	}
+	if m.name != nil {
+		fields = append(fields, accountthrottlerule.FieldName)
+	}
+	if m.enabled != nil {
+		fields = append(fields, accountthrottlerule.FieldEnabled)
+	}
+	if m.priority != nil {
+		fields = append(fields, accountthrottlerule.FieldPriority)
+	}
+	if m.keywords != nil {
+		fields = append(fields, accountthrottlerule.FieldKeywords)
+	}
+	if m.match_mode != nil {
+		fields = append(fields, accountthrottlerule.FieldMatchMode)
+	}
+	if m.trigger_mode != nil {
+		fields = append(fields, accountthrottlerule.FieldTriggerMode)
+	}
+	if m.accumulated_count != nil {
+		fields = append(fields, accountthrottlerule.FieldAccumulatedCount)
+	}
+	if m.accumulated_window != nil {
+		fields = append(fields, accountthrottlerule.FieldAccumulatedWindow)
+	}
+	if m.action_type != nil {
+		fields = append(fields, accountthrottlerule.FieldActionType)
+	}
+	if m.action_duration != nil {
+		fields = append(fields, accountthrottlerule.FieldActionDuration)
+	}
+	if m.action_recover_hour != nil {
+		fields = append(fields, accountthrottlerule.FieldActionRecoverHour)
+	}
+	if m.platforms != nil {
+		fields = append(fields, accountthrottlerule.FieldPlatforms)
+	}
+	if m.description != nil {
+		fields = append(fields, accountthrottlerule.FieldDescription)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AccountThrottleRuleMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case accountthrottlerule.FieldCreatedAt:
+		return m.CreatedAt()
+	case accountthrottlerule.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case accountthrottlerule.FieldName:
+		return m.Name()
+	case accountthrottlerule.FieldEnabled:
+		return m.Enabled()
+	case accountthrottlerule.FieldPriority:
+		return m.Priority()
+	case accountthrottlerule.FieldKeywords:
+		return m.Keywords()
+	case accountthrottlerule.FieldMatchMode:
+		return m.MatchMode()
+	case accountthrottlerule.FieldTriggerMode:
+		return m.TriggerMode()
+	case accountthrottlerule.FieldAccumulatedCount:
+		return m.AccumulatedCount()
+	case accountthrottlerule.FieldAccumulatedWindow:
+		return m.AccumulatedWindow()
+	case accountthrottlerule.FieldActionType:
+		return m.ActionType()
+	case accountthrottlerule.FieldActionDuration:
+		return m.ActionDuration()
+	case accountthrottlerule.FieldActionRecoverHour:
+		return m.ActionRecoverHour()
+	case accountthrottlerule.FieldPlatforms:
+		return m.Platforms()
+	case accountthrottlerule.FieldDescription:
+		return m.Description()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AccountThrottleRuleMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case accountthrottlerule.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case accountthrottlerule.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case accountthrottlerule.FieldName:
+		return m.OldName(ctx)
+	case accountthrottlerule.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case accountthrottlerule.FieldPriority:
+		return m.OldPriority(ctx)
+	case accountthrottlerule.FieldKeywords:
+		return m.OldKeywords(ctx)
+	case accountthrottlerule.FieldMatchMode:
+		return m.OldMatchMode(ctx)
+	case accountthrottlerule.FieldTriggerMode:
+		return m.OldTriggerMode(ctx)
+	case accountthrottlerule.FieldAccumulatedCount:
+		return m.OldAccumulatedCount(ctx)
+	case accountthrottlerule.FieldAccumulatedWindow:
+		return m.OldAccumulatedWindow(ctx)
+	case accountthrottlerule.FieldActionType:
+		return m.OldActionType(ctx)
+	case accountthrottlerule.FieldActionDuration:
+		return m.OldActionDuration(ctx)
+	case accountthrottlerule.FieldActionRecoverHour:
+		return m.OldActionRecoverHour(ctx)
+	case accountthrottlerule.FieldPlatforms:
+		return m.OldPlatforms(ctx)
+	case accountthrottlerule.FieldDescription:
+		return m.OldDescription(ctx)
+	}
+	return nil, fmt.Errorf("unknown AccountThrottleRule field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AccountThrottleRuleMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case accountthrottlerule.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case accountthrottlerule.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case accountthrottlerule.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case accountthrottlerule.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case accountthrottlerule.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
+		return nil
+	case accountthrottlerule.FieldKeywords:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeywords(v)
+		return nil
+	case accountthrottlerule.FieldMatchMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMatchMode(v)
+		return nil
+	case accountthrottlerule.FieldTriggerMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTriggerMode(v)
+		return nil
+	case accountthrottlerule.FieldAccumulatedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccumulatedCount(v)
+		return nil
+	case accountthrottlerule.FieldAccumulatedWindow:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccumulatedWindow(v)
+		return nil
+	case accountthrottlerule.FieldActionType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActionType(v)
+		return nil
+	case accountthrottlerule.FieldActionDuration:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActionDuration(v)
+		return nil
+	case accountthrottlerule.FieldActionRecoverHour:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActionRecoverHour(v)
+		return nil
+	case accountthrottlerule.FieldPlatforms:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPlatforms(v)
+		return nil
+	case accountthrottlerule.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AccountThrottleRule field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AccountThrottleRuleMutation) AddedFields() []string {
+	var fields []string
+	if m.addpriority != nil {
+		fields = append(fields, accountthrottlerule.FieldPriority)
+	}
+	if m.addaccumulated_count != nil {
+		fields = append(fields, accountthrottlerule.FieldAccumulatedCount)
+	}
+	if m.addaccumulated_window != nil {
+		fields = append(fields, accountthrottlerule.FieldAccumulatedWindow)
+	}
+	if m.addaction_duration != nil {
+		fields = append(fields, accountthrottlerule.FieldActionDuration)
+	}
+	if m.addaction_recover_hour != nil {
+		fields = append(fields, accountthrottlerule.FieldActionRecoverHour)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AccountThrottleRuleMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case accountthrottlerule.FieldPriority:
+		return m.AddedPriority()
+	case accountthrottlerule.FieldAccumulatedCount:
+		return m.AddedAccumulatedCount()
+	case accountthrottlerule.FieldAccumulatedWindow:
+		return m.AddedAccumulatedWindow()
+	case accountthrottlerule.FieldActionDuration:
+		return m.AddedActionDuration()
+	case accountthrottlerule.FieldActionRecoverHour:
+		return m.AddedActionRecoverHour()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AccountThrottleRuleMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case accountthrottlerule.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPriority(v)
+		return nil
+	case accountthrottlerule.FieldAccumulatedCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAccumulatedCount(v)
+		return nil
+	case accountthrottlerule.FieldAccumulatedWindow:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAccumulatedWindow(v)
+		return nil
+	case accountthrottlerule.FieldActionDuration:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddActionDuration(v)
+		return nil
+	case accountthrottlerule.FieldActionRecoverHour:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddActionRecoverHour(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AccountThrottleRule numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AccountThrottleRuleMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(accountthrottlerule.FieldKeywords) {
+		fields = append(fields, accountthrottlerule.FieldKeywords)
+	}
+	if m.FieldCleared(accountthrottlerule.FieldPlatforms) {
+		fields = append(fields, accountthrottlerule.FieldPlatforms)
+	}
+	if m.FieldCleared(accountthrottlerule.FieldDescription) {
+		fields = append(fields, accountthrottlerule.FieldDescription)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AccountThrottleRuleMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AccountThrottleRuleMutation) ClearField(name string) error {
+	switch name {
+	case accountthrottlerule.FieldKeywords:
+		m.ClearKeywords()
+		return nil
+	case accountthrottlerule.FieldPlatforms:
+		m.ClearPlatforms()
+		return nil
+	case accountthrottlerule.FieldDescription:
+		m.ClearDescription()
+		return nil
+	}
+	return fmt.Errorf("unknown AccountThrottleRule nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AccountThrottleRuleMutation) ResetField(name string) error {
+	switch name {
+	case accountthrottlerule.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case accountthrottlerule.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case accountthrottlerule.FieldName:
+		m.ResetName()
+		return nil
+	case accountthrottlerule.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case accountthrottlerule.FieldPriority:
+		m.ResetPriority()
+		return nil
+	case accountthrottlerule.FieldKeywords:
+		m.ResetKeywords()
+		return nil
+	case accountthrottlerule.FieldMatchMode:
+		m.ResetMatchMode()
+		return nil
+	case accountthrottlerule.FieldTriggerMode:
+		m.ResetTriggerMode()
+		return nil
+	case accountthrottlerule.FieldAccumulatedCount:
+		m.ResetAccumulatedCount()
+		return nil
+	case accountthrottlerule.FieldAccumulatedWindow:
+		m.ResetAccumulatedWindow()
+		return nil
+	case accountthrottlerule.FieldActionType:
+		m.ResetActionType()
+		return nil
+	case accountthrottlerule.FieldActionDuration:
+		m.ResetActionDuration()
+		return nil
+	case accountthrottlerule.FieldActionRecoverHour:
+		m.ResetActionRecoverHour()
+		return nil
+	case accountthrottlerule.FieldPlatforms:
+		m.ResetPlatforms()
+		return nil
+	case accountthrottlerule.FieldDescription:
+		m.ResetDescription()
+		return nil
+	}
+	return fmt.Errorf("unknown AccountThrottleRule field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AccountThrottleRuleMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AccountThrottleRuleMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AccountThrottleRuleMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AccountThrottleRuleMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AccountThrottleRuleMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AccountThrottleRuleMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AccountThrottleRuleMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown AccountThrottleRule unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AccountThrottleRuleMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown AccountThrottleRule edge %s", name)
 }
 
 // AnnouncementMutation represents an operation that mutates the Announcement nodes in the graph.

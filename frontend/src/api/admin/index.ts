@@ -20,6 +20,7 @@ import antigravityAPI from './antigravity'
 import userAttributesAPI from './userAttributes'
 import opsAPI from './ops'
 import errorPassthroughAPI from './errorPassthrough'
+import accountThrottleAPI from './accountThrottle'
 import dataManagementAPI from './dataManagement'
 import apiKeysAPI from './apiKeys'
 import scheduledTestsAPI from './scheduledTests'
@@ -48,6 +49,7 @@ export const adminAPI = {
   userAttributes: userAttributesAPI,
   ops: opsAPI,
   errorPassthrough: errorPassthroughAPI,
+  accountThrottle: accountThrottleAPI,
   dataManagement: dataManagementAPI,
   apiKeys: apiKeysAPI,
   scheduledTests: scheduledTestsAPI,
@@ -74,6 +76,7 @@ export {
   userAttributesAPI,
   opsAPI,
   errorPassthroughAPI,
+  accountThrottleAPI,
   dataManagementAPI,
   apiKeysAPI,
   scheduledTestsAPI,
@@ -87,5 +90,6 @@ export default adminAPI
 // Re-export types used by components
 export type { BalanceHistoryItem } from './users'
 export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'
+export type { AccountThrottleRule, CreateThrottleRuleRequest, UpdateThrottleRuleRequest } from './accountThrottle'
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'
 export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'

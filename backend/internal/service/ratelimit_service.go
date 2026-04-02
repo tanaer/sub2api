@@ -27,6 +27,7 @@ type RateLimitService struct {
 	tokenCacheInvalidator TokenCacheInvalidator
 	circuitBreaker        *AccountCircuitBreaker
 	healthTracker         *AccountHealthTracker
+	accountThrottleService *AccountThrottleService
 	usageCacheMu          sync.RWMutex
 	usageCache            map[int64]*geminiUsageCacheEntry
 }
@@ -94,6 +95,11 @@ func (s *RateLimitService) SetTimeoutCounterCache(cache TimeoutCounterCache) {
 // SetSettingService 设置系统设置服务（可选依赖）
 func (s *RateLimitService) SetSettingService(settingService *SettingService) {
 	s.settingService = settingService
+}
+
+// SetAccountThrottleService 设置账户限流服务（可选依赖）
+func (s *RateLimitService) SetAccountThrottleService(svc *AccountThrottleService) {
+	s.accountThrottleService = svc
 }
 
 // SetTokenCacheInvalidator 设置 token 缓存清理器（可选依赖）
@@ -177,6 +183,11 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 		if s.tryTempUnschedulable(ctx, account, statusCode, responseBody) {
 			return true
 		}
+	}
+
+	// 尝试全局账户智能限流规则
+	if s.tryAccountThrottle(ctx, account, responseBody) {
+		return true
 	}
 
 	switch statusCode {
@@ -1630,6 +1641,39 @@ func truncateTempUnschedMessage(body []byte, maxBytes int) string {
 		body = body[:maxBytes]
 	}
 	return strings.TrimSpace(string(body))
+}
+
+// tryAccountThrottle 尝试全局账户智能限流规则
+func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Account, responseBody []byte) bool {
+	if s.accountThrottleService == nil || account == nil || len(responseBody) == 0 {
+		return false
+	}
+
+	result := s.accountThrottleService.MatchAndThrottle(ctx, account.ID, account.Platform, responseBody)
+	if result == nil || !result.Matched {
+		return false
+	}
+
+	reason := FormatThrottleReason(result.Rule, result.MatchedKeyword)
+	if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, result.UntilTime, reason); err != nil {
+		slog.Warn("account_throttle_set_failed", "account_id", account.ID, "error", err)
+		return false
+	}
+
+	if s.tempUnschedCache != nil {
+		state := &TempUnschedState{
+			UntilUnix:       result.UntilTime.Unix(),
+			TriggeredAtUnix: time.Now().Unix(),
+			MatchedKeyword:  result.MatchedKeyword,
+			ErrorMessage:    reason,
+		}
+		if err := s.tempUnschedCache.SetTempUnsched(ctx, account.ID, state); err != nil {
+			slog.Warn("account_throttle_cache_set_failed", "account_id", account.ID, "error", err)
+		}
+	}
+
+	slog.Info("account_throttled", "account_id", account.ID, "rule", result.Rule.Name, "keyword", result.MatchedKeyword, "until", result.UntilTime)
+	return true
 }
 
 // HandleStreamTimeout 处理流数据超时

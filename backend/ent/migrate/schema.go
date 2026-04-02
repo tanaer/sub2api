@@ -253,6 +253,43 @@ var (
 			},
 		},
 	}
+	// AccountThrottleRulesColumns holds the columns for the "account_throttle_rules" table.
+	AccountThrottleRulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamptz"}},
+		{Name: "name", Type: field.TypeString, Size: 100},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "priority", Type: field.TypeInt, Default: 0},
+		{Name: "keywords", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "match_mode", Type: field.TypeString, Size: 20, Default: "contains"},
+		{Name: "trigger_mode", Type: field.TypeString, Size: 20, Default: "immediate"},
+		{Name: "accumulated_count", Type: field.TypeInt, Default: 3},
+		{Name: "accumulated_window", Type: field.TypeInt, Default: 60},
+		{Name: "action_type", Type: field.TypeString, Size: 30, Default: "duration"},
+		{Name: "action_duration", Type: field.TypeInt, Default: 300},
+		{Name: "action_recover_hour", Type: field.TypeInt, Default: 0},
+		{Name: "platforms", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+	}
+	// AccountThrottleRulesTable holds the schema information for the "account_throttle_rules" table.
+	AccountThrottleRulesTable = &schema.Table{
+		Name:       "account_throttle_rules",
+		Columns:    AccountThrottleRulesColumns,
+		PrimaryKey: []*schema.Column{AccountThrottleRulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "accountthrottlerule_enabled",
+				Unique:  false,
+				Columns: []*schema.Column{AccountThrottleRulesColumns[4]},
+			},
+			{
+				Name:    "accountthrottlerule_priority",
+				Unique:  false,
+				Columns: []*schema.Column{AccountThrottleRulesColumns[5]},
+			},
+		},
+	}
 	// AnnouncementsColumns holds the columns for the "announcements" table.
 	AnnouncementsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -1137,6 +1174,7 @@ var (
 		APIKeysTable,
 		AccountsTable,
 		AccountGroupsTable,
+		AccountThrottleRulesTable,
 		AnnouncementsTable,
 		AnnouncementReadsTable,
 		ErrorPassthroughRulesTable,
@@ -1173,6 +1211,9 @@ func init() {
 	AccountGroupsTable.ForeignKeys[1].RefTable = GroupsTable
 	AccountGroupsTable.Annotation = &entsql.Annotation{
 		Table: "account_groups",
+	}
+	AccountThrottleRulesTable.Annotation = &entsql.Annotation{
+		Table: "account_throttle_rules",
 	}
 	AnnouncementsTable.Annotation = &entsql.Annotation{
 		Table: "announcements",

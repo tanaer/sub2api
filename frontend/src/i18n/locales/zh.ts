@@ -4888,6 +4888,75 @@ export default {
       failedToToggle: '切换状态失败'
     },
 
+    // 账户智能限流
+    accountThrottle: {
+      title: '智能限流规则',
+      description: '配置上游错误自动限流账户的规则',
+      createRule: '创建规则',
+      editRule: '编辑规则',
+      noRules: '暂无规则',
+      createFirstRule: '创建第一条智能限流规则',
+      timesIn: '次/',
+      seconds: '秒',
+
+      columns: {
+        priority: '优先级',
+        name: '名称',
+        keywords: '关键词',
+        trigger: '触发方式',
+        action: '限流方式',
+        status: '状态',
+        actions: '操作'
+      },
+
+      matchMode: {
+        contains: '包含',
+        exact: '精确'
+      },
+
+      triggerMode: {
+        immediate: '立即限流',
+        accumulated: '累计限流'
+      },
+
+      actionType: {
+        duration: '时长限流',
+        scheduledRecovery: '定期恢复'
+      },
+
+      form: {
+        name: '规则名称',
+        namePlaceholder: '例如：配额超限限流',
+        priority: '优先级',
+        priorityHint: '数值越小优先级越高',
+        description: '规则描述',
+        descriptionPlaceholder: '描述此规则的用途...',
+        matchConditions: '匹配条件',
+        keywords: '关键词列表',
+        keywordsPlaceholder: '每行一个关键词\nquota exceeded\nrate limit',
+        keywordsHint: '每行一个关键词，不区分大小写',
+        keywordsRequired: '请至少输入一个关键词',
+        matchMode: '匹配模式',
+        platforms: '适用平台',
+        platformsHint: '不选择表示适用于所有平台',
+        triggerConfig: '触发条件',
+        immediateHint: '匹配1次即限流',
+        accumulatedHint: '窗口内累计N次后限流',
+        accumulatedCount: '累计次数',
+        accumulatedWindow: '统计窗口',
+        accumulatedWindowUnit: '秒',
+        actionConfig: '限流动作',
+        actionDuration: '限流时长',
+        actionDurationUnit: '秒',
+        actionRecoverHour: '恢复时刻'
+      },
+
+      createSuccess: '规则创建成功',
+      updateSuccess: '规则更新成功',
+      deleteSuccess: '规则删除成功',
+      deleteConfirm: '确定要删除规则 "{name}" 吗？'
+    },
+
     // TLS 指纹模板
     tlsFingerprintProfiles: {
       title: 'TLS 指纹模板',
