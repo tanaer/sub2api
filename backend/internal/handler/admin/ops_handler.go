@@ -636,6 +636,7 @@ func (h *OpsHandler) ListRequestDetails(c *gin.Context) {
 	}
 
 	filter.Kind = strings.TrimSpace(c.Query("kind"))
+	filter.ExcludePhases = parseCommaSeparatedQuery(c.Query("exclude_phases"))
 	filter.Platform = strings.TrimSpace(c.Query("platform"))
 	filter.Model = strings.TrimSpace(c.Query("model"))
 	filter.RequestID = strings.TrimSpace(c.Query("request_id"))
@@ -704,6 +705,31 @@ func (h *OpsHandler) ListRequestDetails(c *gin.Context) {
 	}
 
 	response.Paginated(c, out.Items, out.Total, out.Page, out.PageSize)
+}
+
+func parseCommaSeparatedQuery(raw string) []string {
+	parts := strings.Split(raw, ",")
+	if len(parts) == 0 {
+		return nil
+	}
+
+	out := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		value := strings.ToLower(strings.TrimSpace(part))
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 type opsRetryRequest struct {

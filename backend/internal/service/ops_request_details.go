@@ -52,6 +52,8 @@ type OpsRequestDetailFilter struct {
 	// kind: success|error|all
 	Kind string
 
+	ExcludePhases []string
+
 	Platform string
 	GroupID  *int64
 

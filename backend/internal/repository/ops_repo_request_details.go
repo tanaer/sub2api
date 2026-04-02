@@ -37,6 +37,45 @@ func (r *opsRepository) ListRequestDetails(ctx context.Context, filter *service.
 			addCondition(fmt.Sprintf("kind = $%d", len(args)+1), kind)
 		}
 
+		if len(filter.ExcludePhases) > 0 {
+			validPhases := map[string]struct{}{
+				"request":  {},
+				"auth":     {},
+				"routing":  {},
+				"upstream": {},
+				"network":  {},
+				"internal": {},
+			}
+			normalized := make([]string, 0, len(filter.ExcludePhases))
+			seen := make(map[string]struct{}, len(filter.ExcludePhases))
+			for _, phase := range filter.ExcludePhases {
+				value := strings.TrimSpace(strings.ToLower(phase))
+				if value == "" {
+					continue
+				}
+				if _, ok := validPhases[value]; !ok {
+					return nil, 0, fmt.Errorf("invalid exclude_phases")
+				}
+				if _, exists := seen[value]; exists {
+					continue
+				}
+				seen[value] = struct{}{}
+				normalized = append(normalized, value)
+			}
+			if len(normalized) > 0 {
+				placeholders := make([]string, 0, len(normalized))
+				values := make([]any, 0, len(normalized))
+				for _, value := range normalized {
+					placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+len(values)+1))
+					values = append(values, value)
+				}
+				addCondition(
+					fmt.Sprintf("COALESCE(phase, '') NOT IN (%s)", strings.Join(placeholders, ", ")),
+					values...,
+				)
+			}
+		}
+
 		if platform := strings.TrimSpace(strings.ToLower(filter.Platform)); platform != "" {
 			addCondition(fmt.Sprintf("platform = $%d", len(args)+1), platform)
 		}

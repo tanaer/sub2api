@@ -11,6 +11,7 @@ import { parseTimeRangeMinutes, formatDateTime } from '../utils/opsFormatters'
 export interface OpsRequestDetailsPreset {
   title: string
   kind?: OpsRequestDetailsParams['kind']
+  exclude_phases?: OpsRequestDetailsParams['exclude_phases']
   sort?: OpsRequestDetailsParams['sort']
   min_duration_ms?: number
   max_duration_ms?: number
@@ -68,6 +69,9 @@ const fetchData = async () => {
       page_size: pageSize.value,
       kind: props.preset.kind ?? 'all',
       sort: props.preset.sort ?? 'created_at_desc'
+    }
+    if (Array.isArray(props.preset.exclude_phases) && props.preset.exclude_phases.length > 0) {
+      params.exclude_phases = props.preset.exclude_phases
     }
 
     const platform = (props.platform || '').trim()

@@ -199,6 +199,7 @@ export interface OpsRequestDetailsParams {
   end_time?: string
 
   kind?: OpsRequestDetailsKind
+  exclude_phases?: string[]
 
   platform?: string
   group_id?: number | null
@@ -1231,7 +1232,11 @@ export async function listRequestErrorUpstreamErrors(
 }
 
 export async function listRequestDetails(params: OpsRequestDetailsParams): Promise<OpsRequestDetailsResponse> {
-  const { data } = await apiClient.get<OpsRequestDetailsResponse>('/admin/ops/requests', { params })
+  const query: Record<string, any> = { ...params }
+  if (Array.isArray(params.exclude_phases)) {
+    query.exclude_phases = params.exclude_phases.length > 0 ? params.exclude_phases.join(',') : undefined
+  }
+  const { data } = await apiClient.get<OpsRequestDetailsResponse>('/admin/ops/requests', { params: query })
   return data
 }
 
