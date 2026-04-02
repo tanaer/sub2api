@@ -44,6 +44,14 @@ export interface UserDashboardStats {
     request_quota: number
     request_quota_used: number
     request_quota_remaining: number
+    permanent_quota: number
+    permanent_quota_used: number
+    grants?: Array<{
+      request_quota_total: number
+      request_quota_used: number
+      expires_at: string
+      expired: boolean
+    }>
   }>
 }
 

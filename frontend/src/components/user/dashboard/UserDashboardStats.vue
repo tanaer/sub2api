@@ -149,28 +149,88 @@
         :key="groupQuota.group_id"
         class="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-dark-600 dark:bg-dark-800/70"
       >
+        <!-- 头部：分组名 + 剩余次数 -->
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ groupQuota.group_name }}</p>
             <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ groupQuota.platform }}</p>
           </div>
           <div class="text-right">
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuota') }}</p>
-            <p class="text-sm font-semibold text-cyan-600 dark:text-cyan-400">{{ groupQuota.request_quota }}</p>
+            <p class="text-lg font-bold" :class="groupQuota.request_quota_remaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'">
+              {{ groupQuota.request_quota_remaining }}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaRemaining') }}</p>
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-3">
-          <div class="rounded-lg bg-white px-3 py-2 dark:bg-dark-700/80">
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaUsed') }}</p>
-            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ groupQuota.request_quota_used }}</p>
+        <!-- 总计进度条 -->
+        <div class="mt-3">
+          <div class="mb-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ t('keyUsage.requestQuotaUsed') }}: {{ groupQuota.request_quota_used }}</span>
+            <span>{{ t('keyUsage.requestQuota') }}: {{ groupQuota.request_quota }}</span>
           </div>
-          <div class="rounded-lg bg-white px-3 py-2 dark:bg-dark-700/80">
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('keyUsage.requestQuotaRemaining') }}</p>
-            <p class="text-lg font-semibold" :class="groupQuota.request_quota_remaining > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'">
-              {{ groupQuota.request_quota_remaining }}
-            </p>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+            <div
+              class="h-full rounded-full transition-all"
+              :class="quotaProgressColor(groupQuota.request_quota_used, groupQuota.request_quota)"
+              :style="{ width: quotaProgressWidth(groupQuota.request_quota_used, groupQuota.request_quota) }"
+            />
           </div>
+        </div>
+
+        <!-- 额度明细：仅当有多个来源时展示，帮助用户了解各笔到期时间 -->
+        <div v-if="hasMultipleSources(groupQuota) || hasActiveGrants(groupQuota)" class="mt-3">
+          <p class="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.quotaBreakdown') }}</p>
+          <div class="space-y-1">
+            <!-- 永久额度（仅多来源时展示） -->
+            <div
+              v-if="groupQuota.permanent_quota > 0 && hasActiveGrants(groupQuota)"
+              class="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-xs dark:bg-dark-700/80"
+            >
+              <div class="flex items-center gap-1.5">
+                <span class="inline-block h-1.5 w-1.5 rounded-full bg-blue-500" />
+                <span class="text-gray-600 dark:text-gray-300">{{ t('dashboard.permanentQuota') }}</span>
+              </div>
+              <span class="font-medium text-gray-900 dark:text-white">
+                {{ Math.max(groupQuota.permanent_quota - groupQuota.permanent_quota_used, 0) }}
+                <span class="text-gray-400"> / {{ groupQuota.permanent_quota }}</span>
+              </span>
+            </div>
+            <!-- 次数包（只显示未过期的） -->
+            <div
+              v-for="grant in activeGrants(groupQuota)"
+              :key="grant.expires_at"
+              class="rounded-lg bg-white px-3 py-1.5 text-xs dark:bg-dark-700/80"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="inline-block h-1.5 w-1.5 rounded-full" :class="isExpiringSoon(grant.expires_at) ? 'bg-amber-500' : 'bg-emerald-500'" />
+                  <span class="text-gray-600 dark:text-gray-300">{{ grant.request_quota_total }} {{ t('dashboard.grantUnit') }}</span>
+                </div>
+                <span class="font-medium text-gray-900 dark:text-white">
+                  {{ t('keyUsage.requestQuotaRemaining') }}
+                  {{ Math.max(grant.request_quota_total - grant.request_quota_used, 0) }}
+                </span>
+              </div>
+              <div class="mt-0.5 flex items-center gap-1 pl-3">
+                <Icon name="clock" size="xs" :class="isExpiringSoon(grant.expires_at) ? 'text-amber-500' : 'text-gray-400'" />
+                <span :class="isExpiringSoon(grant.expires_at) ? 'text-amber-500' : 'text-gray-400'">
+                  {{ t('dashboard.expiresAt', { time: formatDate(grant.expires_at) }) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 单笔次数包的到期提示（只有一笔 grant 且无永久额度时，简化为一行提示） -->
+        <div
+          v-else-if="singleActiveGrant(groupQuota)"
+          class="mt-2 flex items-center gap-1 text-xs"
+        >
+          <Icon name="clock" size="xs" :class="isExpiringSoon(singleActiveGrant(groupQuota)!.expires_at) ? 'text-amber-500' : 'text-gray-400'" />
+          <span :class="isExpiringSoon(singleActiveGrant(groupQuota)!.expires_at) ? 'text-amber-500' : 'text-gray-400'">
+            {{ t('dashboard.expiresAt', { time: formatDate(singleActiveGrant(groupQuota)!.expires_at) }) }}
+          </span>
         </div>
       </div>
     </div>
@@ -203,4 +263,45 @@ const formatTokens = (t: number) => {
   return t.toString()
 }
 const formatDuration = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms.toFixed(0)}ms`
+const formatDate = (dateStr: string) => {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+const isExpiringSoon = (dateStr: string) => {
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diffDays = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays > 0 && diffDays <= 3
+}
+const quotaProgressWidth = (used: number, total: number) => {
+  if (total <= 0) return '0%'
+  return `${Math.min((used / total) * 100, 100)}%`
+}
+const quotaProgressColor = (used: number, total: number) => {
+  if (total <= 0) return 'bg-gray-400'
+  const pct = used / total
+  if (pct >= 0.9) return 'bg-red-500'
+  if (pct >= 0.7) return 'bg-amber-500'
+  return 'bg-cyan-500'
+}
+
+type GroupQuota = NonNullable<UserStatsType['group_request_quotas']>[number]
+type Grant = NonNullable<GroupQuota['grants']>[number]
+
+const activeGrants = (gq: GroupQuota): Grant[] =>
+  gq.grants?.filter((g) => !g.expired) ?? []
+
+const hasActiveGrants = (gq: GroupQuota): boolean =>
+  activeGrants(gq).length > 0
+
+const hasMultipleSources = (gq: GroupQuota): boolean => {
+  const sources = (gq.permanent_quota > 0 ? 1 : 0) + activeGrants(gq).length
+  return sources > 1
+}
+
+const singleActiveGrant = (gq: GroupQuota): Grant | null => {
+  const grants = activeGrants(gq)
+  if (grants.length === 1 && gq.permanent_quota <= 0) return grants[0]
+  return null
+}
 </script>

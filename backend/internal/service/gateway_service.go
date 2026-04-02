@@ -8032,7 +8032,7 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		return false, nil
 	}
 
-	if result.APIKeyQuotaExhausted || result.APIKeyRequestQuotaConsumed {
+	if result.APIKeyQuotaExhausted || result.APIKeyRequestQuotaConsumed || result.UserGroupRequestQuotaConsumed {
 		if invalidator, ok := p.APIKeyService.(apiKeyAuthCacheInvalidator); ok && p.APIKey != nil && p.APIKey.Key != "" {
 			invalidator.InvalidateAuthCacheByKey(billingCtx, p.APIKey.Key)
 		}

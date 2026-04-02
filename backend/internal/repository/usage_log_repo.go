@@ -2399,7 +2399,9 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 			g.name,
 			g.platform,
 			COALESCE(p.request_quota, 0) + COALESCE(a.request_quota, 0) AS request_quota,
-			COALESCE(p.request_quota_used, 0) + COALESCE(a.request_quota_used, 0) AS request_quota_used
+			COALESCE(p.request_quota_used, 0) + COALESCE(a.request_quota_used, 0) AS request_quota_used,
+			COALESCE(p.request_quota, 0) AS permanent_quota,
+			COALESCE(p.request_quota_used, 0) AS permanent_quota_used
 		FROM groups g
 		LEFT JOIN permanent p ON p.group_id = g.id
 		LEFT JOIN active_grants a ON a.group_id = g.id
@@ -2412,6 +2414,8 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 	}
 	defer func() { _ = rows.Close() }()
 
+	// groupID -> index in stats.GroupRequestQuotas
+	groupIndexMap := make(map[int64]int)
 	for rows.Next() {
 		var item usagestats.UserGroupRequestQuotaSummary
 		if err := rows.Scan(
@@ -2420,6 +2424,8 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 			&item.Platform,
 			&item.RequestQuota,
 			&item.RequestQuotaUsed,
+			&item.PermanentQuota,
+			&item.PermanentQuotaUsed,
 		); err != nil {
 			return nil, err
 		}
@@ -2427,10 +2433,43 @@ func (r *usageLogRepository) GetUserDashboardStats(ctx context.Context, userID i
 		if item.RequestQuotaRemaining < 0 {
 			item.RequestQuotaRemaining = 0
 		}
+		groupIndexMap[item.GroupID] = len(stats.GroupRequestQuotas)
 		stats.GroupRequestQuotas = append(stats.GroupRequestQuotas, item)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	// 查询每笔 grant 的详细信息（包含已过期但仍有记录的）
+	if len(stats.GroupRequestQuotas) > 0 {
+		grantRows, err := r.sql.QueryContext(ctx, `
+			SELECT group_id, request_quota_total, request_quota_used, expires_at
+			FROM user_group_request_quota_grants
+			WHERE user_id = $1
+			ORDER BY expires_at ASC
+		`, userID)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = grantRows.Close() }()
+
+		now := time.Now()
+		for grantRows.Next() {
+			var groupID int64
+			var grant usagestats.UserGroupRequestQuotaGrantSummary
+			if err := grantRows.Scan(&groupID, &grant.RequestQuotaTotal, &grant.RequestQuotaUsed, &grant.ExpiresAt); err != nil {
+				return nil, err
+			}
+			grant.Expired = grant.ExpiresAt.Before(now)
+			idx, ok := groupIndexMap[groupID]
+			if !ok {
+				continue
+			}
+			stats.GroupRequestQuotas[idx].Grants = append(stats.GroupRequestQuotas[idx].Grants, grant)
+		}
+		if err := grantRows.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	return stats, nil

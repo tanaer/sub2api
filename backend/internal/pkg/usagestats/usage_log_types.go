@@ -186,14 +186,25 @@ type APIKeyUsageTrendPoint struct {
 	Tokens   int64  `json:"tokens"`
 }
 
+// UserGroupRequestQuotaGrantSummary 表示单笔次数额度的摘要信息。
+type UserGroupRequestQuotaGrantSummary struct {
+	RequestQuotaTotal int64     `json:"request_quota_total"`
+	RequestQuotaUsed  int64     `json:"request_quota_used"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Expired           bool      `json:"expired"`
+}
+
 // UserGroupRequestQuotaSummary 表示用户在某个分组下的按次配额摘要。
 type UserGroupRequestQuotaSummary struct {
-	GroupID               int64  `json:"group_id"`
-	GroupName             string `json:"group_name"`
-	Platform              string `json:"platform"`
-	RequestQuota          int64  `json:"request_quota"`
-	RequestQuotaUsed      int64  `json:"request_quota_used"`
-	RequestQuotaRemaining int64  `json:"request_quota_remaining"`
+	GroupID               int64                               `json:"group_id"`
+	GroupName             string                              `json:"group_name"`
+	Platform              string                              `json:"platform"`
+	RequestQuota          int64                               `json:"request_quota"`
+	RequestQuotaUsed      int64                               `json:"request_quota_used"`
+	RequestQuotaRemaining int64                               `json:"request_quota_remaining"`
+	PermanentQuota        int64                               `json:"permanent_quota"`
+	PermanentQuotaUsed    int64                               `json:"permanent_quota_used"`
+	Grants                []UserGroupRequestQuotaGrantSummary `json:"grants,omitempty"`
 }
 
 // UserDashboardStats 用户仪表盘统计

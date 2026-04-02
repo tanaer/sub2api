@@ -25,6 +25,10 @@ const messages: Record<string, string> = {
   'keyUsage.requestQuota': 'Request Quota',
   'keyUsage.requestQuotaUsed': 'Used Requests',
   'keyUsage.requestQuotaRemaining': 'Remaining Requests',
+  'dashboard.permanentQuota': 'Permanent',
+  'dashboard.grantUnit': 'requests',
+  'dashboard.quotaBreakdown': 'Breakdown',
+  'dashboard.expiresAt': 'Expires {time}',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -73,6 +77,8 @@ describe('UserDashboardStats', () => {
               request_quota: 5,
               request_quota_used: 2,
               request_quota_remaining: 3,
+              permanent_quota: 5,
+              permanent_quota_used: 2,
             },
           ],
         },
