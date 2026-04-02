@@ -268,6 +268,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				parsedReq.Body = updated
 			}
 			c.Set(gatewayRequestedModelContextKey, resolved)
+			// Update ops context with resolved model so error logs reflect the actual upstream model
+			setOpsRequestContext(c, resolved, reqStream, parsedReq.Body)
 		}
 	}
 
