@@ -806,6 +806,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 
 // anthropicErrorResponse writes an error in Anthropic Messages API format.
 func (h *OpenAIGatewayHandler) anthropicErrorResponse(c *gin.Context, status int, errType, message string) {
+	message = service.NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"type": "error",
 		"error": gin.H{
@@ -818,6 +819,7 @@ func (h *OpenAIGatewayHandler) anthropicErrorResponse(c *gin.Context, status int
 // anthropicStreamingAwareError handles errors that may occur during streaming,
 // using Anthropic SSE error format.
 func (h *OpenAIGatewayHandler) anthropicStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
+	message = service.NormalizeClientFacingUpstreamErrorMessage(message)
 	if streamStarted {
 		flusher, ok := c.Writer.(http.Flusher)
 		if ok {
@@ -1518,6 +1520,7 @@ func (h *OpenAIGatewayHandler) mapUpstreamError(statusCode int, responseBody []b
 // handleStreamingAwareError handles errors that may occur after streaming has started
 func (h *OpenAIGatewayHandler) handleStreamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool) {
 	message = normalizeNoAvailableAccountsErrorMessage(message)
+	message = service.NormalizeClientFacingUpstreamErrorMessage(message)
 	if streamStarted {
 		// Stream already started, send error as SSE event then close
 		flusher, ok := c.Writer.(http.Flusher)

@@ -2408,7 +2408,16 @@ func (s *AntigravityGatewayService) ForwardGemini(ctx context.Context, c *gin.Co
 			Detail:             upstreamDetail,
 		})
 		logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Forward] upstream error status=%d body=%s", resp.StatusCode, truncateForLog(unwrappedForOps, 500))
-		c.Data(resp.StatusCode, contentType, unwrappedForOps)
+		clientBody := unwrappedForOps
+		if redactedBody, redacted := redactClientFacingUpstreamErrorBody(
+			resp.StatusCode,
+			unwrappedForOps,
+			clientFacingUpstreamErrorFormatGoogle,
+		); redacted {
+			clientBody = redactedBody
+			contentType = "application/json"
+		}
+		c.Data(resp.StatusCode, contentType, clientBody)
 		return nil, fmt.Errorf("antigravity upstream error: %d", resp.StatusCode)
 	}
 
@@ -3583,11 +3592,15 @@ func mergeTextPartsToResponse(response map[string]any, textParts []string) map[s
 }
 
 func (s *AntigravityGatewayService) writeClaudeError(c *gin.Context, status int, errType, message string) error {
+	clientMessage := NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"type":  "error",
-		"error": gin.H{"type": errType, "message": message},
+		"error": gin.H{"type": errType, "message": clientMessage},
 	})
-	return fmt.Errorf("%s", message)
+	if internalMessage := sanitizeUpstreamErrorMessage(strings.TrimSpace(message)); internalMessage != "" {
+		return fmt.Errorf("%s", internalMessage)
+	}
+	return fmt.Errorf("%s", clientMessage)
 }
 
 // WriteMappedClaudeError 导出版本，供 handler 层使用（如 fallback 错误处理）
@@ -3661,6 +3674,7 @@ func (s *AntigravityGatewayService) writeMappedClaudeError(c *gin.Context, accou
 		errType = "upstream_error"
 		errMsg = "Upstream request failed"
 	}
+	errMsg = normalizeClientFacingUpstreamErrorMessageWithSource(errMsg, upstreamMsg)
 
 	c.JSON(statusCode, gin.H{
 		"type":  "error",
@@ -3673,6 +3687,7 @@ func (s *AntigravityGatewayService) writeMappedClaudeError(c *gin.Context, accou
 }
 
 func (s *AntigravityGatewayService) writeGoogleError(c *gin.Context, status int, message string) error {
+	clientMessage := NormalizeClientFacingUpstreamErrorMessage(message)
 	statusStr := "UNKNOWN"
 	switch status {
 	case 400:
@@ -3690,11 +3705,14 @@ func (s *AntigravityGatewayService) writeGoogleError(c *gin.Context, status int,
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,
-			"message": message,
+			"message": clientMessage,
 			"status":  statusStr,
 		},
 	})
-	return fmt.Errorf("%s", message)
+	if internalMessage := sanitizeUpstreamErrorMessage(strings.TrimSpace(message)); internalMessage != "" {
+		return fmt.Errorf("%s", internalMessage)
+	}
+	return fmt.Errorf("%s", clientMessage)
 }
 
 // handleClaudeStreamToNonStreaming 收集上游流式响应，转换为 Claude 非流式格式返回

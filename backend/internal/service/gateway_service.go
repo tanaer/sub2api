@@ -6964,6 +6964,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 			errMsg = "Upstream request failed"
 		}
 	}
+	errMsg = normalizeClientFacingUpstreamErrorMessageWithSource(errMsg, upstreamMsg)
 
 	// 返回自定义错误响应
 	c.JSON(statusCode, gin.H{
@@ -9005,6 +9006,7 @@ func (s *GatewayService) buildCountTokensRequest(ctx context.Context, c *gin.Con
 
 // countTokensError 返回 count_tokens 错误响应
 func (s *GatewayService) countTokensError(c *gin.Context, status int, errType, message string) {
+	message = NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"type": "error",
 		"error": gin.H{

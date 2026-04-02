@@ -625,6 +625,7 @@ type pathParseError struct{ msg string }
 func (e *pathParseError) Error() string { return e.msg }
 
 func googleError(c *gin.Context, status int, message string) {
+	message = service.NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,
@@ -637,6 +638,10 @@ func googleError(c *gin.Context, status int, message string) {
 func writeUpstreamResponse(c *gin.Context, res *service.UpstreamHTTPResult) {
 	if res == nil {
 		googleError(c, http.StatusBadGateway, "Empty upstream response")
+		return
+	}
+	if res.StatusCode >= http.StatusBadRequest {
+		googleError(c, res.StatusCode, service.ExtractUpstreamErrorMessage(res.Body))
 		return
 	}
 	for k, vv := range res.Headers {

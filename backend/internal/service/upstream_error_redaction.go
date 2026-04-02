@@ -29,6 +29,22 @@ func sanitizeClientFacingUpstreamErrorMessage(message string) (string, bool) {
 	return message, false
 }
 
+func NormalizeClientFacingUpstreamErrorMessage(message string) string {
+	if sanitized, redacted := sanitizeClientFacingUpstreamErrorMessage(message); redacted {
+		return sanitized
+	}
+	return sanitizeUpstreamErrorMessage(strings.TrimSpace(message))
+}
+
+func normalizeClientFacingUpstreamErrorMessageWithSource(message string, sources ...string) string {
+	for _, source := range append([]string{message}, sources...) {
+		if sanitized, redacted := sanitizeClientFacingUpstreamErrorMessage(source); redacted {
+			return sanitized
+		}
+	}
+	return NormalizeClientFacingUpstreamErrorMessage(message)
+}
+
 func redactClientFacingUpstreamErrorBody(
 	status int,
 	body []byte,

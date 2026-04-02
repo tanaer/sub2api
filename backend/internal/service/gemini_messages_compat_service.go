@@ -1867,6 +1867,7 @@ func (s *GeminiMessagesCompatService) writeGeminiMappedError(c *gin.Context, acc
 			errMsg = "Upstream request failed"
 		}
 	}
+	errMsg = normalizeClientFacingUpstreamErrorMessageWithSource(errMsg, upstreamMsg)
 
 	c.JSON(statusCode, gin.H{
 		"type":  "error",
@@ -2244,22 +2245,30 @@ func randomHex(nBytes int) string {
 }
 
 func (s *GeminiMessagesCompatService) writeClaudeError(c *gin.Context, status int, errType, message string) error {
+	clientMessage := NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"type":  "error",
-		"error": gin.H{"type": errType, "message": message},
+		"error": gin.H{"type": errType, "message": clientMessage},
 	})
-	return fmt.Errorf("%s", message)
+	if internalMessage := sanitizeUpstreamErrorMessage(strings.TrimSpace(message)); internalMessage != "" {
+		return fmt.Errorf("%s", internalMessage)
+	}
+	return fmt.Errorf("%s", clientMessage)
 }
 
 func (s *GeminiMessagesCompatService) writeGoogleError(c *gin.Context, status int, message string) error {
+	clientMessage := NormalizeClientFacingUpstreamErrorMessage(message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,
-			"message": message,
+			"message": clientMessage,
 			"status":  googleapi.HTTPStatusToGoogleStatus(status),
 		},
 	})
-	return fmt.Errorf("%s", message)
+	if internalMessage := sanitizeUpstreamErrorMessage(strings.TrimSpace(message)); internalMessage != "" {
+		return fmt.Errorf("%s", internalMessage)
+	}
+	return fmt.Errorf("%s", clientMessage)
 }
 
 func unwrapIfNeeded(isOAuth bool, raw []byte) []byte {

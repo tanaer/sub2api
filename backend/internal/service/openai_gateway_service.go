@@ -616,6 +616,7 @@ func (s *OpenAIGatewayService) writeOpenAIWSFallbackErrorResponse(c *gin.Context
 	if strings.TrimSpace(upstreamMessage) == "" {
 		upstreamMessage = clientMessage
 	}
+	clientMessage = normalizeClientFacingUpstreamErrorMessageWithSource(clientMessage, upstreamMessage)
 
 	setOpsUpstreamError(c, statusCode, upstreamMessage, "")
 	if account != nil {
@@ -3301,6 +3302,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 			errMsg = "Upstream request failed"
 		}
 	}
+	errMsg = normalizeClientFacingUpstreamErrorMessageWithSource(errMsg, upstreamMsg)
 
 	c.JSON(statusCode, gin.H{
 		"error": gin.H{
@@ -3429,6 +3431,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		errType = "api_error"
 	}
 
+	upstreamMsg = normalizeClientFacingUpstreamErrorMessageWithSource(upstreamMsg, string(body))
 	writeError(c, respStatusCode, errType, upstreamMsg)
 	return nil, fmt.Errorf("upstream error: %d %s", resp.StatusCode, upstreamMsg)
 }

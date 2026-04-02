@@ -103,6 +103,7 @@ func (s *SoraGatewayService) handleErrorResponse(ctx context.Context, resp *http
 }
 
 func (s *SoraGatewayService) buildErrorPayload(respBody []byte, overrideMessage string) map[string]any {
+	overrideMessage = NormalizeClientFacingUpstreamErrorMessage(overrideMessage)
 	if len(respBody) > 0 {
 		var payload map[string]any
 		if err := json.Unmarshal(respBody, &payload); err == nil {

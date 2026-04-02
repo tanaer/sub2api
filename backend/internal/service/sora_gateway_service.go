@@ -930,6 +930,7 @@ func (s *SoraGatewayService) writeSoraError(c *gin.Context, status int, errType,
 	if c == nil {
 		return
 	}
+	message = NormalizeClientFacingUpstreamErrorMessage(message)
 	if stream {
 		flusher, _ := c.Writer.(http.Flusher)
 		errorData := map[string]any{
