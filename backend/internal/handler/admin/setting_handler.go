@@ -105,7 +105,9 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		APIBaseURL:                           settings.APIBaseURL,
 		ContactInfo:                          settings.ContactInfo,
 		DocURL:                               settings.DocURL,
+		UserAgreementContent:                 settings.UserAgreementContent,
 		HomeContent:                          settings.HomeContent,
+		SupportedAIModels:                    settings.SupportedAIModels,
 		HideCcsImportButton:                  settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:          settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:              settings.PurchaseSubscriptionURL,
@@ -174,7 +176,9 @@ type UpdateSettingsRequest struct {
 	APIBaseURL                  string                `json:"api_base_url"`
 	ContactInfo                 string                `json:"contact_info"`
 	DocURL                      string                `json:"doc_url"`
+	UserAgreementContent        string                `json:"user_agreement_content"`
 	HomeContent                 string                `json:"home_content"`
+	SupportedAIModels           []string              `json:"supported_ai_models"`
 	HideCcsImportButton         bool                  `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled *bool                 `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     *string               `json:"purchase_subscription_url"`
@@ -563,7 +567,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                       req.APIBaseURL,
 		ContactInfo:                      req.ContactInfo,
 		DocURL:                           req.DocURL,
+		UserAgreementContent:             req.UserAgreementContent,
 		HomeContent:                      req.HomeContent,
+		SupportedAIModels:                req.SupportedAIModels,
 		HideCcsImportButton:              req.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:      purchaseEnabled,
 		PurchaseSubscriptionURL:          purchaseURL,
@@ -673,7 +679,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		APIBaseURL:                           updatedSettings.APIBaseURL,
 		ContactInfo:                          updatedSettings.ContactInfo,
 		DocURL:                               updatedSettings.DocURL,
+		UserAgreementContent:                 updatedSettings.UserAgreementContent,
 		HomeContent:                          updatedSettings.HomeContent,
+		SupportedAIModels:                    updatedSettings.SupportedAIModels,
 		HideCcsImportButton:                  updatedSettings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:          updatedSettings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:              updatedSettings.PurchaseSubscriptionURL,
@@ -803,8 +811,14 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.DocURL != after.DocURL {
 		changed = append(changed, "doc_url")
 	}
+	if before.UserAgreementContent != after.UserAgreementContent {
+		changed = append(changed, "user_agreement_content")
+	}
 	if before.HomeContent != after.HomeContent {
 		changed = append(changed, "home_content")
+	}
+	if !equalStringSlice(before.SupportedAIModels, after.SupportedAIModels) {
+		changed = append(changed, "supported_ai_models")
 	}
 	if before.HideCcsImportButton != after.HideCcsImportButton {
 		changed = append(changed, "hide_ccs_import_button")

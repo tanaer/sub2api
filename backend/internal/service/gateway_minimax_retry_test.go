@@ -71,7 +71,8 @@ func newAnthropicTestContext(body []byte) (*gin.Context, *httptest.ResponseRecor
 	return c, rec
 }
 
-func TestGatewayForward_MiniMaxInvalidParamsRetry_StripsIgnoredFields(t *testing.T) {
+// TestGatewayForward_MiniMaxPreFilter_StripsIgnoredFieldsUpfront 验证前置过滤在首次请求时就剥除忽略参数。
+func TestGatewayForward_MiniMaxPreFilter_StripsIgnoredFieldsUpfront(t *testing.T) {
 	body := []byte(`{
 		"model":"glm-5.1",
 		"top_k":10,
@@ -83,7 +84,6 @@ func TestGatewayForward_MiniMaxInvalidParamsRetry_StripsIgnoredFields(t *testing
 
 	upstream := &queuedHTTPUpstreamStub{
 		responses: []*http.Response{
-			newMiniMaxInvalidParamsResponse("invalid params"),
 			newMiniMaxCompatSuccessResponse(),
 		},
 	}
@@ -94,11 +94,40 @@ func TestGatewayForward_MiniMaxInvalidParamsRetry_StripsIgnoredFields(t *testing
 	result, err := svc.Forward(context.Background(), c, account, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Len(t, upstream.requestBodies, 2)
-	require.Contains(t, string(upstream.requestBodies[0]), `"context_management"`)
-	require.Contains(t, string(upstream.requestBodies[0]), `"top_k"`)
-	require.NotContains(t, string(upstream.requestBodies[1]), `"context_management"`)
-	require.NotContains(t, string(upstream.requestBodies[1]), `"top_k"`)
+	// 首次请求就不应包含忽略的参数（前置过滤已剥除）
+	require.Len(t, upstream.requestBodies, 1)
+	require.NotContains(t, string(upstream.requestBodies[0]), `"context_management"`)
+	require.NotContains(t, string(upstream.requestBodies[0]), `"top_k"`)
+}
+
+// TestGatewayForward_MiniMaxPreFilter_PreservesThinking 验证 thinking 参数不被剥除。
+func TestGatewayForward_MiniMaxPreFilter_PreservesThinking(t *testing.T) {
+	body := []byte(`{
+		"model":"glm-5.1",
+		"thinking":{"type":"enabled","budget_tokens":8000},
+		"max_tokens":16000,
+		"messages":[{"role":"user","content":"hello"}]
+	}`)
+	parsed, err := ParseGatewayRequest(body, domain.PlatformAnthropic)
+	require.NoError(t, err)
+
+	upstream := &queuedHTTPUpstreamStub{
+		responses: []*http.Response{
+			newMiniMaxCompatSuccessResponse(),
+		},
+	}
+	svc := newMiniMaxTestService(upstream, false)
+	account := newMiniMaxTestAccount()
+	c, _ := newAnthropicTestContext(body)
+
+	result, err := svc.Forward(context.Background(), c, account, parsed)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.requestBodies, 1)
+	// thinking 应保留
+	require.Contains(t, string(upstream.requestBodies[0]), `"thinking"`)
+	// max_tokens 不应被 clamp 到 32768
+	require.Contains(t, string(upstream.requestBodies[0]), `"max_tokens"`)
 }
 
 func TestGatewayForward_MiniMaxInvalidParamsRetry_DowngradesToolHistory(t *testing.T) {

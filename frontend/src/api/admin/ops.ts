@@ -186,6 +186,11 @@ export interface OpsRequestDetail {
   group_id?: number | null
 
   stream?: boolean
+
+  input_tokens?: number | null
+  output_tokens?: number | null
+  cache_creation_tokens?: number | null
+  cache_read_tokens?: number | null
 }
 
 export interface OpsRequestDetailsParams {

@@ -188,6 +188,30 @@ func TestAuthService_Register_EmailVerifyRequired(t *testing.T) {
 	require.ErrorIs(t, err, ErrEmailVerifyRequired)
 }
 
+func TestAuthService_Register_UserAgreementRequired(t *testing.T) {
+	repo := &userRepoStub{}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled:  "true",
+		SettingKeyUserAgreementContent: "agreement",
+	}, nil)
+
+	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	require.ErrorIs(t, err, ErrUserAgreementRequired)
+}
+
+func TestAuthService_Register_UserAgreementAccepted(t *testing.T) {
+	repo := &userRepoStub{nextID: 9}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled:  "true",
+		SettingKeyUserAgreementContent: "agreement",
+	}, nil)
+
+	_, user, err := service.Register(context.Background(), "user@test.com", "password", true)
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	require.Equal(t, int64(9), user.ID)
+}
+
 func TestAuthService_Register_EmailVerifyInvalid(t *testing.T) {
 	repo := &userRepoStub{}
 	cache := &emailCacheStub{

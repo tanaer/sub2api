@@ -17,19 +17,19 @@ import (
 
 // RateLimitService 处理限流和过载状态管理
 type RateLimitService struct {
-	accountRepo           AccountRepository
-	usageRepo             UsageLogRepository
-	cfg                   *config.Config
-	geminiQuotaService    *GeminiQuotaService
-	tempUnschedCache      TempUnschedCache
-	timeoutCounterCache   TimeoutCounterCache
-	settingService        *SettingService
-	tokenCacheInvalidator TokenCacheInvalidator
-	circuitBreaker        *AccountCircuitBreaker
-	healthTracker         *AccountHealthTracker
+	accountRepo            AccountRepository
+	usageRepo              UsageLogRepository
+	cfg                    *config.Config
+	geminiQuotaService     *GeminiQuotaService
+	tempUnschedCache       TempUnschedCache
+	timeoutCounterCache    TimeoutCounterCache
+	settingService         *SettingService
+	tokenCacheInvalidator  TokenCacheInvalidator
+	circuitBreaker         *AccountCircuitBreaker
+	healthTracker          *AccountHealthTracker
 	accountThrottleService *AccountThrottleService
-	usageCacheMu          sync.RWMutex
-	usageCache            map[int64]*geminiUsageCacheEntry
+	usageCacheMu           sync.RWMutex
+	usageCache             map[int64]*geminiUsageCacheEntry
 }
 
 // SuccessfulTestRecoveryResult 表示测试成功后恢复了哪些运行时状态。
@@ -89,36 +89,57 @@ func NewRateLimitService(accountRepo AccountRepository, usageRepo UsageLogReposi
 
 // SetTimeoutCounterCache 设置超时计数器缓存（可选依赖）
 func (s *RateLimitService) SetTimeoutCounterCache(cache TimeoutCounterCache) {
+	if s == nil {
+		return
+	}
 	s.timeoutCounterCache = cache
 }
 
 // SetSettingService 设置系统设置服务（可选依赖）
 func (s *RateLimitService) SetSettingService(settingService *SettingService) {
+	if s == nil {
+		return
+	}
 	s.settingService = settingService
 }
 
 // SetAccountThrottleService 设置账户限流服务（可选依赖）
 func (s *RateLimitService) SetAccountThrottleService(svc *AccountThrottleService) {
+	if s == nil {
+		return
+	}
 	s.accountThrottleService = svc
 }
 
 // SetTokenCacheInvalidator 设置 token 缓存清理器（可选依赖）
 func (s *RateLimitService) SetTokenCacheInvalidator(invalidator TokenCacheInvalidator) {
+	if s == nil {
+		return
+	}
 	s.tokenCacheInvalidator = invalidator
 }
 
 // CircuitBreaker 返回账号熔断器实例（供调度选号时检查）。
 func (s *RateLimitService) CircuitBreaker() *AccountCircuitBreaker {
+	if s == nil {
+		return nil
+	}
 	return s.circuitBreaker
 }
 
 // HealthTracker 返回账号健康度追踪器（供调度选号时加权）。
 func (s *RateLimitService) HealthTracker() *AccountHealthTracker {
+	if s == nil {
+		return nil
+	}
 	return s.healthTracker
 }
 
 // RecordSuccess 记录一次账号请求成功（供 ForwardResult 成功路径调用）。
 func (s *RateLimitService) RecordSuccess(accountID int64) {
+	if s == nil {
+		return
+	}
 	if s.healthTracker != nil {
 		s.healthTracker.RecordSuccess(accountID)
 	}
@@ -137,6 +158,9 @@ const (
 // CheckErrorPolicy 检查自定义错误码和临时不可调度规则。
 // 自定义错误码开启时覆盖后续所有逻辑（包括临时不可调度）。
 func (s *RateLimitService) CheckErrorPolicy(ctx context.Context, account *Account, statusCode int, responseBody []byte) ErrorPolicyResult {
+	if s == nil || account == nil {
+		return ErrorPolicyNone
+	}
 	if account.IsCustomErrorCodesEnabled() {
 		if account.ShouldHandleErrorCode(statusCode) {
 			return ErrorPolicyMatched
@@ -159,6 +183,9 @@ func (s *RateLimitService) CheckErrorPolicy(ctx context.Context, account *Accoun
 // HandleUpstreamError 处理上游错误响应，标记账号状态
 // 返回是否应该停止该账号的调度
 func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Account, statusCode int, headers http.Header, responseBody []byte) (shouldDisable bool) {
+	if s == nil || account == nil || s.accountRepo == nil {
+		return false
+	}
 	customErrorCodesEnabled := account.IsCustomErrorCodesEnabled()
 
 	// 池模式默认不标记本地账号状态；仅当用户显式配置自定义错误码时按本地策略处理。
@@ -324,6 +351,9 @@ postProcess:
 // PreCheckUsage proactively checks local quota before dispatching a request.
 // Returns false when the account should be skipped.
 func (s *RateLimitService) PreCheckUsage(ctx context.Context, account *Account, requestedModel string) (bool, error) {
+	if s == nil {
+		return true, nil
+	}
 	if account == nil || account.Platform != PlatformGemini {
 		return true, nil
 	}
@@ -446,6 +476,9 @@ func (s *RateLimitService) PreCheckUsageBatch(ctx context.Context, accounts []*A
 	}
 
 	if len(accounts) == 0 || requestedModel == "" {
+		return result, nil
+	}
+	if s == nil {
 		return result, nil
 	}
 	if s.usageRepo == nil || s.geminiQuotaService == nil {
@@ -682,6 +715,9 @@ func (s *RateLimitService) setGeminiUsageTotals(accountID int64, windowStart, no
 
 // GeminiCooldown returns the fallback cooldown duration for Gemini 429s based on tier.
 func (s *RateLimitService) GeminiCooldown(ctx context.Context, account *Account) time.Duration {
+	if s == nil {
+		return 5 * time.Minute
+	}
 	if account == nil {
 		return 5 * time.Minute
 	}
@@ -1243,6 +1279,9 @@ func (s *RateLimitService) handle529(ctx context.Context, account *Account) {
 
 // UpdateSessionWindow 从成功响应更新5h窗口状态
 func (s *RateLimitService) UpdateSessionWindow(ctx context.Context, account *Account, headers http.Header) {
+	if s == nil || account == nil || s.accountRepo == nil {
+		return
+	}
 	status := headers.Get("anthropic-ratelimit-unified-5h-status")
 	if status == "" {
 		return
@@ -1343,6 +1382,9 @@ func (s *RateLimitService) UpdateSessionWindow(ctx context.Context, account *Acc
 
 // ClearRateLimit 清除账号的限流状态
 func (s *RateLimitService) ClearRateLimit(ctx context.Context, accountID int64) error {
+	if s == nil || s.accountRepo == nil {
+		return nil
+	}
 	if err := s.accountRepo.ClearRateLimit(ctx, accountID); err != nil {
 		return err
 	}
@@ -1366,6 +1408,9 @@ func (s *RateLimitService) ClearRateLimit(ctx context.Context, accountID int64) 
 
 // RecoverAccountState 按需恢复账号的可恢复运行时状态。
 func (s *RateLimitService) RecoverAccountState(ctx context.Context, accountID int64, options AccountRecoveryOptions) (*SuccessfulTestRecoveryResult, error) {
+	if s == nil || s.accountRepo == nil {
+		return &SuccessfulTestRecoveryResult{}, nil
+	}
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -1401,6 +1446,9 @@ func (s *RateLimitService) RecoverAccountAfterSuccessfulTest(ctx context.Context
 }
 
 func (s *RateLimitService) ClearTempUnschedulable(ctx context.Context, accountID int64) error {
+	if s == nil || s.accountRepo == nil {
+		return nil
+	}
 	if err := s.accountRepo.ClearTempUnschedulable(ctx, accountID); err != nil {
 		return err
 	}
@@ -1448,6 +1496,9 @@ func hasNonEmptyMapValue(extra map[string]any, key string) bool {
 }
 
 func (s *RateLimitService) GetTempUnschedStatus(ctx context.Context, accountID int64) (*TempUnschedState, error) {
+	if s == nil || s.accountRepo == nil {
+		return nil, nil
+	}
 	now := time.Now().Unix()
 	if s.tempUnschedCache != nil {
 		state, err := s.tempUnschedCache.GetTempUnsched(ctx, accountID)
@@ -1496,7 +1547,7 @@ func (s *RateLimitService) GetTempUnschedStatus(ctx context.Context, accountID i
 }
 
 func (s *RateLimitService) HandleTempUnschedulable(ctx context.Context, account *Account, statusCode int, responseBody []byte) bool {
-	if account == nil {
+	if s == nil || account == nil || s.accountRepo == nil {
 		return false
 	}
 	if !account.ShouldHandleErrorCode(statusCode) {
@@ -1696,7 +1747,7 @@ func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Acco
 // 根据系统设置决定是否标记账户为临时不可调度或错误状态
 // 返回是否应该停止该账号的调度
 func (s *RateLimitService) HandleStreamTimeout(ctx context.Context, account *Account, model string) bool {
-	if account == nil {
+	if s == nil || account == nil || s.accountRepo == nil {
 		return false
 	}
 

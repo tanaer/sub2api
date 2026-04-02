@@ -4,6 +4,7 @@ export default {
     viewOnGithub: '在 GitHub 上查看',
     viewDocs: '查看文档',
     docs: '文档',
+    userAgreement: '用户协议',
     switchToLight: '切换到浅色模式',
     switchToDark: '切换到深色模式',
     dashboard: '控制台',
@@ -413,6 +414,12 @@ export default {
     verifyFailed: '验证失败，请重试。',
     codeRequired: '请输入验证码',
     invalidCode: '请输入有效的6位验证码',
+    userAgreementPrefix: '我已阅读并同意',
+    userAgreementRequired: '请先阅读并同意用户协议',
+    userAgreementPendingHint: '注册前请先打开协议内容，滚动到底后点击“同意”。',
+    userAgreementAcceptedHint: '已完成协议确认，可以继续注册。',
+    userAgreementScrollHint: '请先滚动到协议底部，才能点击同意。',
+    userAgreementAccept: '同意',
     promoCodeLabel: '优惠码',
     promoCodePlaceholder: '输入优惠码（可选）',
     promoCodeValid: '有效！注册后将获得 ${amount} 赠送余额',
@@ -3915,6 +3922,7 @@ export default {
           model: '模型',
           duration: '耗时',
           status: '状态码',
+          tokens: 'Tokens',
           requestId: '请求ID',
           actions: '操作'
         }
@@ -4451,6 +4459,11 @@ export default {
         docUrl: '文档链接',
         docUrlHint: '文档网站的链接。留空则隐藏文档链接。',
         docUrlPlaceholder: 'https://docs.example.com',
+        userAgreementContent: '用户协议内容',
+        userAgreementContentPlaceholder:
+          '在此输入用户协议内容，支持 Markdown 和 HTML。注册页会要求用户滚动到底后才能点击同意。',
+        userAgreementContentHint:
+          '留空则不显示用户协议入口，也不会在注册时要求用户确认。',
         siteLogo: '站点Logo',
         uploadImage: '上传图片',
         remove: '移除',
@@ -4465,6 +4478,9 @@ export default {
           '自定义首页内容，支持 Markdown/HTML。如果输入的是链接（以 http:// 或 https:// 开头），则会使用该链接作为 iframe 的 src 属性，这允许你设置任意网页作为首页。设置后首页的状态信息将不再显示。',
         homeContentIframeWarning:
           '⚠️ iframe 模式提示：部分网站设置了 X-Frame-Options 或 CSP 安全策略，禁止被嵌入到 iframe 中。如果页面显示空白或报错，请确认目标网站允许被嵌入，或考虑使用 HTML 模式自行构建页面内容。',
+        supportedAiModels: '首页已支持的 AI 模型',
+        supportedAiModelsPlaceholder: 'Claude\nGPT-4o\nGemini 2.5 Pro',
+        supportedAiModelsHint: '每行一个模型名称，也支持用逗号分隔。首页会按这里的内容展示“已支持的 AI 模型”。',
         hideCcsImportButton: '隐藏 CCS 导入按钮',
         hideCcsImportButtonHint: '启用后将在 API Keys 页面隐藏"导入 CCS"按钮'
       },

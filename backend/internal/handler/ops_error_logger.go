@@ -1223,12 +1223,19 @@ func classifyOpsIsBusinessLimited(errType, phase, code string, status int, messa
 		return true
 	}
 	if phase == "billing" || phase == "concurrency" {
-		// SLA/错误率排除“用户级业务限制”
+		// SLA/错误率排除"用户级业务限制"
 		return true
 	}
-	// Avoid treating upstream rate limits as business-limited.
-	if errType == "rate_limit_error" && strings.Contains(strings.ToLower(message), "upstream") {
-		return false
+	// 用户级并发限流不应拉低平台 SLA（classifyOpsPhase 将这类错误归为 "request" 而非 "concurrency"）
+	if errType == "rate_limit_error" {
+		msg := strings.ToLower(message)
+		if strings.Contains(msg, "concurrency") || strings.Contains(msg, "pending") || strings.Contains(msg, "queue") {
+			return true
+		}
+		// Avoid treating upstream rate limits as business-limited.
+		if strings.Contains(msg, "upstream") {
+			return false
+		}
 	}
 	_ = status
 	return false

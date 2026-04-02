@@ -732,12 +732,21 @@ type AccountGLMCapabilities struct {
 
 // ShouldStripAnthropicExtensions 判断是否需要在转发前剥除 Anthropic 专有字段（thinking / cache_control）。
 // 凡标记了具体上游供应商且不是原生 Anthropic 的账号，这些字段都不被支持。
+// 例外：MiniMax Anthropic 兼容 API 完全支持 thinking，不需要剥除。
 func (a *Account) ShouldStripAnthropicExtensions() bool {
 	if a == nil {
 		return false
 	}
 	p := strings.TrimSpace(a.UpstreamProvider)
-	return p != "" && p != "native"
+	if p == "" || p == "native" {
+		return false
+	}
+	// MiniMax Anthropic API 完全支持 thinking / tool_use / tool_result，
+	// 仅需单独处理 cache_control 和忽略参数，由 PreFilterMiniMaxRequest 负责。
+	if a.IsMiniMaxAnthropicAPIKey() {
+		return false
+	}
+	return true
 }
 
 // MaxTokensCap 返回账号的 max_tokens 上限。
@@ -760,7 +769,11 @@ func (a *Account) MaxTokensCap() int {
 			}
 		}
 	}
-	// 非 native 上游默认 clamp（GLM/MiniMax/其他第三方 API 通常不支持 64000）
+	// MiniMax 上下文窗口 204,800，完全支持 max_tokens，不限制
+	if a.IsMiniMaxAnthropicAPIKey() {
+		return 0
+	}
+	// 其他非 native 上游默认 clamp（GLM/其他第三方 API 通常不支持 64000）
 	if a.ShouldStripAnthropicExtensions() {
 		return 32768
 	}
@@ -787,12 +800,8 @@ func (a *Account) ResolveGLMCapabilities() AccountGLMCapabilities {
 		return caps
 	}
 
-	// MiniMax Anthropic 兼容接口对 GLM 的工具续轮历史要求更严格，默认保守绕开；
-	// context_management 在其兼容层会被忽略，默认不把它当成可靠能力。
-	if a.IsMiniMaxAnthropicAPIKey() {
-		caps.ToolHistory = false
-		caps.ContextManagement = false
-	}
+	// MiniMax Anthropic 兼容 API 完全支持 tool_use / tool_result / thinking，
+	// 无需禁用 tool_history；context_management 参数虽被忽略但不影响请求路由。
 
 	rawCapabilities, _ := a.Extra["glm_capabilities"].(map[string]any)
 	if enabled, ok := rawCapabilities["tool_history"].(bool); ok {

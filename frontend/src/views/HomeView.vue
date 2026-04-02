@@ -63,6 +63,15 @@
             <Icon name="book" size="md" />
           </a>
 
+          <button
+            v-if="hasUserAgreement"
+            type="button"
+            class="rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            @click="showUserAgreementDialog = true"
+          >
+            {{ t('home.userAgreement') }}
+          </button>
+
           <!-- Theme Toggle -->
           <button
             @click="toggleTheme"
@@ -293,79 +302,26 @@
         </div>
 
         <div class="mb-16 flex flex-wrap items-center justify-center gap-4">
-          <!-- Claude - Supported -->
           <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
+            v-for="(model, index) in supportedModels"
+            :key="model"
+            :class="[
+              'flex items-center gap-2 rounded-xl px-5 py-3 backdrop-blur-sm',
+              providerTheme(index, model).container
+            ]"
           >
             <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-500"
+              :class="[
+                'flex h-8 w-8 items-center justify-center rounded-lg',
+                providerTheme(index, model).icon
+              ]"
             >
-              <span class="text-xs font-bold text-white">C</span>
+              <span class="text-xs font-bold text-white">{{ providerInitial(model) }}</span>
             </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.claude') }}</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ model }}</span>
             <span
               class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
               >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- GPT - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">GPT</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- Gemini - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.gemini') }}</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- Antigravity - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600"
-            >
-              <span class="text-xs font-bold text-white">A</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.antigravity') }}</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- More - Coming Soon -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-500 to-gray-600"
-            >
-              <span class="text-xs font-bold text-white">+</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.more') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.soon') }}</span
             >
           </div>
         </div>
@@ -390,9 +346,24 @@
           >
             {{ t('home.docs') }}
           </a>
+          <button
+            v-if="hasUserAgreement"
+            type="button"
+            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+            @click="showUserAgreementDialog = true"
+          >
+            {{ t('home.userAgreement') }}
+          </button>
         </div>
       </div>
     </footer>
+
+    <UserAgreementDialog
+      :show="showUserAgreementDialog"
+      :title="t('home.userAgreement')"
+      :content="userAgreementContent"
+      @close="showUserAgreementDialog = false"
+    />
   </div>
 </template>
 
@@ -401,6 +372,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import UserAgreementDialog from '@/components/common/UserAgreementDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
@@ -413,7 +385,45 @@ const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appS
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
+const userAgreementContent = computed(() => appStore.cachedPublicSettings?.user_agreement_content || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
+const hasUserAgreement = computed(() => userAgreementContent.value.trim().length > 0)
+const showUserAgreementDialog = ref(false)
+
+const providerThemes = [
+  {
+    container:
+      'border border-primary-200 bg-white/60 ring-1 ring-primary-500/20 dark:border-primary-800 dark:bg-dark-800/60',
+    icon: 'bg-gradient-to-br from-orange-400 to-orange-500'
+  },
+  {
+    container:
+      'border border-primary-200 bg-white/60 ring-1 ring-primary-500/20 dark:border-primary-800 dark:bg-dark-800/60',
+    icon: 'bg-gradient-to-br from-green-500 to-green-600'
+  },
+  {
+    container:
+      'border border-primary-200 bg-white/60 ring-1 ring-primary-500/20 dark:border-primary-800 dark:bg-dark-800/60',
+    icon: 'bg-gradient-to-br from-blue-500 to-blue-600'
+  },
+  {
+    container:
+      'border border-primary-200 bg-white/60 ring-1 ring-primary-500/20 dark:border-primary-800 dark:bg-dark-800/60',
+    icon: 'bg-gradient-to-br from-rose-500 to-pink-600'
+  }
+] as const
+
+const defaultSupportedModels = computed(() => [
+  t('home.providers.claude'),
+  'GPT',
+  t('home.providers.gemini'),
+  t('home.providers.antigravity')
+])
+
+const supportedModels = computed(() => {
+  const configured = appStore.cachedPublicSettings?.supported_ai_models ?? []
+  return configured.length > 0 ? configured : defaultSupportedModels.value
+})
 
 // Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {
@@ -437,6 +447,19 @@ const userInitial = computed(() => {
 
 // Current year for footer
 const currentYear = computed(() => new Date().getFullYear())
+
+function providerTheme(index: number, model: string) {
+  const normalized = model.toLowerCase()
+  if (normalized.includes('claude')) return providerThemes[0]
+  if (normalized.includes('gpt') || normalized.includes('openai')) return providerThemes[1]
+  if (normalized.includes('gemini')) return providerThemes[2]
+  if (normalized.includes('antigravity')) return providerThemes[3]
+  return providerThemes[index % providerThemes.length]
+}
+
+function providerInitial(model: string): string {
+  return model.trim().charAt(0).toUpperCase() || 'A'
+}
 
 // Toggle theme
 function toggleTheme() {

@@ -635,6 +635,7 @@ type GatewayService struct {
 	debugClaudeMimic      atomic.Bool
 	debugGatewayBodyFile  atomic.Pointer[os.File] // non-nil when SUB2API_DEBUG_GATEWAY_BODY is set
 	tlsFPProfileService   *TLSFingerprintProfileService
+	miniMaxAPI            *MiniMaxAPIClient
 }
 
 // NewGatewayService creates a new GatewayService
@@ -694,6 +695,7 @@ func NewGatewayService(
 		modelsListCacheTTL:   modelsListTTL,
 		responseHeaderFilter: compileResponseHeaderFilter(cfg),
 		tlsFPProfileService:  tlsFPProfileService,
+		miniMaxAPI:           NewMiniMaxAPIClient(),
 	}
 	svc.userGroupRateResolver = newUserGroupRateResolver(
 		userGroupRateRepo,
@@ -4476,9 +4478,24 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	// 调试日志：记录即将转发的账号信息
 	logger.LegacyPrintf("service.gateway", "[Forward] Using account: ID=%d Name=%s Platform=%s Type=%s TLSFingerprint=%v Proxy=%s",
 		account.ID, account.Name, account.Platform, account.Type, tlsProfile, proxyURL)
+	// Pre-filter: MiniMax Anthropic API — strip ignored params, cache_control, unsupported content types.
+	// Must run before the generic extension strip since MiniMax supports thinking natively.
+	miniMaxToolsInjected := false
+	if account.IsMiniMaxAnthropicAPIKey() {
+		body = PreFilterMiniMaxRequest(body)
+		// 图片理解预处理：通过 MiniMax VLM API 将 image block 转为文字描述
+		body = s.preProcessMiniMaxImages(ctx, body, account)
+		// 网络搜索工具注入：仅当客户端未定义自己的 tools 时
+		if shouldInjectMiniMaxTools(account, parsed) {
+			body = injectMiniMaxWebSearchTool(body)
+			miniMaxToolsInjected = true
+		}
+	}
 	// Pre-filter: strip Anthropic-specific extensions (thinking, cache_control) for non-native providers.
 	// Native Anthropic / Antigravity support these fields; all third-party Anthropic-compatible APIs reject them.
-	if IsGLMModel(reqModel) || account.ShouldStripAnthropicExtensions() {
+	// MiniMax is excluded: it natively supports thinking via its Anthropic-compatible API;
+	// cache_control and ignored params are already handled by PreFilterMiniMaxRequest above.
+	if !account.IsMiniMaxAnthropicAPIKey() && (IsGLMModel(reqModel) || account.ShouldStripAnthropicExtensions()) {
 		body = StripAnthropicExtensionsForGLM(body)
 	}
 	// Pre-filter: clamp max_tokens for non-native providers that have lower limits than Claude.
@@ -4489,6 +4506,13 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	body = StripEmptyTextBlocks(body)
 	// Pre-filter: fix null input_schema in tools to prevent upstream 400 from non-Anthropic providers.
 	body = FixNullToolInputSchema(body)
+
+	// MiniMax 工具循环：首次请求强制非流式以便检测 tool_use
+	originalReqStream := reqStream
+	if miniMaxToolsInjected && reqStream {
+		body, _ = sjson.SetBytes(body, "stream", false)
+		reqStream = false
+	}
 
 	// 重试间复用同一请求体，避免每次 string(body) 产生额外分配。
 	setOpsUpstreamRequestBody(c, body)
@@ -4995,6 +5019,21 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	}
 
 	// 处理正常响应
+
+	// MiniMax 工具循环：检测并执行 web_search 调用，返回最终响应
+	if miniMaxToolsInjected {
+		finalResp, isStream, loopErr := s.executeMiniMaxToolLoop(
+			ctx, c, account, resp, body, token, tokenType,
+			reqModel, originalReqStream, proxyURL, tlsProfile, shouldMimicClaudeCode, parsed,
+		)
+		if loopErr != nil {
+			return nil, loopErr
+		}
+		if finalResp != nil {
+			resp = finalResp
+			reqStream = isStream
+		}
+	}
 
 	// 触发上游接受回调（提前释放串行锁，不等流完成）
 	if parsed.OnUpstreamAccepted != nil {

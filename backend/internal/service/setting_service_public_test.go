@@ -62,3 +62,18 @@ func TestSettingService_GetPublicSettings_ExposesRegistrationEmailSuffixWhitelis
 	require.NoError(t, err)
 	require.Equal(t, []string{"@example.com", "@foo.bar"}, settings.RegistrationEmailSuffixWhitelist)
 }
+
+func TestSettingService_GetPublicSettings_ExposesUserAgreementAndSupportedAIModels(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyUserAgreementContent: `# User Agreement`,
+			SettingKeySupportedAIModels:    `["Claude"," GPT-4o ","claude",""]`,
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "# User Agreement", settings.UserAgreementContent)
+	require.Equal(t, []string{"Claude", "GPT-4o"}, settings.SupportedAIModels)
+}

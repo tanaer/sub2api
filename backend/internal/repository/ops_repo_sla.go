@@ -86,13 +86,16 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	if err != nil {
 		return nil, fmt.Errorf("upstream errors: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var s service.UpstreamErrorStat
 		if err := rows.Scan(&s.Account, &s.Provider, &s.UpstreamStatus, &s.Total, &s.Recovered, &s.ClientFacing); err != nil {
 			return nil, err
 		}
 		report.UpstreamErrors = append(report.UpstreamErrors, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	// === 4. Client-facing errors (what users actually see) ===
@@ -112,13 +115,16 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	if err != nil {
 		return nil, fmt.Errorf("client errors: %w", err)
 	}
-	defer rows2.Close()
+	defer func() { _ = rows2.Close() }()
 	for rows2.Next() {
 		var s service.ClientErrorStat
 		if err := rows2.Scan(&s.StatusCode, &s.ErrorPhase, &s.ErrorMessage, &s.Count); err != nil {
 			return nil, err
 		}
 		report.ClientErrors = append(report.ClientErrors, s)
+	}
+	if err := rows2.Err(); err != nil {
+		return nil, err
 	}
 
 	// === 5. Failover path details (recent failover chains) ===
@@ -142,7 +148,7 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	if err != nil {
 		return nil, fmt.Errorf("failover paths: %w", err)
 	}
-	defer rows3.Close()
+	defer func() { _ = rows3.Close() }()
 	for rows3.Next() {
 		var fp service.FailoverPath
 		var upstreamErrorsJSON []byte
@@ -155,6 +161,9 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 		}
 		fp.UpstreamErrorsRaw = string(upstreamErrorsJSON)
 		report.FailoverPaths = append(report.FailoverPaths, fp)
+	}
+	if err := rows3.Err(); err != nil {
+		return nil, err
 	}
 
 	// Backfill account names in failover paths from accounts table
@@ -180,13 +189,16 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	if err != nil {
 		return nil, fmt.Errorf("provider latency: %w", err)
 	}
-	defer rows4.Close()
+	defer func() { _ = rows4.Close() }()
 	for rows4.Next() {
 		var s service.ProviderSLALatency
 		if err := rows4.Scan(&s.Provider, &s.Total, &s.P50Ms, &s.P90Ms, &s.P99Ms, &s.TTFBAvgMs); err != nil {
 			return nil, err
 		}
 		report.ProviderLatency = append(report.ProviderLatency, s)
+	}
+	if err := rows4.Err(); err != nil {
+		return nil, err
 	}
 
 	// === 7. Per-account success rate ===
@@ -226,7 +238,7 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	if err != nil {
 		return nil, fmt.Errorf("account success rate: %w", err)
 	}
-	defer rows5.Close()
+	defer func() { _ = rows5.Close() }()
 	for rows5.Next() {
 		var s service.AccountSuccessRate
 		if err := rows5.Scan(&s.AccountID, &s.AccountName, &s.Provider, &s.Successful, &s.Failed); err != nil {
@@ -237,6 +249,9 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 			s.SuccessRate = float64(s.Successful) / float64(s.Total) * 100
 		}
 		report.AccountSuccessRate = append(report.AccountSuccessRate, s)
+	}
+	if err := rows5.Err(); err != nil {
+		return nil, err
 	}
 
 	return report, nil
@@ -288,13 +303,16 @@ func (r *opsRepository) backfillFailoverAccountNames(ctx context.Context, paths 
 	if err != nil {
 		return paths
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var id int64
 		var name string
 		if err := rows.Scan(&id, &name); err == nil {
 			nameMap[id] = name
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return paths
 	}
 
 	// Backfill names into JSON

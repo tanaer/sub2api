@@ -115,7 +115,9 @@ const (
 	SettingKeyAPIBaseURL                  = "api_base_url"                  // API端点地址（用于客户端配置和导入）
 	SettingKeyContactInfo                 = "contact_info"                  // 客服联系方式
 	SettingKeyDocURL                      = "doc_url"                       // 文档链接
+	SettingKeyUserAgreementContent        = "user_agreement_content"        // 用户协议内容（Markdown/HTML）
 	SettingKeyHomeContent                 = "home_content"                  // 首页内容（支持 Markdown/HTML，或 URL 作为 iframe src）
+	SettingKeySupportedAIModels           = "supported_ai_models"           // 首页已支持 AI 模型列表（JSON 数组）
 	SettingKeyHideCcsImportButton         = "hide_ccs_import_button"        // 是否隐藏 API Keys 页面的导入 CCS 按钮
 	SettingKeyPurchaseSubscriptionEnabled = "purchase_subscription_enabled" // 是否展示"购买订阅"页面入口
 	SettingKeyPurchaseSubscriptionURL     = "purchase_subscription_url"     // "购买订阅"页面 URL（作为 iframe src）
@@ -131,7 +133,7 @@ const (
 	SettingKeyAdminAPIKey = "admin_api_key" // 全局管理员 API Key（用于外部系统集成）
 
 	// 运营工具
-	SettingKeyWorkbenchRedeemPresets = "workbench_redeem_presets" // 运营工具页的一键兑换码预设（JSON）
+	SettingKeyWorkbenchRedeemPresets   = "workbench_redeem_presets"   // 运营工具页的一键兑换码预设（JSON）
 	SettingKeyWorkbenchRedeemTemplates = "workbench_redeem_templates" // 运营工具页的话术模板（JSON）
 
 	// Gemini 配额策略（JSON）

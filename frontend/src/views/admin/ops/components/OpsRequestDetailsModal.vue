@@ -210,6 +210,9 @@ const kindBadgeClass = (kind: string) => {
                   <th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.status') }}
                   </th>
+                  <th class="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {{ t('admin.ops.requestDetails.table.tokens') }}
+                  </th>
                   <th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.requestId') }}
                   </th>
@@ -239,6 +242,25 @@ const kindBadgeClass = (kind: string) => {
                   </td>
                   <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                     {{ row.status_code ?? '-' }}
+                  </td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-600 dark:text-gray-300">
+                    <template v-if="row.input_tokens != null || row.output_tokens != null">
+                      <div class="flex flex-col items-end gap-0.5">
+                        <div class="whitespace-nowrap">
+                          <span class="text-[10px] text-gray-400">in:</span>
+                          <span class="text-blue-600 dark:text-blue-400">{{ row.input_tokens ?? 0 }}</span>
+                          <span class="mx-0.5 text-gray-400">/</span>
+                          <span class="text-[10px] text-gray-400">out:</span>
+                          <span class="text-emerald-600 dark:text-emerald-400">{{ row.output_tokens ?? 0 }}</span>
+                        </div>
+                        <div v-if="(row.cache_creation_tokens ?? 0) > 0 || (row.cache_read_tokens ?? 0) > 0" class="whitespace-nowrap text-[10px] text-gray-400 dark:text-gray-500">
+                          <span v-if="(row.cache_creation_tokens ?? 0) > 0" class="text-amber-500 dark:text-amber-400">cw:{{ row.cache_creation_tokens }}</span>
+                          <span v-if="(row.cache_creation_tokens ?? 0) > 0 && (row.cache_read_tokens ?? 0) > 0" class="mx-0.5">/</span>
+                          <span v-if="(row.cache_read_tokens ?? 0) > 0" class="text-purple-500 dark:text-purple-400">cr:{{ row.cache_read_tokens }}</span>
+                        </div>
+                      </div>
+                    </template>
+                    <span v-else class="text-gray-400">-</span>
                   </td>
                   <td class="px-4 py-3">
                     <div v-if="row.request_id" class="flex items-center gap-2">

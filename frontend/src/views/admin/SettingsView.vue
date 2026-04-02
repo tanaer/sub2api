@@ -1460,6 +1460,21 @@
               </p>
             </div>
 
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t('admin.settings.site.userAgreementContent') }}
+              </label>
+              <textarea
+                v-model="form.user_agreement_content"
+                rows="8"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.settings.site.userAgreementContentPlaceholder')"
+              ></textarea>
+              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.settings.site.userAgreementContentHint') }}
+              </p>
+            </div>
+
             <!-- Site Logo Upload -->
             <div>
               <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1492,6 +1507,21 @@
               <!-- iframe CSP Warning -->
               <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
                 {{ t('admin.settings.site.homeContentIframeWarning') }}
+              </p>
+            </div>
+
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t('admin.settings.site.supportedAiModels') }}
+              </label>
+              <textarea
+                v-model="supportedAiModelsDraft"
+                rows="5"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.settings.site.supportedAiModelsPlaceholder')"
+              ></textarea>
+              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.settings.site.supportedAiModelsHint') }}
               </p>
             </div>
 
@@ -2042,6 +2072,7 @@ const smtpPasswordManuallyEdited = ref(false)
 const testEmailAddress = ref('')
 const registrationEmailSuffixWhitelistTags = ref<string[]>([])
 const registrationEmailSuffixWhitelistDraft = ref('')
+const supportedAiModelsDraft = ref('')
 
 // Admin API Key 状态
 const adminApiKeyLoading = ref(true)
@@ -2127,7 +2158,9 @@ const form = reactive<SettingsForm>({
   api_base_url: '',
   contact_info: '',
   doc_url: '',
+  user_agreement_content: '',
   home_content: '',
+  supported_ai_models: [] as string[],
   backend_mode_enabled: false,
   hide_ccs_import_button: false,
   purchase_subscription_enabled: false,
@@ -2258,6 +2291,26 @@ function handleRegistrationEmailSuffixWhitelistPaste(event: ClipboardEvent) {
   }
 }
 
+function parseSupportedAIModelsInput(raw: string): string[] {
+  const values = raw
+    .split(/[\n,，]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  const normalized: string[] = []
+  const seen = new Set<string>()
+  for (const value of values) {
+    const key = value.toLowerCase()
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    normalized.push(value)
+  }
+
+  return normalized
+}
+
 // LinuxDo OAuth redirect URL suggestion
 const linuxdoRedirectUrlSuggestion = computed(() => {
   if (typeof window === 'undefined') return ''
@@ -2335,6 +2388,9 @@ async function loadSettings() {
       settings.registration_email_suffix_whitelist
     )
     registrationEmailSuffixWhitelistDraft.value = ''
+    supportedAiModelsDraft.value = Array.isArray(settings.supported_ai_models)
+      ? settings.supported_ai_models.join('\n')
+      : ''
     form.smtp_password = ''
     smtpPasswordManuallyEdited.value = false
     form.turnstile_secret_key = ''
@@ -2379,6 +2435,7 @@ function removeDefaultSubscription(index: number) {
 async function saveSettings() {
   saving.value = true
   try {
+    const normalizedSupportedAIModels = parseSupportedAIModelsInput(supportedAiModelsDraft.value)
     const normalizedDefaultSubscriptions = form.default_subscriptions
       .filter((item) => item.group_id > 0 && item.validity_days > 0)
       .map((item: DefaultSubscriptionSetting) => ({
@@ -2451,7 +2508,9 @@ async function saveSettings() {
       api_base_url: form.api_base_url,
       contact_info: form.contact_info,
       doc_url: form.doc_url,
+      user_agreement_content: form.user_agreement_content,
       home_content: form.home_content,
+      supported_ai_models: normalizedSupportedAIModels,
       backend_mode_enabled: form.backend_mode_enabled,
       hide_ccs_import_button: form.hide_ccs_import_button,
       purchase_subscription_enabled: form.purchase_subscription_enabled,
@@ -2493,6 +2552,9 @@ async function saveSettings() {
       updated.registration_email_suffix_whitelist
     )
     registrationEmailSuffixWhitelistDraft.value = ''
+    supportedAiModelsDraft.value = Array.isArray(updated.supported_ai_models)
+      ? updated.supported_ai_models.join('\n')
+      : ''
     form.smtp_password = ''
     smtpPasswordManuallyEdited.value = false
     form.turnstile_secret_key = ''

@@ -1306,3 +1306,154 @@ func BenchmarkParseGatewayRequest_New_Large(b *testing.B) {
 		_, _ = ParseGatewayRequest(data, "")
 	}
 }
+
+func TestPreFilterMiniMaxRequest_StripsIgnoredParams(t *testing.T) {
+	input := []byte(`{
+		"model":"MiniMax-M2.7",
+		"thinking":{"type":"enabled","budget_tokens":8000},
+		"max_tokens":64000,
+		"service_tier":"priority",
+		"top_k":20,
+		"stop_sequences":["END"],
+		"container":{"id":"c1"},
+		"mcp_servers":[{"name":"m1"}],
+		"context_management":{"edits":[{"type":"clear_thinking_20251015"}]},
+		"messages":[{"role":"user","content":[{"type":"text","text":"hello"}]}]
+	}`)
+
+	out := PreFilterMiniMaxRequest(input)
+
+	// 忽略的参数应被剥除
+	require.False(t, gjson.GetBytes(out, "service_tier").Exists())
+	require.False(t, gjson.GetBytes(out, "top_k").Exists())
+	require.False(t, gjson.GetBytes(out, "stop_sequences").Exists())
+	require.False(t, gjson.GetBytes(out, "container").Exists())
+	require.False(t, gjson.GetBytes(out, "mcp_servers").Exists())
+	require.False(t, gjson.GetBytes(out, "context_management").Exists())
+
+	// thinking 应保留
+	require.True(t, gjson.GetBytes(out, "thinking").Exists())
+	require.Equal(t, "enabled", gjson.GetBytes(out, "thinking.type").String())
+
+	// max_tokens 应保留（不被 clamp）
+	require.Equal(t, int64(64000), gjson.GetBytes(out, "max_tokens").Int())
+
+	// model 和 messages 应保留
+	require.Equal(t, "MiniMax-M2.7", gjson.GetBytes(out, "model").String())
+	require.True(t, gjson.GetBytes(out, "messages").IsArray())
+}
+
+func TestPreFilterMiniMaxRequest_StripsCacheControl(t *testing.T) {
+	input := []byte(`{
+		"model":"MiniMax-M2.7",
+		"system":[{"type":"text","text":"you are helpful","cache_control":{"type":"ephemeral"}}],
+		"messages":[
+			{"role":"user","content":[
+				{"type":"text","text":"hello","cache_control":{"type":"ephemeral"}}
+			]}
+		]
+	}`)
+
+	out := PreFilterMiniMaxRequest(input)
+
+	var req map[string]any
+	require.NoError(t, json.Unmarshal(out, &req))
+
+	// system cache_control 被剥除
+	sysArr := req["system"].([]any)
+	sysItem := sysArr[0].(map[string]any)
+	require.NotContains(t, sysItem, "cache_control")
+	require.Equal(t, "you are helpful", sysItem["text"])
+
+	// message cache_control 被剥除
+	msgs := req["messages"].([]any)
+	content := msgs[0].(map[string]any)["content"].([]any)
+	block := content[0].(map[string]any)
+	require.NotContains(t, block, "cache_control")
+	require.Equal(t, "hello", block["text"])
+}
+
+func TestPreFilterMiniMaxRequest_ImagePreservedDocumentConverted(t *testing.T) {
+	input := []byte(`{
+		"model":"MiniMax-M2.7",
+		"messages":[
+			{"role":"user","content":[
+				{"type":"text","text":"look at this"},
+				{"type":"image","source":{"type":"base64","media_type":"image/png","data":"abc123"}},
+				{"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"def456"}}
+			]}
+		]
+	}`)
+
+	out := PreFilterMiniMaxRequest(input)
+
+	var req map[string]any
+	require.NoError(t, json.Unmarshal(out, &req))
+
+	msgs := req["messages"].([]any)
+	content := msgs[0].(map[string]any)["content"].([]any)
+	require.Len(t, content, 3)
+
+	// 第一个 text 保留
+	require.Equal(t, "text", content[0].(map[string]any)["type"])
+	require.Equal(t, "look at this", content[0].(map[string]any)["text"])
+
+	// image 保留原样（由 VLM 后续处理）
+	require.Equal(t, "image", content[1].(map[string]any)["type"])
+
+	// document 被替换为文本占位符
+	require.Equal(t, "text", content[2].(map[string]any)["type"])
+	require.Contains(t, content[2].(map[string]any)["text"], "document")
+	require.Contains(t, content[2].(map[string]any)["text"], "not supported")
+}
+
+func TestPreFilterMiniMaxRequest_PreservesToolUseAndToolResult(t *testing.T) {
+	input := []byte(`{
+		"model":"MiniMax-M2.7",
+		"messages":[
+			{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"weather","input":{"city":"shanghai"}}]},
+			{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"sunny"}]}
+		]
+	}`)
+
+	out := PreFilterMiniMaxRequest(input)
+
+	// tool_use 和 tool_result 应完整保留
+	require.Contains(t, string(out), `"tool_use"`)
+	require.Contains(t, string(out), `"tool_result"`)
+	require.Contains(t, string(out), `"toolu_1"`)
+}
+
+func TestPreFilterMiniMaxRequest_EmptyBodyNoOp(t *testing.T) {
+	require.Equal(t, []byte(nil), PreFilterMiniMaxRequest(nil))
+	require.Equal(t, []byte{}, PreFilterMiniMaxRequest([]byte{}))
+}
+
+func TestPreFilterMiniMaxRequest_ToolResultNestedImagePreserved(t *testing.T) {
+	input := []byte(`{
+		"model":"MiniMax-M2.7",
+		"messages":[
+			{"role":"user","content":[
+				{"type":"tool_result","tool_use_id":"toolu_1","content":[
+					{"type":"text","text":"result"},
+					{"type":"image","source":{"type":"base64","data":"abc"}}
+				]}
+			]}
+		]
+	}`)
+
+	out := PreFilterMiniMaxRequest(input)
+
+	var req map[string]any
+	require.NoError(t, json.Unmarshal(out, &req))
+
+	msgs := req["messages"].([]any)
+	content := msgs[0].(map[string]any)["content"].([]any)
+	toolResult := content[0].(map[string]any)
+	innerContent := toolResult["content"].([]any)
+	require.Len(t, innerContent, 2)
+	require.Equal(t, "text", innerContent[0].(map[string]any)["type"])
+	require.Equal(t, "result", innerContent[0].(map[string]any)["text"])
+	// image 保留原样（由 VLM 后续处理）
+	require.Equal(t, "image", innerContent[1].(map[string]any)["type"])
+}

@@ -57,7 +57,9 @@ type SystemSettings struct {
 	APIBaseURL                  string           `json:"api_base_url"`
 	ContactInfo                 string           `json:"contact_info"`
 	DocURL                      string           `json:"doc_url"`
+	UserAgreementContent        string           `json:"user_agreement_content"`
 	HomeContent                 string           `json:"home_content"`
+	SupportedAIModels           []string         `json:"supported_ai_models"`
 	HideCcsImportButton         bool             `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled bool             `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     string           `json:"purchase_subscription_url"`
@@ -121,7 +123,9 @@ type PublicSettings struct {
 	APIBaseURL                       string           `json:"api_base_url"`
 	ContactInfo                      string           `json:"contact_info"`
 	DocURL                           string           `json:"doc_url"`
+	UserAgreementContent             string           `json:"user_agreement_content"`
 	HomeContent                      string           `json:"home_content"`
+	SupportedAIModels                []string         `json:"supported_ai_models"`
 	HideCcsImportButton              bool             `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled      bool             `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL          string           `json:"purchase_subscription_url"`

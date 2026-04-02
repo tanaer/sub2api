@@ -169,6 +169,22 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 	c.Set(gatewayRequestedModelContextKey, reqModel)
 
+	// 模型别名解析：将用户请求的模型名映射到实际上游模型名
+	// 必须在并发检查和 ops 上下文记录之前完成，确保 ops 日志中始终使用解析后的模型名
+	if apiKey.Group != nil {
+		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			reqLog.Info("gateway.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
+			c.Set(gatewayUserOriginalModelKey, reqModel)
+			reqModel = resolved
+			parsedReq.Model = resolved
+			if updated, err := sjson.SetBytes(parsedReq.Body, "model", resolved); err == nil {
+				parsedReq.Body = updated
+			}
+			c.Set(gatewayRequestedModelContextKey, resolved)
+			reqLog = reqLog.With(zap.String("model", resolved))
+		}
+	}
+
 	// 设置 max_tokens=1 + haiku 探测请求标识到 context 中
 	// 必须在 SetClaudeCodeClientContext 之前设置，因为 ClaudeCodeValidator 需要读取此标识进行绕过判断
 	if isMaxTokensOneHaikuRequest(reqModel, parsedReq.MaxTokens, reqStream) {
@@ -255,22 +271,6 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		status, code, message := billingErrorDetails(err)
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
 		return
-	}
-
-	// 模型别名解析：将用户请求的模型名映射到实际上游模型名
-	if apiKey.Group != nil {
-		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
-			reqLog.Info("gateway.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
-			c.Set(gatewayUserOriginalModelKey, reqModel)
-			reqModel = resolved
-			parsedReq.Model = resolved
-			if updated, err := sjson.SetBytes(parsedReq.Body, "model", resolved); err == nil {
-				parsedReq.Body = updated
-			}
-			c.Set(gatewayRequestedModelContextKey, resolved)
-			// Update ops context with resolved model so error logs reflect the actual upstream model
-			setOpsRequestContext(c, resolved, reqStream, parsedReq.Body)
-		}
 	}
 
 	// 计算粘性会话hash

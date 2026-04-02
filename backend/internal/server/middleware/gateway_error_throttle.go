@@ -12,9 +12,9 @@ import (
 
 // GatewayErrorThrottleConfig 网关错误惩罚限流配置
 type GatewayErrorThrottleConfig struct {
-	Enabled       bool          // 是否启用
-	ErrorLimit    int           // 窗口内最大错误数（超过后限流）
-	Window        time.Duration // 时间窗口
+	Enabled      bool          // 是否启用
+	ErrorLimit   int           // 窗口内最大错误数（超过后限流）
+	Window       time.Duration // 时间窗口
 	CooldownSecs int           // 触发后冷却时间（秒），0 则等于 Window
 }
 

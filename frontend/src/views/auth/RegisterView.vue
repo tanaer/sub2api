@@ -213,6 +213,42 @@
           </p>
         </div>
 
+        <div
+          v-if="hasUserAgreement"
+          class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-900/40"
+        >
+          <div class="flex items-start gap-3">
+            <input
+              type="checkbox"
+              :checked="acceptedUserAgreement"
+              disabled
+              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 opacity-100"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-gray-700 dark:text-gray-200">
+                {{ t('auth.userAgreementPrefix') }}
+                <button
+                  type="button"
+                  class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+                  @click="showUserAgreementDialog = true"
+                >
+                  《{{ t('home.userAgreement') }}》
+                </button>
+              </p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
+                {{
+                  acceptedUserAgreement
+                    ? t('auth.userAgreementAcceptedHint')
+                    : t('auth.userAgreementPendingHint')
+                }}
+              </p>
+              <p v-if="errors.user_agreement" class="input-error-text mt-2">
+                {{ errors.user_agreement }}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- Error Message -->
         <transition name="fade">
           <div
@@ -280,14 +316,25 @@
         </router-link>
       </p>
     </template>
+
+    <UserAgreementDialog
+      :show="showUserAgreementDialog"
+      :title="t('home.userAgreement')"
+      :content="userAgreementContent"
+      :show-accept-button="true"
+      :require-scroll-to-end="true"
+      @close="showUserAgreementDialog = false"
+      @accept="handleUserAgreementAccept"
+    />
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
+import UserAgreementDialog from '@/components/common/UserAgreementDialog.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/TurnstileWidget.vue'
@@ -325,6 +372,10 @@ const turnstileSiteKey = ref<string>('')
 const siteName = ref<string>('AIAPI')
 const linuxdoOAuthEnabled = ref<boolean>(false)
 const registrationEmailSuffixWhitelist = ref<string[]>([])
+const userAgreementContent = ref<string>('')
+const acceptedUserAgreement = ref<boolean>(false)
+const showUserAgreementDialog = ref<boolean>(false)
+const hasUserAgreement = computed(() => userAgreementContent.value.trim().length > 0)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -360,7 +411,8 @@ const errors = reactive({
   email: '',
   password: '',
   turnstile: '',
-  invitation_code: ''
+  invitation_code: '',
+  user_agreement: ''
 })
 
 // ==================== Lifecycle ====================
@@ -376,6 +428,7 @@ onMounted(async () => {
     turnstileSiteKey.value = settings.turnstile_site_key || ''
     siteName.value = settings.site_name || 'AIAPI'
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
+    userAgreementContent.value = settings.user_agreement_content || ''
     registrationEmailSuffixWhitelist.value = normalizeRegistrationEmailSuffixWhitelist(
       settings.registration_email_suffix_whitelist || []
     )
@@ -585,6 +638,7 @@ function validateForm(): boolean {
   errors.password = ''
   errors.turnstile = ''
   errors.invitation_code = ''
+  errors.user_agreement = ''
 
   let isValid = true
 
@@ -625,7 +679,18 @@ function validateForm(): boolean {
     isValid = false
   }
 
+  if (hasUserAgreement.value && !acceptedUserAgreement.value) {
+    errors.user_agreement = t('auth.userAgreementRequired')
+    isValid = false
+  }
+
   return isValid
+}
+
+function handleUserAgreementAccept(): void {
+  acceptedUserAgreement.value = true
+  errors.user_agreement = ''
+  showUserAgreementDialog.value = false
 }
 
 // ==================== Form Handlers ====================
@@ -690,7 +755,8 @@ async function handleRegister(): Promise<void> {
           password: formData.password,
           turnstile_token: turnstileToken.value,
           promo_code: formData.promo_code || undefined,
-          invitation_code: formData.invitation_code || undefined
+          invitation_code: formData.invitation_code || undefined,
+          accept_user_agreement: hasUserAgreement.value ? acceptedUserAgreement.value : undefined
         })
       )
 
@@ -705,7 +771,8 @@ async function handleRegister(): Promise<void> {
       password: formData.password,
       turnstile_token: turnstileEnabled.value ? turnstileToken.value : undefined,
       promo_code: formData.promo_code || undefined,
-      invitation_code: formData.invitation_code || undefined
+      invitation_code: formData.invitation_code || undefined,
+      accept_user_agreement: hasUserAgreement.value ? acceptedUserAgreement.value : undefined
     })
 
     // Show success toast

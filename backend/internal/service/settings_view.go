@@ -37,7 +37,9 @@ type SystemSettings struct {
 	APIBaseURL                  string
 	ContactInfo                 string
 	DocURL                      string
+	UserAgreementContent        string
 	HomeContent                 string
+	SupportedAIModels           []string
 	HideCcsImportButton         bool
 	PurchaseSubscriptionEnabled bool
 	PurchaseSubscriptionURL     string
@@ -102,7 +104,9 @@ type PublicSettings struct {
 	APIBaseURL                       string
 	ContactInfo                      string
 	DocURL                           string
+	UserAgreementContent             string
 	HomeContent                      string
+	SupportedAIModels                []string
 	HideCcsImportButton              bool
 
 	PurchaseSubscriptionEnabled bool
@@ -248,25 +252,25 @@ func DefaultProviderTimeoutSettings() *ProviderTimeoutSettings {
 
 // ProviderLatencyStats 某个上游供应商的请求时长统计
 type ProviderLatencyStats struct {
-	Provider   string `json:"provider"`
-	Count      int64  `json:"count"`
-	P50Ms      int    `json:"p50_ms"`
-	P90Ms      int    `json:"p90_ms"`
-	P99Ms      int    `json:"p99_ms"`
-	AvgMs      int    `json:"avg_ms"`
-	MaxMs      int    `json:"max_ms"`
+	Provider   string  `json:"provider"`
+	Count      int64   `json:"count"`
+	P50Ms      int     `json:"p50_ms"`
+	P90Ms      int     `json:"p90_ms"`
+	P99Ms      int     `json:"p99_ms"`
+	AvgMs      int     `json:"avg_ms"`
+	MaxMs      int     `json:"max_ms"`
 	TimeoutPct float64 `json:"timeout_pct"` // 超时比例（%）
 }
 
 // SLAReport 运维监控 SLA 报告
 type SLAReport struct {
-	ClientMetrics      SLAClientMetrics      `json:"client_metrics"`
-	FailoverMetrics    SLAFailoverMetrics    `json:"failover_metrics"`
-	UpstreamErrors     []UpstreamErrorStat   `json:"upstream_errors"`
-	ClientErrors       []ClientErrorStat     `json:"client_errors"`
-	FailoverPaths      []FailoverPath        `json:"failover_paths"`
-	ProviderLatency    []ProviderSLALatency  `json:"provider_latency"`
-	AccountSuccessRate []AccountSuccessRate  `json:"account_success_rate"`
+	ClientMetrics      SLAClientMetrics     `json:"client_metrics"`
+	FailoverMetrics    SLAFailoverMetrics   `json:"failover_metrics"`
+	UpstreamErrors     []UpstreamErrorStat  `json:"upstream_errors"`
+	ClientErrors       []ClientErrorStat    `json:"client_errors"`
+	FailoverPaths      []FailoverPath       `json:"failover_paths"`
+	ProviderLatency    []ProviderSLALatency `json:"provider_latency"`
+	AccountSuccessRate []AccountSuccessRate `json:"account_success_rate"`
 }
 
 type SLAClientMetrics struct {
@@ -304,13 +308,13 @@ type ClientErrorStat struct {
 }
 
 type FailoverPath struct {
-	RequestID        *string `json:"request_id"`
-	Model            *string `json:"model"`
-	FinalStatus      int     `json:"final_status"`
-	FinalError       *string `json:"final_error"`
-	UpstreamErrorsRaw string `json:"upstream_errors"`
-	DurationMs       int     `json:"duration_ms"`
-	CreatedAt        any     `json:"created_at"`
+	RequestID         *string `json:"request_id"`
+	Model             *string `json:"model"`
+	FinalStatus       int     `json:"final_status"`
+	FinalError        *string `json:"final_error"`
+	UpstreamErrorsRaw string  `json:"upstream_errors"`
+	DurationMs        int     `json:"duration_ms"`
+	CreatedAt         any     `json:"created_at"`
 }
 
 type AccountSuccessRate struct {

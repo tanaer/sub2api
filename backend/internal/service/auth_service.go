@@ -40,6 +40,7 @@ var (
 	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
 	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
 	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
+	ErrUserAgreementRequired   = infraerrors.BadRequest("USER_AGREEMENT_REQUIRED", "user agreement acceptance is required")
 	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
 )
 
@@ -107,15 +108,20 @@ func NewAuthService(
 }
 
 // Register 用户注册，返回token和用户
-func (s *AuthService) Register(ctx context.Context, email, password string) (string, *User, error) {
-	return s.RegisterWithVerification(ctx, email, password, "", "", "")
+func (s *AuthService) Register(ctx context.Context, email, password string, acceptedUserAgreement ...bool) (string, *User, error) {
+	return s.RegisterWithVerification(ctx, email, password, "", "", "", acceptedUserAgreement...)
 }
 
 // RegisterWithVerification 用户注册（支持邮件验证、优惠码和邀请码），返回token和用户
-func (s *AuthService) RegisterWithVerification(ctx context.Context, email, password, verifyCode, promoCode, invitationCode string) (string, *User, error) {
+func (s *AuthService) RegisterWithVerification(ctx context.Context, email, password, verifyCode, promoCode, invitationCode string, acceptedUserAgreement ...bool) (string, *User, error) {
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return "", nil, ErrRegDisabled
+	}
+
+	acceptedAgreement := len(acceptedUserAgreement) > 0 && acceptedUserAgreement[0]
+	if s.settingService != nil && s.settingService.HasUserAgreement(ctx) && !acceptedAgreement {
+		return "", nil, ErrUserAgreementRequired
 	}
 
 	// 防止用户注册 LinuxDo OAuth 合成邮箱，避免第三方登录与本地账号发生碰撞。

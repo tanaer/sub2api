@@ -158,7 +158,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAPIBaseURL,
 		SettingKeyContactInfo,
 		SettingKeyDocURL,
+		SettingKeyUserAgreementContent,
 		SettingKeyHomeContent,
+		SettingKeySupportedAIModels,
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
 		SettingKeyPurchaseSubscriptionURL,
@@ -204,7 +206,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		UserAgreementContent:             settings[SettingKeyUserAgreementContent],
 		HomeContent:                      settings[SettingKeyHomeContent],
+		SupportedAIModels:                parseStringList(settings[SettingKeySupportedAIModels]),
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
@@ -257,7 +261,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		APIBaseURL                       string          `json:"api_base_url,omitempty"`
 		ContactInfo                      string          `json:"contact_info,omitempty"`
 		DocURL                           string          `json:"doc_url,omitempty"`
+		UserAgreementContent             string          `json:"user_agreement_content,omitempty"`
 		HomeContent                      string          `json:"home_content,omitempty"`
+		SupportedAIModels                []string        `json:"supported_ai_models"`
 		HideCcsImportButton              bool            `json:"hide_ccs_import_button"`
 		PurchaseSubscriptionEnabled      bool            `json:"purchase_subscription_enabled"`
 		PurchaseSubscriptionURL          string          `json:"purchase_subscription_url,omitempty"`
@@ -283,7 +289,9 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		APIBaseURL:                       settings.APIBaseURL,
 		ContactInfo:                      settings.ContactInfo,
 		DocURL:                           settings.DocURL,
+		UserAgreementContent:             settings.UserAgreementContent,
 		HomeContent:                      settings.HomeContent,
+		SupportedAIModels:                settings.SupportedAIModels,
 		HideCcsImportButton:              settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:      settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:          settings.PurchaseSubscriptionURL,
@@ -428,6 +436,7 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 		normalizedWhitelist = []string{}
 	}
 	settings.RegistrationEmailSuffixWhitelist = normalizedWhitelist
+	settings.SupportedAIModels = normalizeStringList(settings.SupportedAIModels)
 
 	updates := make(map[string]string)
 
@@ -478,7 +487,13 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 	updates[SettingKeyAPIBaseURL] = settings.APIBaseURL
 	updates[SettingKeyContactInfo] = settings.ContactInfo
 	updates[SettingKeyDocURL] = settings.DocURL
+	updates[SettingKeyUserAgreementContent] = settings.UserAgreementContent
 	updates[SettingKeyHomeContent] = settings.HomeContent
+	supportedAIModelsJSON, err := json.Marshal(settings.SupportedAIModels)
+	if err != nil {
+		return fmt.Errorf("marshal supported ai models: %w", err)
+	}
+	updates[SettingKeySupportedAIModels] = string(supportedAIModelsJSON)
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
 	updates[SettingKeyPurchaseSubscriptionEnabled] = strconv.FormatBool(settings.PurchaseSubscriptionEnabled)
 	updates[SettingKeyPurchaseSubscriptionURL] = strings.TrimSpace(settings.PurchaseSubscriptionURL)
@@ -775,6 +790,20 @@ func (s *SettingService) GetSiteName(ctx context.Context) string {
 	return value
 }
 
+// GetUserAgreementContent 获取用户协议内容。
+func (s *SettingService) GetUserAgreementContent(ctx context.Context) string {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyUserAgreementContent)
+	if err != nil {
+		return ""
+	}
+	return value
+}
+
+// HasUserAgreement 检查是否已配置用户协议内容。
+func (s *SettingService) HasUserAgreement(ctx context.Context) bool {
+	return strings.TrimSpace(s.GetUserAgreementContent(ctx)) != ""
+}
+
 // GetDefaultConcurrency 获取默认并发量
 func (s *SettingService) GetDefaultConcurrency(ctx context.Context) int {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyDefaultConcurrency)
@@ -828,6 +857,8 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyPromoCodeEnabled:                 "true", // 默认启用优惠码功能
 		SettingKeySiteName:                         "AIAPI",
 		SettingKeySiteLogo:                         "",
+		SettingKeyUserAgreementContent:             "",
+		SettingKeySupportedAIModels:                "[]",
 		SettingKeyPurchaseSubscriptionEnabled:      "false",
 		SettingKeyPurchaseSubscriptionURL:          "",
 		SettingKeySoraClientEnabled:                "false",
@@ -892,7 +923,9 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		APIBaseURL:                       settings[SettingKeyAPIBaseURL],
 		ContactInfo:                      settings[SettingKeyContactInfo],
 		DocURL:                           settings[SettingKeyDocURL],
+		UserAgreementContent:             settings[SettingKeyUserAgreementContent],
 		HomeContent:                      settings[SettingKeyHomeContent],
+		SupportedAIModels:                parseStringList(settings[SettingKeySupportedAIModels]),
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
@@ -1038,6 +1071,42 @@ func parseDefaultSubscriptions(raw string) []DefaultSubscriptionSetting {
 			item.ValidityDays = MaxValidityDays
 		}
 		normalized = append(normalized, item)
+	}
+
+	return normalized
+}
+
+func parseStringList(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []string{}
+	}
+
+	var items []string
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return []string{}
+	}
+	return normalizeStringList(items)
+}
+
+func normalizeStringList(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, raw := range values {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
 	}
 
 	return normalized

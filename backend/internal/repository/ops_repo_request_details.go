@@ -102,7 +102,11 @@ WITH combined AS (
     ul.api_key_id AS api_key_id,
     ul.account_id AS account_id,
     ul.group_id AS group_id,
-    ul.stream AS stream
+    ul.stream AS stream,
+    ul.input_tokens AS input_tokens,
+    ul.output_tokens AS output_tokens,
+    ul.cache_creation_tokens AS cache_creation_tokens,
+    ul.cache_read_tokens AS cache_read_tokens
   FROM usage_logs ul
   LEFT JOIN groups g ON g.id = ul.group_id
   LEFT JOIN accounts a ON a.id = ul.account_id
@@ -126,7 +130,11 @@ WITH combined AS (
     o.api_key_id AS api_key_id,
     o.account_id AS account_id,
     o.group_id AS group_id,
-    o.stream AS stream
+    o.stream AS stream,
+    NULL::INT AS input_tokens,
+    NULL::INT AS output_tokens,
+    NULL::INT AS cache_creation_tokens,
+    NULL::INT AS cache_read_tokens
   FROM ops_error_logs o
   LEFT JOIN groups g ON g.id = o.group_id
   LEFT JOIN accounts a ON a.id = o.account_id
@@ -175,7 +183,11 @@ SELECT
   api_key_id,
   account_id,
   group_id,
-  stream
+  stream,
+  input_tokens,
+  output_tokens,
+  cache_creation_tokens,
+  cache_read_tokens
 FROM combined
 %s
 %s
@@ -226,7 +238,11 @@ LIMIT $%d OFFSET $%d
 			accountID sql.NullInt64
 			groupID   sql.NullInt64
 
-			stream bool
+			stream               bool
+			inputTokens          sql.NullInt64
+			outputTokens         sql.NullInt64
+			cacheCreationTokens  sql.NullInt64
+			cacheReadTokens      sql.NullInt64
 		)
 
 		if err := rows.Scan(
@@ -246,6 +262,10 @@ LIMIT $%d OFFSET $%d
 			&accountID,
 			&groupID,
 			&stream,
+			&inputTokens,
+			&outputTokens,
+			&cacheCreationTokens,
+			&cacheReadTokens,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -269,7 +289,11 @@ LIMIT $%d OFFSET $%d
 			AccountID: toInt64Ptr(accountID),
 			GroupID:   toInt64Ptr(groupID),
 
-			Stream: stream,
+			Stream:              stream,
+			InputTokens:         toIntPtr(inputTokens),
+			OutputTokens:        toIntPtr(outputTokens),
+			CacheCreationTokens: toIntPtr(cacheCreationTokens),
+			CacheReadTokens:     toIntPtr(cacheReadTokens),
 		}
 
 		if item.Platform == "" {

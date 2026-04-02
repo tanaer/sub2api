@@ -297,7 +297,7 @@ func (g *streamingIdentityGuard) feedDelta(deltaText string) (string, bool) {
 		return "", true
 	}
 
-	g.buf.WriteString(deltaText)
+	_, _ = g.buf.WriteString(deltaText)
 
 	if containsForbiddenIdentityHitWord(g.buf.String()) {
 		g.triggered = true
@@ -310,7 +310,7 @@ func (g *streamingIdentityGuard) feedDelta(deltaText string) (string, bool) {
 	if g.buf.Len() > identityGuardWindowSize*2 {
 		s := g.buf.String()
 		g.buf.Reset()
-		g.buf.WriteString(s[len(s)-identityGuardWindowSize:])
+		_, _ = g.buf.WriteString(s[len(s)-identityGuardWindowSize:])
 	}
 
 	return "", false

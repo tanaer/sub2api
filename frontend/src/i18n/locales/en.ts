@@ -4,6 +4,7 @@ export default {
     viewOnGithub: 'View on GitHub',
     viewDocs: 'View Documentation',
     docs: 'Docs',
+    userAgreement: 'User Agreement',
     switchToLight: 'Switch to Light Mode',
     switchToDark: 'Switch to Dark Mode',
     dashboard: 'Dashboard',
@@ -414,6 +415,12 @@ export default {
     verifyFailed: 'Verification failed. Please try again.',
     codeRequired: 'Verification code is required',
     invalidCode: 'Please enter a valid 6-digit code',
+    userAgreementPrefix: 'I have read and agree to the',
+    userAgreementRequired: 'Please read and accept the user agreement first',
+    userAgreementPendingHint: 'Open the agreement, scroll to the bottom, then click "Accept" before registering.',
+    userAgreementAcceptedHint: 'Agreement accepted. You can continue with registration.',
+    userAgreementScrollHint: 'Please scroll to the bottom of the agreement before accepting.',
+    userAgreementAccept: 'Accept',
     promoCodeLabel: 'Promo Code',
     promoCodePlaceholder: 'Enter promo code (optional)',
     promoCodeValid: 'Valid! You will receive ${amount} bonus balance',
@@ -3754,6 +3761,7 @@ export default {
           model: 'Model',
           duration: 'Duration',
           status: 'Status',
+          tokens: 'Tokens',
           requestId: 'Request ID',
           actions: 'Actions'
         }
@@ -4293,6 +4301,11 @@ export default {
         docUrl: 'Documentation URL',
         docUrlPlaceholder: 'https://docs.example.com',
         docUrlHint: 'Link to your documentation site. Leave empty to hide the documentation link.',
+        userAgreementContent: 'User Agreement Content',
+        userAgreementContentPlaceholder:
+          'Enter the user agreement here. Markdown and HTML are supported. Users must scroll to the bottom before they can accept it during registration.',
+        userAgreementContentHint:
+          'Leave empty to hide the user agreement entry and skip the registration confirmation step.',
         siteLogo: 'Site Logo',
         uploadImage: 'Upload Image',
         remove: 'Remove',
@@ -4304,6 +4317,9 @@ export default {
         homeContentPlaceholder: 'Enter custom content for the home page. Supports Markdown & HTML. If a URL is entered, it will be displayed as an iframe.',
         homeContentHint: 'Customize the home page content. Supports Markdown/HTML. If you enter a URL (starting with http:// or https://), it will be used as an iframe src to embed an external page. When set, the default status information will no longer be displayed.',
         homeContentIframeWarning: '⚠️ iframe mode note: Some websites have X-Frame-Options or CSP security policies that prevent embedding in iframes. If the page appears blank or shows an error, please verify the target website allows embedding, or consider using HTML mode to build your own content.',
+        supportedAiModels: 'Supported AI Models on Home Page',
+        supportedAiModelsPlaceholder: 'Claude\nGPT-4o\nGemini 2.5 Pro',
+        supportedAiModelsHint: 'One model name per line. Comma-separated input is also supported. The home page will render these as the supported AI models list.',
         hideCcsImportButton: 'Hide CCS Import Button',
         hideCcsImportButtonHint: 'When enabled, the "Import to CCS" button will be hidden on the API Keys page'
       },

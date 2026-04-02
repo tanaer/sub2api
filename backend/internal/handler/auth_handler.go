@@ -40,12 +40,13 @@ func NewAuthHandler(cfg *config.Config, authService *service.AuthService, userSe
 
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
-	Email          string `json:"email" binding:"required,email"`
-	Password       string `json:"password" binding:"required,min=6"`
-	VerifyCode     string `json:"verify_code"`
-	TurnstileToken string `json:"turnstile_token"`
-	PromoCode      string `json:"promo_code"`      // 注册优惠码
-	InvitationCode string `json:"invitation_code"` // 邀请码
+	Email               string `json:"email" binding:"required,email"`
+	Password            string `json:"password" binding:"required,min=6"`
+	VerifyCode          string `json:"verify_code"`
+	TurnstileToken      string `json:"turnstile_token"`
+	PromoCode           string `json:"promo_code"`      // 注册优惠码
+	InvitationCode      string `json:"invitation_code"` // 邀请码
+	AcceptUserAgreement bool   `json:"accept_user_agreement"`
 }
 
 // SendVerifyCodeRequest 发送验证码请求
@@ -119,7 +120,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	_, user, err := h.authService.RegisterWithVerification(c.Request.Context(), req.Email, req.Password, req.VerifyCode, req.PromoCode, req.InvitationCode)
+	_, user, err := h.authService.RegisterWithVerification(
+		c.Request.Context(),
+		req.Email,
+		req.Password,
+		req.VerifyCode,
+		req.PromoCode,
+		req.InvitationCode,
+		req.AcceptUserAgreement,
+	)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

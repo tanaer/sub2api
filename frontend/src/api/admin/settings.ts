@@ -36,7 +36,9 @@ export interface SystemSettings {
   api_base_url: string
   contact_info: string
   doc_url: string
+  user_agreement_content: string
   home_content: string
+  supported_ai_models: string[]
   hide_ccs_import_button: boolean
   purchase_subscription_enabled: boolean
   purchase_subscription_url: string
@@ -110,7 +112,9 @@ export interface UpdateSettingsRequest {
   api_base_url?: string
   contact_info?: string
   doc_url?: string
+  user_agreement_content?: string
   home_content?: string
+  supported_ai_models?: string[]
   hide_ccs_import_button?: boolean
   purchase_subscription_enabled?: boolean
   purchase_subscription_url?: string

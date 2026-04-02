@@ -22,6 +22,14 @@
             <Icon name="book" size="md" />
           </a>
           <button
+            v-if="hasUserAgreement"
+            type="button"
+            class="rounded-lg px-3 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            @click="showUserAgreementDialog = true"
+          >
+            {{ t('home.userAgreement') }}
+          </button>
+          <button
             @click="toggleTheme"
             class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
@@ -352,9 +360,24 @@
             rel="noopener noreferrer"
             class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
           >{{ t('home.docs') }}</a>
+          <button
+            v-if="hasUserAgreement"
+            type="button"
+            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+            @click="showUserAgreementDialog = true"
+          >
+            {{ t('home.userAgreement') }}
+          </button>
         </div>
       </div>
     </footer>
+
+    <UserAgreementDialog
+      :show="showUserAgreementDialog"
+      :title="t('home.userAgreement')"
+      :content="userAgreementContent"
+      @close="showUserAgreementDialog = false"
+    />
   </div>
 </template>
 
@@ -363,6 +386,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import UserAgreementDialog from '@/components/common/UserAgreementDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t, locale } = useI18n()
@@ -373,6 +397,9 @@ const appStore = useAppStore()
 const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'AIAPI')
 const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
+const userAgreementContent = computed(() => appStore.cachedPublicSettings?.user_agreement_content || '')
+const hasUserAgreement = computed(() => userAgreementContent.value.trim().length > 0)
+const showUserAgreementDialog = ref(false)
 
 // ==================== Theme (same as HomeView) ====================
 

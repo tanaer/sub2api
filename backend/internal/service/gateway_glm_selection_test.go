@@ -9,46 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSelectAccountForModelWithPlatform_SkipsMiniMaxForGLMToolHistory(t *testing.T) {
-	minimax := Account{
-		ID:          8,
-		Name:        "minimax",
-		Platform:    PlatformAnthropic,
-		Type:        AccountTypeAPIKey,
-		Status:      StatusActive,
-		Schedulable: true,
-		Priority:    1,
-		Credentials: map[string]any{
-			"base_url": "https://api.minimaxi.com/anthropic",
-		},
-	}
-	standard := Account{
-		ID:          3,
-		Name:        "glm-upstream",
-		Platform:    PlatformAnthropic,
-		Type:        AccountTypeAPIKey,
-		Status:      StatusActive,
-		Schedulable: true,
-		Priority:    2,
-	}
-
-	repo := &mockAccountRepoForPlatform{
-		accounts:     []Account{minimax, standard},
-		accountsByID: map[int64]*Account{8: &minimax, 3: &standard},
-	}
-	svc := &GatewayService{
-		accountRepo: repo,
-		cfg:         testConfig(),
-	}
-
-	ctx := WithGLMRequestTraits(context.Background(), GLMRequestTraits{HasToolResult: true})
-	account, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "glm-5.1", map[int64]struct{}{}, PlatformAnthropic)
-	require.NoError(t, err)
-	require.NotNil(t, account)
-	require.Equal(t, int64(3), account.ID)
-}
-
-func TestSelectAccountForModelWithPlatform_GLMToolHistoryOnlyMiniMaxReturnsNoAccounts(t *testing.T) {
+func TestSelectAccountForModelWithPlatform_MiniMaxAcceptsGLMToolHistory(t *testing.T) {
 	minimax := Account{
 		ID:          8,
 		Name:        "minimax",
@@ -71,6 +32,43 @@ func TestSelectAccountForModelWithPlatform_GLMToolHistoryOnlyMiniMaxReturnsNoAcc
 		cfg:         testConfig(),
 	}
 
+	// MiniMax now supports tool_history, so it should be selected
+	ctx := WithGLMRequestTraits(context.Background(), GLMRequestTraits{HasToolResult: true})
+	account, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "glm-5.1", map[int64]struct{}{}, PlatformAnthropic)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	require.Equal(t, int64(8), account.ID)
+}
+
+func TestSelectAccountForModelWithPlatform_MiniMaxDisabledViaExtraRejectsToolHistory(t *testing.T) {
+	minimax := Account{
+		ID:          8,
+		Name:        "minimax",
+		Platform:    PlatformAnthropic,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Priority:    1,
+		Credentials: map[string]any{
+			"base_url": "https://api.minimaxi.com/anthropic",
+		},
+		Extra: map[string]any{
+			"glm_capabilities": map[string]any{
+				"tool_history": false,
+			},
+		},
+	}
+
+	repo := &mockAccountRepoForPlatform{
+		accounts:     []Account{minimax},
+		accountsByID: map[int64]*Account{8: &minimax},
+	}
+	svc := &GatewayService{
+		accountRepo: repo,
+		cfg:         testConfig(),
+	}
+
+	// When tool_history is explicitly disabled via Extra, MiniMax should be skipped
 	ctx := WithGLMRequestTraits(context.Background(), GLMRequestTraits{HasToolResult: true})
 	account, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "glm-5.1", map[int64]struct{}{}, PlatformAnthropic)
 	require.Nil(t, account)

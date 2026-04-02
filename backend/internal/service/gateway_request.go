@@ -954,6 +954,150 @@ func StripMiniMaxAnthropicIgnoredFieldsForRetry(body []byte) []byte {
 	return out
 }
 
+// PreFilterMiniMaxRequest 在请求发送到 MiniMax Anthropic 兼容 API 之前进行前置清理。
+// 根据 MiniMax 官方文档（https://platform.minimaxi.com/docs/api-reference/text-anthropic-api）：
+//   - 忽略参数：context_management, container, mcp_servers, service_tier, stop_sequences, top_k
+//   - 不支持内容类型：image, document
+//   - 不支持：cache_control
+//   - 完全支持：thinking, tool_use, tool_result, text, metadata, tools, tool_choice
+func PreFilterMiniMaxRequest(body []byte) []byte {
+	if len(body) == 0 || !gjson.ValidBytes(body) {
+		return body
+	}
+
+	out := body
+
+	// 1. 剥离 MiniMax 忽略的顶层参数
+	ignoredPaths := []string{
+		"context_management",
+		"container",
+		"mcp_servers",
+		"service_tier",
+		"stop_sequences",
+		"top_k",
+	}
+	for _, path := range ignoredPaths {
+		if gjson.GetBytes(out, path).Exists() {
+			if next, err := sjson.DeleteBytes(out, path); err == nil {
+				out = next
+			}
+		}
+	}
+
+	// 2. 剥离 cache_control 和不支持的内容类型（image, document）
+	var req map[string]any
+	if err := json.Unmarshal(out, &req); err != nil {
+		return out
+	}
+
+	modified := false
+
+	// 2a. 剥离系统消息中的 cache_control
+	if sysArr, ok := req["system"].([]any); ok {
+		for _, item := range sysArr {
+			if m, ok := item.(map[string]any); ok {
+				if _, has := m["cache_control"]; has {
+					delete(m, "cache_control")
+					modified = true
+				}
+			}
+		}
+	}
+
+	// 2b. 处理 messages：剥除 cache_control，转换 image/document 为文本占位符
+	if messages, ok := req["messages"].([]any); ok {
+		for _, msg := range messages {
+			msgMap, ok := msg.(map[string]any)
+			if !ok {
+				continue
+			}
+			content, ok := msgMap["content"].([]any)
+			if !ok {
+				continue
+			}
+			var newContent []any
+			contentModified := false
+			for _, block := range content {
+				blockMap, ok := block.(map[string]any)
+				if !ok {
+					newContent = append(newContent, block)
+					continue
+				}
+
+				// 剥除 cache_control
+				if _, has := blockMap["cache_control"]; has {
+					delete(blockMap, "cache_control")
+					modified = true
+				}
+
+				blockType, _ := blockMap["type"].(string)
+				switch blockType {
+				case "image":
+					// image block 保留原样，由 preProcessMiniMaxImages 通过 VLM API 处理
+					newContent = append(newContent, blockMap)
+				case "document":
+					// MiniMax 不支持文档输入，转为文本占位符
+					contentModified = true
+					modified = true
+					newContent = append(newContent, map[string]any{
+						"type": "text",
+						"text": "[document content not supported by this model]",
+					})
+				default:
+					newContent = append(newContent, blockMap)
+
+					// 处理 tool_result 内嵌的 content
+					if blockType == "tool_result" {
+						if innerContent, ok := blockMap["content"].([]any); ok {
+							var newInner []any
+							innerModified := false
+							for _, innerBlock := range innerContent {
+								innerMap, ok := innerBlock.(map[string]any)
+								if !ok {
+									newInner = append(newInner, innerBlock)
+									continue
+								}
+								if _, has := innerMap["cache_control"]; has {
+									delete(innerMap, "cache_control")
+									modified = true
+								}
+								innerType, _ := innerMap["type"].(string)
+								if innerType == "document" {
+									innerModified = true
+									modified = true
+									newInner = append(newInner, map[string]any{
+										"type": "text",
+										"text": "[document content not supported by this model]",
+									})
+								} else {
+									// image blocks 保留原样，由 VLM 处理
+									newInner = append(newInner, innerMap)
+								}
+							}
+							if innerModified {
+								blockMap["content"] = newInner
+							}
+						}
+					}
+				}
+			}
+			if contentModified {
+				msgMap["content"] = newContent
+			}
+		}
+	}
+
+	if !modified {
+		return out
+	}
+
+	result, err := json.Marshal(req)
+	if err != nil {
+		return out
+	}
+	return result
+}
+
 // filterThinkingBlocksInternal removes invalid thinking blocks from request
 // 策略：
 //   - 当 thinking.type 不是 "enabled"/"adaptive"：移除所有 thinking 相关块
