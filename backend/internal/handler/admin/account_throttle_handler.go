@@ -24,6 +24,7 @@ type CreateAccountThrottleRuleRequest struct {
 	Name              string   `json:"name" binding:"required"`
 	Enabled           *bool    `json:"enabled"`
 	Priority          int      `json:"priority"`
+	ErrorCodes        []int    `json:"error_codes"`
 	Keywords          []string `json:"keywords"`
 	MatchMode         string   `json:"match_mode"`
 	TriggerMode       string   `json:"trigger_mode"`
@@ -41,6 +42,7 @@ type UpdateAccountThrottleRuleRequest struct {
 	Name              *string  `json:"name"`
 	Enabled           *bool    `json:"enabled"`
 	Priority          *int     `json:"priority"`
+	ErrorCodes        []int    `json:"error_codes"`
 	Keywords          []string `json:"keywords"`
 	MatchMode         *string  `json:"match_mode"`
 	TriggerMode       *string  `json:"trigger_mode"`
@@ -96,9 +98,10 @@ func (h *AccountThrottleHandler) Create(c *gin.Context) {
 	}
 
 	rule := &model.AccountThrottleRule{
-		Name:     req.Name,
-		Priority: req.Priority,
-		Keywords: req.Keywords,
+		Name:       req.Name,
+		Priority:   req.Priority,
+		ErrorCodes: req.ErrorCodes,
+		Keywords:   req.Keywords,
 	}
 
 	if req.Enabled != nil {
@@ -144,6 +147,9 @@ func (h *AccountThrottleHandler) Create(c *gin.Context) {
 	}
 	rule.Description = req.Description
 
+	if rule.ErrorCodes == nil {
+		rule.ErrorCodes = []int{}
+	}
 	if rule.Keywords == nil {
 		rule.Keywords = []string{}
 	}
@@ -194,6 +200,7 @@ func (h *AccountThrottleHandler) Update(c *gin.Context) {
 		Name:              existing.Name,
 		Enabled:           existing.Enabled,
 		Priority:          existing.Priority,
+		ErrorCodes:        existing.ErrorCodes,
 		Keywords:          existing.Keywords,
 		MatchMode:         existing.MatchMode,
 		TriggerMode:       existing.TriggerMode,
@@ -214,6 +221,9 @@ func (h *AccountThrottleHandler) Update(c *gin.Context) {
 	}
 	if req.Priority != nil {
 		rule.Priority = *req.Priority
+	}
+	if req.ErrorCodes != nil {
+		rule.ErrorCodes = req.ErrorCodes
 	}
 	if req.Keywords != nil {
 		rule.Keywords = req.Keywords
@@ -246,6 +256,9 @@ func (h *AccountThrottleHandler) Update(c *gin.Context) {
 		rule.Description = req.Description
 	}
 
+	if rule.ErrorCodes == nil {
+		rule.ErrorCodes = []int{}
+	}
 	if rule.Keywords == nil {
 		rule.Keywords = []string{}
 	}

@@ -84,6 +84,12 @@ func (_c *AccountThrottleRuleCreate) SetNillablePriority(v *int) *AccountThrottl
 	return _c
 }
 
+// SetErrorCodes sets the "error_codes" field.
+func (_c *AccountThrottleRuleCreate) SetErrorCodes(v []int) *AccountThrottleRuleCreate {
+	_c.mutation.SetErrorCodes(v)
+	return _c
+}
+
 // SetKeywords sets the "keywords" field.
 func (_c *AccountThrottleRuleCreate) SetKeywords(v []string) *AccountThrottleRuleCreate {
 	_c.mutation.SetKeywords(v)
@@ -394,6 +400,10 @@ func (_c *AccountThrottleRuleCreate) createSpec() (*AccountThrottleRule, *sqlgra
 		_spec.SetField(accountthrottlerule.FieldPriority, field.TypeInt, value)
 		_node.Priority = value
 	}
+	if value, ok := _c.mutation.ErrorCodes(); ok {
+		_spec.SetField(accountthrottlerule.FieldErrorCodes, field.TypeJSON, value)
+		_node.ErrorCodes = value
+	}
 	if value, ok := _c.mutation.Keywords(); ok {
 		_spec.SetField(accountthrottlerule.FieldKeywords, field.TypeJSON, value)
 		_node.Keywords = value
@@ -537,6 +547,24 @@ func (u *AccountThrottleRuleUpsert) UpdatePriority() *AccountThrottleRuleUpsert 
 // AddPriority adds v to the "priority" field.
 func (u *AccountThrottleRuleUpsert) AddPriority(v int) *AccountThrottleRuleUpsert {
 	u.Add(accountthrottlerule.FieldPriority, v)
+	return u
+}
+
+// SetErrorCodes sets the "error_codes" field.
+func (u *AccountThrottleRuleUpsert) SetErrorCodes(v []int) *AccountThrottleRuleUpsert {
+	u.Set(accountthrottlerule.FieldErrorCodes, v)
+	return u
+}
+
+// UpdateErrorCodes sets the "error_codes" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsert) UpdateErrorCodes() *AccountThrottleRuleUpsert {
+	u.SetExcluded(accountthrottlerule.FieldErrorCodes)
+	return u
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (u *AccountThrottleRuleUpsert) ClearErrorCodes() *AccountThrottleRuleUpsert {
+	u.SetNull(accountthrottlerule.FieldErrorCodes)
 	return u
 }
 
@@ -807,6 +835,27 @@ func (u *AccountThrottleRuleUpsertOne) AddPriority(v int) *AccountThrottleRuleUp
 func (u *AccountThrottleRuleUpsertOne) UpdatePriority() *AccountThrottleRuleUpsertOne {
 	return u.Update(func(s *AccountThrottleRuleUpsert) {
 		s.UpdatePriority()
+	})
+}
+
+// SetErrorCodes sets the "error_codes" field.
+func (u *AccountThrottleRuleUpsertOne) SetErrorCodes(v []int) *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.SetErrorCodes(v)
+	})
+}
+
+// UpdateErrorCodes sets the "error_codes" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsertOne) UpdateErrorCodes() *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.UpdateErrorCodes()
+	})
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (u *AccountThrottleRuleUpsertOne) ClearErrorCodes() *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.ClearErrorCodes()
 	})
 }
 
@@ -1270,6 +1319,27 @@ func (u *AccountThrottleRuleUpsertBulk) AddPriority(v int) *AccountThrottleRuleU
 func (u *AccountThrottleRuleUpsertBulk) UpdatePriority() *AccountThrottleRuleUpsertBulk {
 	return u.Update(func(s *AccountThrottleRuleUpsert) {
 		s.UpdatePriority()
+	})
+}
+
+// SetErrorCodes sets the "error_codes" field.
+func (u *AccountThrottleRuleUpsertBulk) SetErrorCodes(v []int) *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.SetErrorCodes(v)
+	})
+}
+
+// UpdateErrorCodes sets the "error_codes" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsertBulk) UpdateErrorCodes() *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.UpdateErrorCodes()
+	})
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (u *AccountThrottleRuleUpsertBulk) ClearErrorCodes() *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.ClearErrorCodes()
 	})
 }
 

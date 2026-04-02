@@ -46,6 +46,11 @@ func (AccountThrottleRule) Fields() []ent.Field {
 		field.Int("priority").
 			Default(0),
 
+		// error_codes: 触发的HTTP状态码列表（空=所有错误码），与per-account temp_unschedulable_rules的error_code字段对齐
+		field.JSON("error_codes", []int{}).
+			Optional().
+			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
+
 		// keywords: 关键词列表（OR关系）
 		field.JSON("keywords", []string{}).
 			Optional().

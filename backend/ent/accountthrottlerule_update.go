@@ -84,6 +84,24 @@ func (_u *AccountThrottleRuleUpdate) AddPriority(v int) *AccountThrottleRuleUpda
 	return _u
 }
 
+// SetErrorCodes sets the "error_codes" field.
+func (_u *AccountThrottleRuleUpdate) SetErrorCodes(v []int) *AccountThrottleRuleUpdate {
+	_u.mutation.SetErrorCodes(v)
+	return _u
+}
+
+// AppendErrorCodes appends value to the "error_codes" field.
+func (_u *AccountThrottleRuleUpdate) AppendErrorCodes(v []int) *AccountThrottleRuleUpdate {
+	_u.mutation.AppendErrorCodes(v)
+	return _u
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (_u *AccountThrottleRuleUpdate) ClearErrorCodes() *AccountThrottleRuleUpdate {
+	_u.mutation.ClearErrorCodes()
+	return _u
+}
+
 // SetKeywords sets the "keywords" field.
 func (_u *AccountThrottleRuleUpdate) SetKeywords(v []string) *AccountThrottleRuleUpdate {
 	_u.mutation.SetKeywords(v)
@@ -359,6 +377,17 @@ func (_u *AccountThrottleRuleUpdate) sqlSave(ctx context.Context) (_node int, er
 	if value, ok := _u.mutation.AddedPriority(); ok {
 		_spec.AddField(accountthrottlerule.FieldPriority, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.ErrorCodes(); ok {
+		_spec.SetField(accountthrottlerule.FieldErrorCodes, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedErrorCodes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, accountthrottlerule.FieldErrorCodes, value)
+		})
+	}
+	if _u.mutation.ErrorCodesCleared() {
+		_spec.ClearField(accountthrottlerule.FieldErrorCodes, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.Keywords(); ok {
 		_spec.SetField(accountthrottlerule.FieldKeywords, field.TypeJSON, value)
 	}
@@ -492,6 +521,24 @@ func (_u *AccountThrottleRuleUpdateOne) SetNillablePriority(v *int) *AccountThro
 // AddPriority adds value to the "priority" field.
 func (_u *AccountThrottleRuleUpdateOne) AddPriority(v int) *AccountThrottleRuleUpdateOne {
 	_u.mutation.AddPriority(v)
+	return _u
+}
+
+// SetErrorCodes sets the "error_codes" field.
+func (_u *AccountThrottleRuleUpdateOne) SetErrorCodes(v []int) *AccountThrottleRuleUpdateOne {
+	_u.mutation.SetErrorCodes(v)
+	return _u
+}
+
+// AppendErrorCodes appends value to the "error_codes" field.
+func (_u *AccountThrottleRuleUpdateOne) AppendErrorCodes(v []int) *AccountThrottleRuleUpdateOne {
+	_u.mutation.AppendErrorCodes(v)
+	return _u
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (_u *AccountThrottleRuleUpdateOne) ClearErrorCodes() *AccountThrottleRuleUpdateOne {
+	_u.mutation.ClearErrorCodes()
 	return _u
 }
 
@@ -799,6 +846,17 @@ func (_u *AccountThrottleRuleUpdateOne) sqlSave(ctx context.Context) (_node *Acc
 	}
 	if value, ok := _u.mutation.AddedPriority(); ok {
 		_spec.AddField(accountthrottlerule.FieldPriority, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.ErrorCodes(); ok {
+		_spec.SetField(accountthrottlerule.FieldErrorCodes, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedErrorCodes(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, accountthrottlerule.FieldErrorCodes, value)
+		})
+	}
+	if _u.mutation.ErrorCodesCleared() {
+		_spec.ClearField(accountthrottlerule.FieldErrorCodes, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Keywords(); ok {
 		_spec.SetField(accountthrottlerule.FieldKeywords, field.TypeJSON, value)

@@ -152,8 +152,9 @@ type ThrottleMatchResult struct {
 }
 
 // MatchAndThrottle 匹配限流规则并执行限流
+// statusCode 用于 error_codes 过滤（与 per-account temp_unschedulable_rules 的 error_code 对齐）
 // 返回是否匹配到规则以及限流截止时间
-func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID int64, platform string, responseBody []byte) *ThrottleMatchResult {
+func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID int64, platform string, statusCode int, responseBody []byte) *ThrottleMatchResult {
 	rules := s.getCachedRules()
 	if len(rules) == 0 {
 		return nil
@@ -168,6 +169,9 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID
 			continue
 		}
 		if !s.platformMatches(rule, lowerPlatform) {
+			continue
+		}
+		if !s.errorCodeMatches(rule, statusCode) {
 			continue
 		}
 
@@ -248,6 +252,19 @@ func (s *AccountThrottleService) matchKeywords(rule *cachedThrottleRule, body []
 		}
 	}
 	return ""
+}
+
+// errorCodeMatches 检查HTTP状态码是否匹配（空列表=匹配所有）
+func (s *AccountThrottleService) errorCodeMatches(rule *cachedThrottleRule, statusCode int) bool {
+	if len(rule.ErrorCodes) == 0 {
+		return true
+	}
+	for _, code := range rule.ErrorCodes {
+		if code == statusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // platformMatches 检查平台是否匹配

@@ -261,6 +261,7 @@ var (
 		{Name: "name", Type: field.TypeString, Size: 100},
 		{Name: "enabled", Type: field.TypeBool, Default: true},
 		{Name: "priority", Type: field.TypeInt, Default: 0},
+		{Name: "error_codes", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "keywords", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "match_mode", Type: field.TypeString, Size: 20, Default: "contains"},
 		{Name: "trigger_mode", Type: field.TypeString, Size: 20, Default: "immediate"},

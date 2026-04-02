@@ -5421,6 +5421,8 @@ type AccountThrottleRuleMutation struct {
 	enabled                *bool
 	priority               *int
 	addpriority            *int
+	error_codes            *[]int
+	appenderror_codes      []int
 	keywords               *[]string
 	appendkeywords         []string
 	match_mode             *string
@@ -5739,6 +5741,71 @@ func (m *AccountThrottleRuleMutation) AddedPriority() (r int, exists bool) {
 func (m *AccountThrottleRuleMutation) ResetPriority() {
 	m.priority = nil
 	m.addpriority = nil
+}
+
+// SetErrorCodes sets the "error_codes" field.
+func (m *AccountThrottleRuleMutation) SetErrorCodes(i []int) {
+	m.error_codes = &i
+	m.appenderror_codes = nil
+}
+
+// ErrorCodes returns the value of the "error_codes" field in the mutation.
+func (m *AccountThrottleRuleMutation) ErrorCodes() (r []int, exists bool) {
+	v := m.error_codes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldErrorCodes returns the old "error_codes" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldErrorCodes(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldErrorCodes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldErrorCodes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldErrorCodes: %w", err)
+	}
+	return oldValue.ErrorCodes, nil
+}
+
+// AppendErrorCodes adds i to the "error_codes" field.
+func (m *AccountThrottleRuleMutation) AppendErrorCodes(i []int) {
+	m.appenderror_codes = append(m.appenderror_codes, i...)
+}
+
+// AppendedErrorCodes returns the list of values that were appended to the "error_codes" field in this mutation.
+func (m *AccountThrottleRuleMutation) AppendedErrorCodes() ([]int, bool) {
+	if len(m.appenderror_codes) == 0 {
+		return nil, false
+	}
+	return m.appenderror_codes, true
+}
+
+// ClearErrorCodes clears the value of the "error_codes" field.
+func (m *AccountThrottleRuleMutation) ClearErrorCodes() {
+	m.error_codes = nil
+	m.appenderror_codes = nil
+	m.clearedFields[accountthrottlerule.FieldErrorCodes] = struct{}{}
+}
+
+// ErrorCodesCleared returns if the "error_codes" field was cleared in this mutation.
+func (m *AccountThrottleRuleMutation) ErrorCodesCleared() bool {
+	_, ok := m.clearedFields[accountthrottlerule.FieldErrorCodes]
+	return ok
+}
+
+// ResetErrorCodes resets all changes to the "error_codes" field.
+func (m *AccountThrottleRuleMutation) ResetErrorCodes() {
+	m.error_codes = nil
+	m.appenderror_codes = nil
+	delete(m.clearedFields, accountthrottlerule.FieldErrorCodes)
 }
 
 // SetKeywords sets the "keywords" field.
@@ -6286,7 +6353,7 @@ func (m *AccountThrottleRuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AccountThrottleRuleMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, accountthrottlerule.FieldCreatedAt)
 	}
@@ -6301,6 +6368,9 @@ func (m *AccountThrottleRuleMutation) Fields() []string {
 	}
 	if m.priority != nil {
 		fields = append(fields, accountthrottlerule.FieldPriority)
+	}
+	if m.error_codes != nil {
+		fields = append(fields, accountthrottlerule.FieldErrorCodes)
 	}
 	if m.keywords != nil {
 		fields = append(fields, accountthrottlerule.FieldKeywords)
@@ -6350,6 +6420,8 @@ func (m *AccountThrottleRuleMutation) Field(name string) (ent.Value, bool) {
 		return m.Enabled()
 	case accountthrottlerule.FieldPriority:
 		return m.Priority()
+	case accountthrottlerule.FieldErrorCodes:
+		return m.ErrorCodes()
 	case accountthrottlerule.FieldKeywords:
 		return m.Keywords()
 	case accountthrottlerule.FieldMatchMode:
@@ -6389,6 +6461,8 @@ func (m *AccountThrottleRuleMutation) OldField(ctx context.Context, name string)
 		return m.OldEnabled(ctx)
 	case accountthrottlerule.FieldPriority:
 		return m.OldPriority(ctx)
+	case accountthrottlerule.FieldErrorCodes:
+		return m.OldErrorCodes(ctx)
 	case accountthrottlerule.FieldKeywords:
 		return m.OldKeywords(ctx)
 	case accountthrottlerule.FieldMatchMode:
@@ -6452,6 +6526,13 @@ func (m *AccountThrottleRuleMutation) SetField(name string, value ent.Value) err
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPriority(v)
+		return nil
+	case accountthrottlerule.FieldErrorCodes:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetErrorCodes(v)
 		return nil
 	case accountthrottlerule.FieldKeywords:
 		v, ok := value.([]string)
@@ -6616,6 +6697,9 @@ func (m *AccountThrottleRuleMutation) AddField(name string, value ent.Value) err
 // mutation.
 func (m *AccountThrottleRuleMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(accountthrottlerule.FieldErrorCodes) {
+		fields = append(fields, accountthrottlerule.FieldErrorCodes)
+	}
 	if m.FieldCleared(accountthrottlerule.FieldKeywords) {
 		fields = append(fields, accountthrottlerule.FieldKeywords)
 	}
@@ -6639,6 +6723,9 @@ func (m *AccountThrottleRuleMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *AccountThrottleRuleMutation) ClearField(name string) error {
 	switch name {
+	case accountthrottlerule.FieldErrorCodes:
+		m.ClearErrorCodes()
+		return nil
 	case accountthrottlerule.FieldKeywords:
 		m.ClearKeywords()
 		return nil
@@ -6670,6 +6757,9 @@ func (m *AccountThrottleRuleMutation) ResetField(name string) error {
 		return nil
 	case accountthrottlerule.FieldPriority:
 		m.ResetPriority()
+		return nil
+	case accountthrottlerule.FieldErrorCodes:
+		m.ResetErrorCodes()
 		return nil
 	case accountthrottlerule.FieldKeywords:
 		m.ResetKeywords()

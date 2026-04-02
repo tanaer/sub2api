@@ -56,6 +56,9 @@ func (r *accountThrottleRepository) Create(ctx context.Context, rule *model.Acco
 		SetActionDuration(rule.ActionDuration).
 		SetActionRecoverHour(rule.ActionRecoverHour)
 
+	if len(rule.ErrorCodes) > 0 {
+		builder.SetErrorCodes(rule.ErrorCodes)
+	}
 	if len(rule.Keywords) > 0 {
 		builder.SetKeywords(rule.Keywords)
 	}
@@ -86,6 +89,11 @@ func (r *accountThrottleRepository) Update(ctx context.Context, rule *model.Acco
 		SetActionDuration(rule.ActionDuration).
 		SetActionRecoverHour(rule.ActionRecoverHour)
 
+	if len(rule.ErrorCodes) > 0 {
+		builder.SetErrorCodes(rule.ErrorCodes)
+	} else {
+		builder.ClearErrorCodes()
+	}
 	if len(rule.Keywords) > 0 {
 		builder.SetKeywords(rule.Keywords)
 	} else {
@@ -119,6 +127,7 @@ func (r *accountThrottleRepository) toModel(e *ent.AccountThrottleRule) *model.A
 		Name:              e.Name,
 		Enabled:           e.Enabled,
 		Priority:          e.Priority,
+		ErrorCodes:        e.ErrorCodes,
 		Keywords:          e.Keywords,
 		MatchMode:         e.MatchMode,
 		TriggerMode:       e.TriggerMode,
@@ -136,6 +145,9 @@ func (r *accountThrottleRepository) toModel(e *ent.AccountThrottleRule) *model.A
 		rule.Description = e.Description
 	}
 
+	if rule.ErrorCodes == nil {
+		rule.ErrorCodes = []int{}
+	}
 	if rule.Keywords == nil {
 		rule.Keywords = []string{}
 	}

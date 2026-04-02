@@ -150,6 +150,9 @@ func (s *RateLimitService) CheckErrorPolicy(ctx context.Context, account *Accoun
 	if s.tryTempUnschedulable(ctx, account, statusCode, responseBody) {
 		return ErrorPolicyTempUnscheduled
 	}
+	if s.tryAccountThrottle(ctx, account, statusCode, responseBody) {
+		return ErrorPolicyTempUnscheduled
+	}
 	return ErrorPolicyNone
 }
 
@@ -178,16 +181,17 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 	}
 
 	// 先尝试临时不可调度规则（401除外）
-	// 如果匹配成功，直接返回，不执行后续禁用逻辑
 	if statusCode != 401 {
 		if s.tryTempUnschedulable(ctx, account, statusCode, responseBody) {
-			return true
+			shouldDisable = true
+			goto postProcess
 		}
 	}
 
 	// 尝试全局账户智能限流规则
-	if s.tryAccountThrottle(ctx, account, responseBody) {
-		return true
+	if s.tryAccountThrottle(ctx, account, statusCode, responseBody) {
+		shouldDisable = true
+		goto postProcess
 	}
 
 	switch statusCode {
@@ -303,6 +307,7 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 		}
 	}
 
+postProcess:
 	// 健康度追踪：记录所有上游错误（不仅是 shouldDisable 的）
 	if s.healthTracker != nil {
 		s.healthTracker.RecordFailure(account.ID)
@@ -1644,29 +1649,40 @@ func truncateTempUnschedMessage(body []byte, maxBytes int) string {
 }
 
 // tryAccountThrottle 尝试全局账户智能限流规则
-func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Account, responseBody []byte) bool {
+func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Account, statusCode int, responseBody []byte) bool {
 	if s.accountThrottleService == nil || account == nil || len(responseBody) == 0 {
 		return false
 	}
 
-	result := s.accountThrottleService.MatchAndThrottle(ctx, account.ID, account.Platform, responseBody)
+	result := s.accountThrottleService.MatchAndThrottle(ctx, account.ID, account.Platform, statusCode, responseBody)
 	if result == nil || !result.Matched {
 		return false
 	}
 
-	reason := FormatThrottleReason(result.Rule, result.MatchedKeyword)
+	now := time.Now()
+	state := &TempUnschedState{
+		UntilUnix:       result.UntilTime.Unix(),
+		TriggeredAtUnix: now.Unix(),
+		StatusCode:      statusCode,
+		MatchedKeyword:  result.MatchedKeyword,
+		RuleIndex:       -1, // 全局规则，非 per-account 规则索引
+		ErrorMessage:    truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes),
+	}
+
+	reason := ""
+	if raw, err := json.Marshal(state); err == nil {
+		reason = string(raw)
+	}
+	if reason == "" {
+		reason = FormatThrottleReason(result.Rule, result.MatchedKeyword)
+	}
+
 	if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, result.UntilTime, reason); err != nil {
 		slog.Warn("account_throttle_set_failed", "account_id", account.ID, "error", err)
 		return false
 	}
 
 	if s.tempUnschedCache != nil {
-		state := &TempUnschedState{
-			UntilUnix:       result.UntilTime.Unix(),
-			TriggeredAtUnix: time.Now().Unix(),
-			MatchedKeyword:  result.MatchedKeyword,
-			ErrorMessage:    reason,
-		}
 		if err := s.tempUnschedCache.SetTempUnsched(ctx, account.ID, state); err != nil {
 			slog.Warn("account_throttle_cache_set_failed", "account_id", account.ID, "error", err)
 		}

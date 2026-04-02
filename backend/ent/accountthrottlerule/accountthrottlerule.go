@@ -23,6 +23,8 @@ const (
 	FieldEnabled = "enabled"
 	// FieldPriority holds the string denoting the priority field in the database.
 	FieldPriority = "priority"
+	// FieldErrorCodes holds the string denoting the error_codes field in the database.
+	FieldErrorCodes = "error_codes"
 	// FieldKeywords holds the string denoting the keywords field in the database.
 	FieldKeywords = "keywords"
 	// FieldMatchMode holds the string denoting the match_mode field in the database.
@@ -55,6 +57,7 @@ var Columns = []string{
 	FieldName,
 	FieldEnabled,
 	FieldPriority,
+	FieldErrorCodes,
 	FieldKeywords,
 	FieldMatchMode,
 	FieldTriggerMode,

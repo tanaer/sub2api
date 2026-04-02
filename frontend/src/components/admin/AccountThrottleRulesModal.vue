@@ -87,6 +87,21 @@
                 </div>
               </td>
               <td class="px-3 py-2">
+                <div v-if="rule.error_codes && rule.error_codes.length > 0" class="mb-1 flex flex-wrap gap-1">
+                  <span
+                    v-for="code in rule.error_codes.slice(0, 3)"
+                    :key="code"
+                    class="badge badge-warning text-xs"
+                  >
+                    {{ code }}
+                  </span>
+                  <span v-if="rule.error_codes.length > 3" class="text-xs text-gray-500">
+                    +{{ rule.error_codes.length - 3 }}
+                  </span>
+                </div>
+                <div v-else class="mb-1">
+                  <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.accountThrottle.allErrorCodes') }}</span>
+                </div>
                 <div class="flex flex-wrap gap-1 max-w-48">
                   <span
                     v-for="keyword in rule.keywords.slice(0, 2)"
@@ -218,11 +233,22 @@
           />
         </div>
 
-        <!-- Keywords -->
+        <!-- Match Conditions -->
         <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
           <h4 class="mb-2 text-sm font-medium text-gray-900 dark:text-white">
             {{ t('admin.accountThrottle.form.matchConditions') }}
           </h4>
+
+          <div class="mb-3">
+            <label class="input-label text-xs">{{ t('admin.accountThrottle.form.errorCodes') }}</label>
+            <input
+              v-model="errorCodesInput"
+              type="text"
+              class="input text-sm"
+              :placeholder="t('admin.accountThrottle.form.errorCodesPlaceholder')"
+            />
+            <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.errorCodesHint') }}</p>
+          </div>
 
           <div>
             <label class="input-label text-xs">{{ t('admin.accountThrottle.form.keywords') }}</label>
@@ -417,11 +443,13 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingRuleId = ref<number | null>(null)
 const keywordsInput = ref('')
+const errorCodesInput = ref('')
 
 const form = reactive({
   name: '',
   priority: 0,
   description: '' as string | null,
+  error_codes: [] as number[],
   keywords: [] as string[],
   match_mode: 'contains' as 'contains' | 'exact',
   trigger_mode: 'immediate' as 'immediate' | 'accumulated',
@@ -474,6 +502,7 @@ function resetForm() {
   form.name = ''
   form.priority = 0
   form.description = null
+  form.error_codes = []
   form.keywords = []
   form.match_mode = 'contains'
   form.trigger_mode = 'immediate'
@@ -484,6 +513,7 @@ function resetForm() {
   form.action_recover_hour = 0
   form.platforms = []
   keywordsInput.value = ''
+  errorCodesInput.value = ''
   editingRuleId.value = null
 }
 
@@ -498,6 +528,7 @@ function handleEdit(rule: AccountThrottleRule) {
   form.name = rule.name
   form.priority = rule.priority
   form.description = rule.description
+  form.error_codes = [...rule.error_codes]
   form.keywords = [...rule.keywords]
   form.match_mode = rule.match_mode
   form.trigger_mode = rule.trigger_mode
@@ -508,6 +539,7 @@ function handleEdit(rule: AccountThrottleRule) {
   form.action_recover_hour = rule.action_recover_hour
   form.platforms = [...rule.platforms]
   keywordsInput.value = rule.keywords.join('\n')
+  errorCodesInput.value = rule.error_codes.length > 0 ? rule.error_codes.join(', ') : ''
   showEditModal.value = true
 }
 
@@ -522,12 +554,18 @@ async function handleSubmit() {
     return
   }
 
+  const errorCodes = errorCodesInput.value
+    .split(/[,，\s]+/)
+    .map(s => parseInt(s.trim(), 10))
+    .filter(n => !isNaN(n) && n > 0)
+
   submitting.value = true
   try {
     const data = {
       name: form.name,
       priority: form.priority,
       description: form.description || null,
+      error_codes: errorCodes,
       keywords,
       match_mode: form.match_mode,
       trigger_mode: form.trigger_mode,

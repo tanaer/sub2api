@@ -4739,10 +4739,12 @@ export default {
       timesIn: ' in ',
       seconds: 's',
 
+      allErrorCodes: 'All status codes',
+
       columns: {
         priority: 'Priority',
         name: 'Name',
-        keywords: 'Keywords',
+        keywords: 'Conditions',
         trigger: 'Trigger',
         action: 'Action',
         status: 'Status',
@@ -4772,6 +4774,9 @@ export default {
         description: 'Description',
         descriptionPlaceholder: 'Describe the purpose of this rule...',
         matchConditions: 'Match Conditions',
+        errorCodes: 'HTTP Status Codes',
+        errorCodesPlaceholder: 'e.g., 400, 429, 500 (leave empty for all)',
+        errorCodesHint: 'Comma-separated status codes. Leave empty to match all error codes.',
         keywords: 'Keywords',
         keywordsPlaceholder: 'One keyword per line\nquota exceeded\nrate limit',
         keywordsHint: 'One keyword per line, case-insensitive',

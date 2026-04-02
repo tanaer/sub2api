@@ -314,6 +314,16 @@ func PriorityLTE(v int) predicate.AccountThrottleRule {
 	return predicate.AccountThrottleRule(sql.FieldLTE(FieldPriority, v))
 }
 
+// ErrorCodesIsNil applies the IsNil predicate on the "error_codes" field.
+func ErrorCodesIsNil() predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldIsNull(FieldErrorCodes))
+}
+
+// ErrorCodesNotNil applies the NotNil predicate on the "error_codes" field.
+func ErrorCodesNotNil() predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldNotNull(FieldErrorCodes))
+}
+
 // KeywordsIsNil applies the IsNil predicate on the "keywords" field.
 func KeywordsIsNil() predicate.AccountThrottleRule {
 	return predicate.AccountThrottleRule(sql.FieldIsNull(FieldKeywords))

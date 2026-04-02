@@ -4899,10 +4899,12 @@ export default {
       timesIn: '次/',
       seconds: '秒',
 
+      allErrorCodes: '所有状态码',
+
       columns: {
         priority: '优先级',
         name: '名称',
-        keywords: '关键词',
+        keywords: '匹配条件',
         trigger: '触发方式',
         action: '限流方式',
         status: '状态',
@@ -4932,6 +4934,9 @@ export default {
         description: '规则描述',
         descriptionPlaceholder: '描述此规则的用途...',
         matchConditions: '匹配条件',
+        errorCodes: 'HTTP状态码',
+        errorCodesPlaceholder: '例如：400, 429, 500（留空匹配所有状态码）',
+        errorCodesHint: '多个状态码用逗号分隔，留空则匹配所有错误码（与per-account temp_unschedulable_rules的error_code对齐）',
         keywords: '关键词列表',
         keywordsPlaceholder: '每行一个关键词\nquota exceeded\nrate limit',
         keywordsHint: '每行一个关键词，不区分大小写',

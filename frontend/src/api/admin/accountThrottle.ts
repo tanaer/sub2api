@@ -5,6 +5,7 @@ export interface AccountThrottleRule {
   name: string
   enabled: boolean
   priority: number
+  error_codes: number[]
   keywords: string[]
   match_mode: 'contains' | 'exact'
   trigger_mode: 'immediate' | 'accumulated'
@@ -23,6 +24,7 @@ export interface CreateThrottleRuleRequest {
   name: string
   enabled?: boolean
   priority?: number
+  error_codes?: number[]
   keywords?: string[]
   match_mode?: 'contains' | 'exact'
   trigger_mode?: 'immediate' | 'accumulated'
@@ -39,6 +41,7 @@ export interface UpdateThrottleRuleRequest {
   name?: string
   enabled?: boolean
   priority?: number
+  error_codes?: number[]
   keywords?: string[]
   match_mode?: 'contains' | 'exact'
   trigger_mode?: 'immediate' | 'accumulated'

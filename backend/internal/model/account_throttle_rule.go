@@ -8,6 +8,7 @@ type AccountThrottleRule struct {
 	Name              string    `json:"name"`
 	Enabled           bool      `json:"enabled"`
 	Priority          int       `json:"priority"`
+	ErrorCodes        []int     `json:"error_codes"`         // 触发的HTTP状态码列表，空=匹配所有
 	Keywords          []string  `json:"keywords"`
 	MatchMode         string    `json:"match_mode"`          // "contains" / "exact"
 	TriggerMode       string    `json:"trigger_mode"`        // "immediate" / "accumulated"

@@ -28,6 +28,8 @@ type AccountThrottleRule struct {
 	Enabled bool `json:"enabled,omitempty"`
 	// Priority holds the value of the "priority" field.
 	Priority int `json:"priority,omitempty"`
+	// ErrorCodes holds the value of the "error_codes" field.
+	ErrorCodes []int `json:"error_codes,omitempty"`
 	// Keywords holds the value of the "keywords" field.
 	Keywords []string `json:"keywords,omitempty"`
 	// MatchMode holds the value of the "match_mode" field.
@@ -56,7 +58,7 @@ func (*AccountThrottleRule) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case accountthrottlerule.FieldKeywords, accountthrottlerule.FieldPlatforms:
+		case accountthrottlerule.FieldErrorCodes, accountthrottlerule.FieldKeywords, accountthrottlerule.FieldPlatforms:
 			values[i] = new([]byte)
 		case accountthrottlerule.FieldEnabled:
 			values[i] = new(sql.NullBool)
@@ -116,6 +118,14 @@ func (_m *AccountThrottleRule) assignValues(columns []string, values []any) erro
 				return fmt.Errorf("unexpected type %T for field priority", values[i])
 			} else if value.Valid {
 				_m.Priority = int(value.Int64)
+			}
+		case accountthrottlerule.FieldErrorCodes:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field error_codes", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ErrorCodes); err != nil {
+					return fmt.Errorf("unmarshal field error_codes: %w", err)
+				}
 			}
 		case accountthrottlerule.FieldKeywords:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -232,6 +242,9 @@ func (_m *AccountThrottleRule) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("priority=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Priority))
+	builder.WriteString(", ")
+	builder.WriteString("error_codes=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ErrorCodes))
 	builder.WriteString(", ")
 	builder.WriteString("keywords=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Keywords))
