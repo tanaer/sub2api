@@ -6928,7 +6928,15 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	} else {
 		switch resp.StatusCode {
 		case 400:
-			c.Data(http.StatusBadRequest, "application/json", body)
+			clientBody := body
+			if redactedBody, redacted := redactClientFacingUpstreamErrorBody(
+				http.StatusBadRequest,
+				body,
+				clientFacingUpstreamErrorFormatAnthropic,
+			); redacted {
+				clientBody = redactedBody
+			}
+			c.Data(http.StatusBadRequest, "application/json", clientBody)
 			summary := upstreamMsg
 			if summary == "" {
 				summary = truncateForLog(body, 512)

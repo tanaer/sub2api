@@ -62,6 +62,34 @@ func TestGatewayHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 	assert.Equal(t, "Upstream request failed", errField["message"])
 }
 
+func TestGatewayHandleErrorResponse_RedactsUpstreamModelExposureOn400(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	svc := &GatewayService{}
+	respBody := []byte(`{"detail":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'"}`)
+	resp := &http.Response{
+		StatusCode: http.StatusBadRequest,
+		Body:       io.NopCloser(bytes.NewReader(respBody)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+	account := &Account{ID: 21, Platform: PlatformAnthropic, Type: AccountTypeAPIKey}
+
+	_, err := svc.handleErrorResponse(context.Background(), resp, c, account)
+	require.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "GLM-Z1-AirX")
+	assert.NotContains(t, rec.Body.String(), "qwen2-coder-next")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &payload))
+	errField, ok := payload["error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "invalid_request_error", errField["type"])
+	assert.Equal(t, "Requested model is unavailable", errField["message"])
+}
+
 func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()
@@ -88,6 +116,34 @@ func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 	assert.Equal(t, "Upstream request failed", errField["message"])
 }
 
+func TestOpenAIHandleErrorResponsePassthrough_RedactsUpstreamModelExposure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	svc := &OpenAIGatewayService{}
+	respBody := []byte(`{"detail":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'"}`)
+	resp := &http.Response{
+		StatusCode: http.StatusBadRequest,
+		Body:       io.NopCloser(bytes.NewReader(respBody)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+	account := &Account{ID: 22, Platform: PlatformOpenAI, Type: AccountTypeAPIKey}
+
+	err := svc.handleErrorResponsePassthrough(context.Background(), resp, c, account, nil)
+	require.Error(t, err)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "GLM-Z1-AirX")
+	assert.NotContains(t, rec.Body.String(), "qwen2-coder-next")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &payload))
+	errField, ok := payload["error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "invalid_request_error", errField["type"])
+	assert.Equal(t, "Requested model is unavailable", errField["message"])
+}
+
 func TestGeminiWriteGeminiMappedError_NoRuleKeepsDefault(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()
@@ -107,6 +163,50 @@ func TestGeminiWriteGeminiMappedError_NoRuleKeepsDefault(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "invalid_request_error", errField["type"])
 	assert.Equal(t, "Upstream request failed", errField["message"])
+}
+
+func TestWriteResponsesError_RedactsUpstreamModelExposure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	writeResponsesError(
+		c,
+		http.StatusBadRequest,
+		"server_error",
+		"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'",
+	)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "GLM-Z1-AirX")
+	assert.NotContains(t, rec.Body.String(), "qwen2-coder-next")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &payload))
+	errField, ok := payload["error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "server_error", errField["code"])
+	assert.Equal(t, "Requested model is unavailable", errField["message"])
+}
+
+func TestRedactClientFacingUpstreamErrorBody_GoogleFormat(t *testing.T) {
+	body, redacted := redactClientFacingUpstreamErrorBody(
+		http.StatusBadRequest,
+		[]byte(`{"detail":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'"}`),
+		clientFacingUpstreamErrorFormatGoogle,
+	)
+
+	require.True(t, redacted)
+	assert.NotContains(t, string(body), "GLM-Z1-AirX")
+	assert.NotContains(t, string(body), "qwen2-coder-next")
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(body, &payload))
+	errField, ok := payload["error"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, float64(http.StatusBadRequest), errField["code"])
+	assert.Equal(t, "Requested model is unavailable", errField["message"])
+	assert.Equal(t, "INVALID_ARGUMENT", errField["status"])
 }
 
 func TestGatewayHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
@@ -249,6 +349,41 @@ func TestApplyErrorPassthroughRule_NoSkipMonitoringDoesNotSetContextKey(t *testi
 	assert.True(t, matched)
 	_, exists := c.Get(OpsSkipPassthroughKey)
 	assert.False(t, exists, "OpsSkipPassthroughKey should NOT be set when skip_monitoring=false")
+}
+
+func TestApplyErrorPassthroughRule_PassthroughBodyRedactsUpstreamModelExposure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+
+	ruleSvc := &ErrorPassthroughService{}
+	ruleSvc.setLocalCache([]*model.ErrorPassthroughRule{{
+		ID:              9,
+		Name:            "passthrough-body",
+		Enabled:         true,
+		Priority:        1,
+		ErrorCodes:      []int{http.StatusBadRequest},
+		Keywords:        []string{"not supported"},
+		MatchMode:       model.MatchModeAll,
+		PassthroughCode: true,
+		PassthroughBody: true,
+	}})
+	BindErrorPassthroughService(c, ruleSvc)
+
+	status, errType, errMsg, matched := applyErrorPassthroughRule(
+		c,
+		PlatformOpenAI,
+		http.StatusBadRequest,
+		[]byte(`{"detail":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next'"}`),
+		http.StatusBadGateway,
+		"upstream_error",
+		"Upstream request failed",
+	)
+
+	assert.True(t, matched)
+	assert.Equal(t, http.StatusBadRequest, status)
+	assert.Equal(t, "upstream_error", errType)
+	assert.Equal(t, "Requested model is unavailable", errMsg)
 }
 
 func newNonFailoverPassthroughRule(statusCode int, keyword string, respCode int, customMessage string) *model.ErrorPassthroughRule {

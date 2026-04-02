@@ -2798,7 +2798,16 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 	if contentType == "" {
 		contentType = "application/json"
 	}
-	c.Data(resp.StatusCode, contentType, body)
+	clientBody := body
+	if redactedBody, redacted := redactClientFacingUpstreamErrorBody(
+		resp.StatusCode,
+		body,
+		clientFacingUpstreamErrorFormatOpenAI,
+	); redacted {
+		clientBody = redactedBody
+		contentType = "application/json"
+	}
+	c.Data(resp.StatusCode, contentType, clientBody)
 
 	if upstreamMsg == "" {
 		return fmt.Errorf("upstream error: %d", resp.StatusCode)
@@ -3974,6 +3983,9 @@ func extractOpenAISSEErrorMessage(payload []byte) string {
 
 func (s *OpenAIGatewayService) writeOpenAINonStreamingProtocolError(resp *http.Response, c *gin.Context, message string) error {
 	message = sanitizeUpstreamErrorMessage(strings.TrimSpace(message))
+	if sanitized, redacted := sanitizeClientFacingUpstreamErrorMessage(message); redacted {
+		message = sanitized
+	}
 	if message == "" {
 		message = "Upstream returned an invalid non-streaming response"
 	}

@@ -1444,6 +1444,14 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				if contentType == "" {
 					contentType = "application/json"
 				}
+				if redactedBody, redacted := redactClientFacingUpstreamErrorBody(
+					http.StatusInternalServerError,
+					respBody,
+					clientFacingUpstreamErrorFormatGoogle,
+				); redacted {
+					respBody = redactedBody
+					contentType = "application/json"
+				}
 				c.Data(http.StatusInternalServerError, contentType, respBody)
 				return nil, fmt.Errorf("gemini upstream error: %d (skipped by error policy)", resp.StatusCode)
 			case ErrorPolicyMatched, ErrorPolicyTempUnscheduled:
@@ -1554,6 +1562,14 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 
 		contentType := resp.Header.Get("Content-Type")
 		if contentType == "" {
+			contentType = "application/json"
+		}
+		if redactedBody, redacted := redactClientFacingUpstreamErrorBody(
+			resp.StatusCode,
+			respBody,
+			clientFacingUpstreamErrorFormatGoogle,
+		); redacted {
+			respBody = redactedBody
 			contentType = "application/json"
 		}
 		c.Data(resp.StatusCode, contentType, respBody)
