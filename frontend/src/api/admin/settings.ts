@@ -345,6 +345,15 @@ export interface SLAReport {
     p99_ms: number
     ttfb_avg_ms: number | null
   }>
+  account_success_rate: Array<{
+    account_id: number
+    account_name: string
+    provider: string
+    total: number
+    successful: number
+    failed: number
+    success_rate: number
+  }>
 }
 
 export async function getSLAReport(minutes: number = 60): Promise<SLAReport> {

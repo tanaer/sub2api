@@ -4779,11 +4779,14 @@ export default {
       failoverChain: '故障转移链',
       requests: '请求数',
       noData: '暂无数据',
+      successCount: '成功',
+      failedCount: '失败',
       tab: {
         upstream: '上游错误',
         clientErrors: '客户端错误',
         failover: '故障转移路径',
-        latency: '延迟统计'
+        latency: '延迟统计',
+        accountRate: '账号成功率'
       }
     },
     providerTimeout: {

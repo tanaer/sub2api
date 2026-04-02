@@ -253,6 +253,7 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 		}
 		account := selection.Account
 		setOpsSelectedAccount(c, account.ID, account.Platform)
+		setOpsSelectedAccountName(c, account.Name)
 		proxyBound := account.ProxyID != nil
 		proxyID := int64(0)
 		if account.ProxyID != nil {

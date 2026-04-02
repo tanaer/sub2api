@@ -26,6 +26,7 @@ const (
 	opsStreamKey      = "ops_stream"
 	opsRequestBodyKey = "ops_request_body"
 	opsAccountIDKey   = "ops_account_id"
+	opsAccountNameKey = "ops_account_name"
 
 	opsUpstreamModelKey = "ops_upstream_model"
 	opsRequestTypeKey   = "ops_request_type"
@@ -393,6 +394,13 @@ func setOpsSelectedAccount(c *gin.Context, accountID int64, platform ...string) 
 	}
 }
 
+func setOpsSelectedAccountName(c *gin.Context, name string) {
+	if c == nil {
+		return
+	}
+	c.Set(opsAccountNameKey, strings.TrimSpace(name))
+}
+
 type opsCaptureWriter struct {
 	gin.ResponseWriter
 	limit int
@@ -487,6 +495,30 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 			if v, ok := c.Get(service.OpsUpstreamErrorsKey); ok {
 				if arr, ok := v.([]*service.OpsUpstreamErrorEvent); ok && len(arr) > 0 {
 					events = arr
+				}
+			}
+			// Append the final successful account to the chain so the full failover path is visible.
+			if len(events) > 0 {
+				var finalAccountID int64
+				var finalAccountName string
+				if v, ok := c.Get(opsAccountIDKey); ok {
+					if id, ok := v.(int64); ok {
+						finalAccountID = id
+					}
+				}
+				if v, ok := c.Get(opsAccountNameKey); ok {
+					if s, ok := v.(string); ok {
+						finalAccountName = s
+					}
+				}
+				if finalAccountID > 0 {
+					events = append(events, &service.OpsUpstreamErrorEvent{
+						AtUnixMs:           time.Now().UnixMilli(),
+						AccountID:          finalAccountID,
+						AccountName:        finalAccountName,
+						UpstreamStatusCode: 200,
+						Kind:               "success",
+					})
 				}
 			}
 			// Also accept single upstream fields set by gateway services (rare for successful requests).

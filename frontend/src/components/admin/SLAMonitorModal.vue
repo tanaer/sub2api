@@ -156,9 +156,13 @@
                 <div class="flex flex-wrap gap-1">
                   <span v-for="(step, j) in parseUpstreamErrors(row.upstream_errors)" :key="j"
                     class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
-                    :class="step.upstream_status_code >= 400 ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'">
+                    :class="step.kind === 'success' || step.upstream_status_code === 200
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : step.upstream_status_code >= 400
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'">
                     {{ step.account_name || `#${step.account_id}` }}
-                    <span class="font-mono">&rarr;{{ step.upstream_status_code || 'err' }}</span>
+                    <span class="font-mono">&rarr;{{ step.kind === 'success' ? '✓' : (step.upstream_status_code || 'err') }}</span>
                   </span>
                 </div>
               </td>
@@ -200,6 +204,39 @@
         </table>
       </div>
 
+      <!-- Tab: Account Success Rate -->
+      <div v-if="report && activeTab === 'accountRate'" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
+              <th class="py-2 px-2">{{ t('admin.sla.account') }}</th>
+              <th class="py-2 px-2">{{ t('admin.sla.provider') }}</th>
+              <th class="py-2 px-2 text-right">{{ t('admin.sla.total') }}</th>
+              <th class="py-2 px-2 text-right">{{ t('admin.sla.successCount') }}</th>
+              <th class="py-2 px-2 text-right">{{ t('admin.sla.failedCount') }}</th>
+              <th class="py-2 px-2 text-right">{{ t('admin.sla.successRate') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, i) in report.account_success_rate" :key="i"
+              class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+              <td class="py-1.5 px-2 font-mono text-xs">{{ row.account_name }}</td>
+              <td class="py-1.5 px-2">{{ row.provider }}</td>
+              <td class="py-1.5 px-2 text-right font-mono">{{ row.total }}</td>
+              <td class="py-1.5 px-2 text-right font-mono text-green-600 dark:text-green-400">{{ row.successful }}</td>
+              <td class="py-1.5 px-2 text-right font-mono" :class="row.failed > 0 ? 'text-red-600 dark:text-red-400 font-bold' : ''">{{ row.failed }}</td>
+              <td class="py-1.5 px-2 text-right font-mono font-bold"
+                :class="row.success_rate >= 99 ? 'text-green-600 dark:text-green-400' : row.success_rate >= 95 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'">
+                {{ row.success_rate.toFixed(1) }}%
+              </td>
+            </tr>
+            <tr v-if="!report.account_success_rate?.length">
+              <td colspan="6" class="py-4 text-center text-gray-400">{{ t('admin.sla.noData') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- Loading -->
       <div v-if="loading" class="flex justify-center py-8">
         <svg class="animate-spin h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24">
@@ -228,7 +265,7 @@ const hours = ref(60)
 const loading = ref(false)
 const report = ref<SLAReport | null>(null)
 const activeTab = ref('upstream')
-const tabs = ['upstream', 'clientErrors', 'failover', 'latency']
+const tabs = ['upstream', 'clientErrors', 'failover', 'latency', 'accountRate']
 
 async function loadReport() {
   loading.value = true

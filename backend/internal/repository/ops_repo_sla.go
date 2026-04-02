@@ -184,5 +184,55 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 		report.ProviderLatency = append(report.ProviderLatency, s)
 	}
 
+	// === 7. Per-account success rate ===
+	rows5, err := r.db.QueryContext(ctx, `
+		WITH account_success AS (
+			SELECT
+				u.account_id,
+				COUNT(*) AS success_count
+			FROM usage_logs u
+			WHERE u.created_at >= NOW() - $1::interval
+				AND u.duration_ms > 0
+			GROUP BY u.account_id
+		),
+		account_errors AS (
+			SELECT
+				e.account_id,
+				COUNT(*) AS error_count
+			FROM ops_error_logs e
+			WHERE e.created_at >= NOW() - $1::interval
+				AND e.status_code != 200
+				AND e.account_id IS NOT NULL
+			GROUP BY e.account_id
+		)
+		SELECT
+			COALESCE(s.account_id, f.account_id) AS account_id,
+			COALESCE(a.name, 'unknown') AS account_name,
+			COALESCE(NULLIF(a.upstream_provider, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
+			COALESCE(s.success_count, 0) AS successful,
+			COALESCE(f.error_count, 0) AS failed
+		FROM account_success s
+		FULL OUTER JOIN account_errors f ON s.account_id = f.account_id
+		LEFT JOIN accounts a ON a.id = COALESCE(s.account_id, f.account_id)
+		WHERE COALESCE(s.success_count, 0) + COALESCE(f.error_count, 0) >= 1
+		ORDER BY (COALESCE(s.success_count, 0) + COALESCE(f.error_count, 0)) DESC
+		LIMIT 50
+	`, interval)
+	if err != nil {
+		return nil, fmt.Errorf("account success rate: %w", err)
+	}
+	defer rows5.Close()
+	for rows5.Next() {
+		var s service.AccountSuccessRate
+		if err := rows5.Scan(&s.AccountID, &s.AccountName, &s.Provider, &s.Successful, &s.Failed); err != nil {
+			return nil, err
+		}
+		s.Total = s.Successful + s.Failed
+		if s.Total > 0 {
+			s.SuccessRate = float64(s.Successful) / float64(s.Total) * 100
+		}
+		report.AccountSuccessRate = append(report.AccountSuccessRate, s)
+	}
+
 	return report, nil
 }

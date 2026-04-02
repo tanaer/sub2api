@@ -260,12 +260,13 @@ type ProviderLatencyStats struct {
 
 // SLAReport 运维监控 SLA 报告
 type SLAReport struct {
-	ClientMetrics   SLAClientMetrics   `json:"client_metrics"`
-	FailoverMetrics SLAFailoverMetrics `json:"failover_metrics"`
-	UpstreamErrors  []UpstreamErrorStat  `json:"upstream_errors"`
-	ClientErrors    []ClientErrorStat    `json:"client_errors"`
-	FailoverPaths   []FailoverPath       `json:"failover_paths"`
-	ProviderLatency []ProviderSLALatency `json:"provider_latency"`
+	ClientMetrics      SLAClientMetrics      `json:"client_metrics"`
+	FailoverMetrics    SLAFailoverMetrics    `json:"failover_metrics"`
+	UpstreamErrors     []UpstreamErrorStat   `json:"upstream_errors"`
+	ClientErrors       []ClientErrorStat     `json:"client_errors"`
+	FailoverPaths      []FailoverPath        `json:"failover_paths"`
+	ProviderLatency    []ProviderSLALatency  `json:"provider_latency"`
+	AccountSuccessRate []AccountSuccessRate  `json:"account_success_rate"`
 }
 
 type SLAClientMetrics struct {
@@ -310,6 +311,16 @@ type FailoverPath struct {
 	UpstreamErrorsRaw string `json:"upstream_errors"`
 	DurationMs       int     `json:"duration_ms"`
 	CreatedAt        any     `json:"created_at"`
+}
+
+type AccountSuccessRate struct {
+	AccountID   int64   `json:"account_id"`
+	AccountName string  `json:"account_name"`
+	Provider    string  `json:"provider"`
+	Total       int64   `json:"total"`
+	Successful  int64   `json:"successful"`
+	Failed      int64   `json:"failed"`
+	SuccessRate float64 `json:"success_rate"`
 }
 
 type ProviderSLALatency struct {

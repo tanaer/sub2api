@@ -4619,11 +4619,14 @@ export default {
       failoverChain: 'Failover Chain',
       requests: 'Requests',
       noData: 'No data',
+      successCount: 'Success',
+      failedCount: 'Failed',
       tab: {
         upstream: 'Upstream Errors',
         clientErrors: 'Client Errors',
         failover: 'Failover Paths',
-        latency: 'Latency Stats'
+        latency: 'Latency Stats',
+        accountRate: 'Account Success Rate'
       }
     },
     providerTimeout: {
