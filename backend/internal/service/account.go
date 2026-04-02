@@ -579,8 +579,9 @@ func mappingSupportsRequestedModel(mapping map[string]string, requestedModel str
 	if _, exists := mapping[requestedModel]; exists {
 		return true
 	}
+	lower := strings.ToLower(requestedModel)
 	for pattern := range mapping {
-		if matchWildcard(pattern, requestedModel) {
+		if strings.ToLower(pattern) == lower || matchWildcard(pattern, requestedModel) {
 			return true
 		}
 	}
@@ -591,8 +592,16 @@ func resolveRequestedModelInMapping(mapping map[string]string, requestedModel st
 	if requestedModel == "" {
 		return "", false
 	}
+	// Exact match first
 	if mappedModel, exists := mapping[requestedModel]; exists {
 		return mappedModel, true
+	}
+	// Case-insensitive fallback for exact keys
+	lower := strings.ToLower(requestedModel)
+	for k, v := range mapping {
+		if strings.ToLower(k) == lower {
+			return v, true
+		}
 	}
 	return matchWildcardMappingResult(mapping, requestedModel)
 }
