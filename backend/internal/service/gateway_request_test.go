@@ -535,6 +535,31 @@ func TestFilterThinkingBlocksForRetry_NestedAllEmptyGetsEmptySlice(t *testing.T)
 	require.Len(t, nestedContent, 0)
 }
 
+func TestFixNullToolInputSchema(t *testing.T) {
+	t.Run("fixes null input_schema", func(t *testing.T) {
+		input := []byte(`{"tools":[{"name":"a","input_schema":{"type":"object"}},{"name":"b","input_schema":null}],"messages":[]}`)
+		out := FixNullToolInputSchema(input)
+		var req map[string]any
+		require.NoError(t, json.Unmarshal(out, &req))
+		tools := req["tools"].([]any)
+		tool1 := tools[1].(map[string]any)
+		schema := tool1["input_schema"].(map[string]any)
+		require.Equal(t, "object", schema["type"])
+	})
+
+	t.Run("no-op when no null schema", func(t *testing.T) {
+		input := []byte(`{"tools":[{"name":"a","input_schema":{"type":"object"}}]}`)
+		out := FixNullToolInputSchema(input)
+		require.Equal(t, input, out)
+	})
+
+	t.Run("no-op when no tools", func(t *testing.T) {
+		input := []byte(`{"messages":[{"role":"user","content":"hi"}]}`)
+		out := FixNullToolInputSchema(input)
+		require.Equal(t, input, out)
+	})
+}
+
 func TestStripEmptyTextBlocks(t *testing.T) {
 	t.Run("strips top-level empty text", func(t *testing.T) {
 		input := []byte(`{"messages":[{"role":"user","content":[{"type":"text","text":"hello"},{"type":"text","text":""}]}]}`)

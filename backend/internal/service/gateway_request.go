@@ -400,6 +400,40 @@ func StripEmptyTextBlocks(body []byte) []byte {
 	return out
 }
 
+// FixNullToolInputSchema replaces null input_schema in tools with an empty object {}.
+// Some clients (e.g. Codex) send tools with "input_schema": null, which Anthropic accepts
+// but third-party upstreams (e.g. Zhipu) reject with a 400 validation error.
+func FixNullToolInputSchema(body []byte) []byte {
+	// Fast path: no null input_schema present
+	if !bytes.Contains(body, []byte(`"input_schema":null`)) &&
+		!bytes.Contains(body, []byte(`"input_schema": null`)) {
+		return body
+	}
+
+	jsonStr := *(*string)(unsafe.Pointer(&body))
+	toolsRes := gjson.Get(jsonStr, "tools")
+	if !toolsRes.Exists() || !toolsRes.IsArray() {
+		return body
+	}
+
+	modified := false
+	out := body
+	for i, tool := range toolsRes.Array() {
+		schema := tool.Get("input_schema")
+		if schema.Exists() && schema.Type == gjson.Null {
+			path := fmt.Sprintf("tools.%d.input_schema", i)
+			if next, err := sjson.SetRawBytes(out, path, []byte(`{"type":"object"}`)); err == nil {
+				out = next
+				modified = true
+			}
+		}
+	}
+	if !modified {
+		return body
+	}
+	return out
+}
+
 // FilterThinkingBlocks removes thinking blocks from request body
 // Returns filtered body or original body if filtering fails (fail-safe)
 // This prevents 400 errors from invalid thinking block signatures
