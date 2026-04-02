@@ -347,9 +347,9 @@ export interface SLAReport {
   }>
 }
 
-export async function getSLAReport(hours: number = 1): Promise<SLAReport> {
+export async function getSLAReport(minutes: number = 60): Promise<SLAReport> {
   const { data } = await apiClient.get<SLAReport>('/admin/settings/sla-report', {
-    params: { hours },
+    params: { minutes },
   })
   return data
 }

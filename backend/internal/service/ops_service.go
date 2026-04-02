@@ -126,8 +126,9 @@ func (s *OpsService) GetProviderLatencyStats(ctx context.Context, hours int) ([]
 }
 
 // GetSLAReport returns a comprehensive SLA monitoring report.
-func (s *OpsService) GetSLAReport(ctx context.Context, hours int) (*SLAReport, error) {
-	report, err := s.opsRepo.GetSLAReport(ctx, hours)
+// minutes specifies the lookback window in minutes.
+func (s *OpsService) GetSLAReport(ctx context.Context, minutes int) (*SLAReport, error) {
+	report, err := s.opsRepo.GetSLAReport(ctx, minutes)
 	if err != nil {
 		return nil, err
 	}

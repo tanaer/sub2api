@@ -109,7 +109,7 @@ func (m *opsRepoMock) GetProviderLatencyStats(ctx context.Context, hours int) ([
 	return nil, nil
 }
 
-func (m *opsRepoMock) GetSLAReport(ctx context.Context, hours int) (*SLAReport, error) {
+func (m *opsRepoMock) GetSLAReport(ctx context.Context, minutes int) (*SLAReport, error) {
 	return &SLAReport{}, nil
 }
 

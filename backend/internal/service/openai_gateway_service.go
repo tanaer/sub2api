@@ -1674,7 +1674,7 @@ func (s *OpenAIGatewayService) GetAccessToken(ctx context.Context, account *Acco
 
 func (s *OpenAIGatewayService) shouldFailoverUpstreamError(statusCode int) bool {
 	switch statusCode {
-	case 401, 402, 403, 429, 529:
+	case 400, 401, 402, 403, 429, 529:
 		return true
 	default:
 		return statusCode >= 500
@@ -2415,6 +2415,10 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		reasoningEffort := extractOpenAIReasoningEffort(reqBody, originalModel)
 		serviceTier := extractOpenAIServiceTier(reqBody)
 
+		if s.rateLimitService != nil {
+			s.rateLimitService.RecordSuccess(account.ID)
+		}
+
 		return &OpenAIForwardResult{
 			RequestID:       resp.Header.Get("x-request-id"),
 			Usage:           *usage,
@@ -2610,6 +2614,10 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 
 		if usage == nil {
 			usage = &OpenAIUsage{}
+		}
+
+		if s.rateLimitService != nil {
+			s.rateLimitService.RecordSuccess(account.ID)
 		}
 
 		return &OpenAIForwardResult{

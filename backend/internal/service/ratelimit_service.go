@@ -26,6 +26,7 @@ type RateLimitService struct {
 	settingService        *SettingService
 	tokenCacheInvalidator TokenCacheInvalidator
 	circuitBreaker        *AccountCircuitBreaker
+	healthTracker         *AccountHealthTracker
 	usageCacheMu          sync.RWMutex
 	usageCache            map[int64]*geminiUsageCacheEntry
 }
@@ -80,6 +81,7 @@ func NewRateLimitService(accountRepo AccountRepository, usageRepo UsageLogReposi
 		geminiQuotaService: geminiQuotaService,
 		tempUnschedCache:   tempUnschedCache,
 		circuitBreaker:     circuitBreaker,
+		healthTracker:      NewAccountHealthTracker(),
 		usageCache:         make(map[int64]*geminiUsageCacheEntry),
 	}
 }
@@ -102,6 +104,18 @@ func (s *RateLimitService) SetTokenCacheInvalidator(invalidator TokenCacheInvali
 // CircuitBreaker 返回账号熔断器实例（供调度选号时检查）。
 func (s *RateLimitService) CircuitBreaker() *AccountCircuitBreaker {
 	return s.circuitBreaker
+}
+
+// HealthTracker 返回账号健康度追踪器（供调度选号时加权）。
+func (s *RateLimitService) HealthTracker() *AccountHealthTracker {
+	return s.healthTracker
+}
+
+// RecordSuccess 记录一次账号请求成功（供 ForwardResult 成功路径调用）。
+func (s *RateLimitService) RecordSuccess(accountID int64) {
+	if s.healthTracker != nil {
+		s.healthTracker.RecordSuccess(accountID)
+	}
 }
 
 // ErrorPolicyResult 表示错误策略检查的结果
@@ -276,6 +290,11 @@ func (s *RateLimitService) HandleUpstreamError(ctx context.Context, account *Acc
 			slog.Warn("account_upstream_error", "account_id", account.ID, "status_code", statusCode)
 			shouldDisable = false
 		}
+	}
+
+	// 健康度追踪：记录所有上游错误（不仅是 shouldDisable 的）
+	if s.healthTracker != nil {
+		s.healthTracker.RecordFailure(account.ID)
 	}
 
 	// 进程内熔断：立即将坏账号从调度中剔除，无需等待 outbox 异步重建。

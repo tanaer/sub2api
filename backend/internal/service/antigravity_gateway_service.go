@@ -1760,6 +1760,10 @@ func (s *AntigravityGatewayService) Forward(ctx context.Context, c *gin.Context,
 		firstTokenMs = streamRes.firstTokenMs
 	}
 
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
+
 	return &ForwardResult{
 		RequestID:        requestID,
 		Usage:            *usage,
@@ -2463,6 +2467,10 @@ handleSuccess:
 		imageCount = 1
 	}
 
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
+
 	return &ForwardResult{
 		RequestID:        requestID,
 		Usage:            *usage,
@@ -2479,7 +2487,7 @@ handleSuccess:
 
 func (s *AntigravityGatewayService) shouldFailoverUpstreamError(statusCode int) bool {
 	switch statusCode {
-	case 401, 403, 429, 529:
+	case 400, 401, 403, 429, 529:
 		return true
 	default:
 		return statusCode >= 500
@@ -4335,6 +4343,10 @@ func (s *AntigravityGatewayService) ForwardUpstream(ctx context.Context, c *gin.
 	// 构建计费结果
 	duration := time.Since(startTime)
 	logger.LegacyPrintf("service.antigravity_gateway", "%s status=success duration_ms=%d", prefix, duration.Milliseconds())
+
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
 
 	return &ForwardResult{
 		Model:            originalModel,

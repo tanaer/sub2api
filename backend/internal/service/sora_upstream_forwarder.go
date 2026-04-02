@@ -139,6 +139,10 @@ func (s *SoraGatewayService) forwardToUpstream(
 		}
 	}
 
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
+
 	duration := time.Since(startTime)
 	return &ForwardResult{
 		RequestID: resp.Header.Get("x-request-id"),

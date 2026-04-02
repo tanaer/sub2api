@@ -7,11 +7,11 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-func (r *opsRepository) GetSLAReport(ctx context.Context, hours int) (*service.SLAReport, error) {
-	if hours <= 0 || hours > 168 {
-		hours = 1
+func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service.SLAReport, error) {
+	if minutes <= 0 || minutes > 10080 {
+		minutes = 60
 	}
-	interval := fmt.Sprintf("%d hours", hours)
+	interval := fmt.Sprintf("%d minutes", minutes)
 
 	report := &service.SLAReport{}
 

@@ -7,11 +7,13 @@
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.sla.timeRange') }}</label>
         <select v-model="hours" @change="loadReport"
           class="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-2 py-1">
-          <option :value="1">1h</option>
-          <option :value="6">6h</option>
-          <option :value="24">24h</option>
-          <option :value="72">3d</option>
-          <option :value="168">7d</option>
+          <option :value="5">5min</option>
+          <option :value="30">30min</option>
+          <option :value="60">1h</option>
+          <option :value="360">6h</option>
+          <option :value="1440">24h</option>
+          <option :value="4320">3d</option>
+          <option :value="10080">7d</option>
         </select>
         <button @click="loadReport"
           class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500" :disabled="loading">
@@ -222,7 +224,7 @@ const appStore = useAppStore()
 const props = defineProps<{ show: boolean }>()
 defineEmits<{ close: [] }>()
 
-const hours = ref(1)
+const hours = ref(60)
 const loading = ref(false)
 const report = ref<SLAReport | null>(null)
 const activeTab = ref('upstream')

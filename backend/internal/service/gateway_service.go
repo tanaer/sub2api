@@ -2224,6 +2224,37 @@ func (s *GatewayService) accountCircuitBreaker() *AccountCircuitBreaker {
 	return s.rateLimitService.CircuitBreaker()
 }
 
+// accountHealthScore 返回账号健康分数（0-100），100 = 健康或无数据。
+func (s *GatewayService) accountHealthScore(accountID int64) int {
+	if s.rateLimitService == nil {
+		return 100
+	}
+	ht := s.rateLimitService.HealthTracker()
+	if ht == nil {
+		return 100
+	}
+	return ht.HealthScore(accountID)
+}
+
+// healthAdjustedPriority 根据健康分数调整优先级。
+// 健康分数低于阈值的账号，其有效优先级被降低（数值增大），
+// 使调度器优先选择健康的账号。
+//
+// 策略：
+//   - 健康分 >= 70：不调整
+//   - 健康分 50-69：优先级 +1
+//   - 健康分 < 50：优先级 +2
+func (s *GatewayService) healthAdjustedPriority(acc *Account) int {
+	score := s.accountHealthScore(acc.ID)
+	p := acc.Priority
+	if score < 50 {
+		p += 2
+	} else if score < 70 {
+		p += 1
+	}
+	return p
+}
+
 func (s *GatewayService) isAccountSchedulableForModelSelection(ctx context.Context, account *Account, requestedModel string) bool {
 	if account == nil {
 		return false
@@ -4949,6 +4980,9 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		}
 	}
 
+	// 健康度追踪：记录成功
+	s.rateLimitService.RecordSuccess(account.ID)
+
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-request-id"),
 		Usage:            *usage,
@@ -5237,6 +5271,8 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 	if usage == nil {
 		usage = &ClaudeUsage{}
 	}
+
+	s.rateLimitService.RecordSuccess(account.ID)
 
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-request-id"),
@@ -5785,6 +5821,8 @@ func (s *GatewayService) forwardBedrock(
 	if usage == nil {
 		usage = &ClaudeUsage{}
 	}
+
+	s.rateLimitService.RecordSuccess(account.ID)
 
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-amzn-requestid"),

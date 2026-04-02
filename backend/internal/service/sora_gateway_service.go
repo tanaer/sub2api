@@ -215,6 +215,9 @@ func (s *SoraGatewayService) Forward(ctx context.Context, c *gin.Context, accoun
 		} else if c != nil {
 			c.JSON(http.StatusOK, buildSoraNonStreamResponse(content, reqModel))
 		}
+		if s.rateLimitService != nil {
+			s.rateLimitService.RecordSuccess(account.ID)
+		}
 		return &ForwardResult{
 			RequestID:     "",
 			Model:         originalModel,
@@ -271,6 +274,9 @@ func (s *SoraGatewayService) Forward(ctx context.Context, c *gin.Context, accoun
 					resp["character_display_name"] = characterResult.DisplayName
 				}
 				c.JSON(http.StatusOK, resp)
+			}
+			if s.rateLimitService != nil {
+				s.rateLimitService.RecordSuccess(account.ID)
 			}
 			return &ForwardResult{
 				RequestID:     "",
@@ -421,6 +427,10 @@ func (s *SoraGatewayService) Forward(ctx context.Context, c *gin.Context, accoun
 			}
 		}
 		c.JSON(http.StatusOK, response)
+	}
+
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
 	}
 
 	return &ForwardResult{
@@ -765,7 +775,7 @@ func (s *SoraGatewayService) resolveWatermarkFreeURL(ctx context.Context, accoun
 
 func (s *SoraGatewayService) shouldFailoverUpstreamError(statusCode int) bool {
 	switch statusCode {
-	case 401, 402, 403, 404, 429, 529:
+	case 400, 401, 402, 403, 404, 429, 529:
 		return true
 	default:
 		return statusCode >= 500
