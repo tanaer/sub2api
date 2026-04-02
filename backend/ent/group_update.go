@@ -115,6 +115,26 @@ func (_u *GroupUpdate) ClearUseKeyInstructions() *GroupUpdate {
 	return _u
 }
 
+// SetConfigTemplates sets the "config_templates" field.
+func (_u *GroupUpdate) SetConfigTemplates(v string) *GroupUpdate {
+	_u.mutation.SetConfigTemplates(v)
+	return _u
+}
+
+// SetNillableConfigTemplates sets the "config_templates" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableConfigTemplates(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetConfigTemplates(*v)
+	}
+	return _u
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (_u *GroupUpdate) ClearConfigTemplates() *GroupUpdate {
+	_u.mutation.ClearConfigTemplates()
+	return _u
+}
+
 // SetRateMultiplier sets the "rate_multiplier" field.
 func (_u *GroupUpdate) SetRateMultiplier(v float64) *GroupUpdate {
 	_u.mutation.ResetRateMultiplier()
@@ -1042,6 +1062,12 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.UseKeyInstructionsCleared() {
 		_spec.ClearField(group.FieldUseKeyInstructions, field.TypeString)
 	}
+	if value, ok := _u.mutation.ConfigTemplates(); ok {
+		_spec.SetField(group.FieldConfigTemplates, field.TypeString, value)
+	}
+	if _u.mutation.ConfigTemplatesCleared() {
+		_spec.ClearField(group.FieldConfigTemplates, field.TypeString)
+	}
 	if value, ok := _u.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 	}
@@ -1618,6 +1644,26 @@ func (_u *GroupUpdateOne) SetNillableUseKeyInstructions(v *string) *GroupUpdateO
 // ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
 func (_u *GroupUpdateOne) ClearUseKeyInstructions() *GroupUpdateOne {
 	_u.mutation.ClearUseKeyInstructions()
+	return _u
+}
+
+// SetConfigTemplates sets the "config_templates" field.
+func (_u *GroupUpdateOne) SetConfigTemplates(v string) *GroupUpdateOne {
+	_u.mutation.SetConfigTemplates(v)
+	return _u
+}
+
+// SetNillableConfigTemplates sets the "config_templates" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableConfigTemplates(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetConfigTemplates(*v)
+	}
+	return _u
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (_u *GroupUpdateOne) ClearConfigTemplates() *GroupUpdateOne {
+	_u.mutation.ClearConfigTemplates()
 	return _u
 }
 
@@ -2577,6 +2623,12 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.UseKeyInstructionsCleared() {
 		_spec.ClearField(group.FieldUseKeyInstructions, field.TypeString)
+	}
+	if value, ok := _u.mutation.ConfigTemplates(); ok {
+		_spec.SetField(group.FieldConfigTemplates, field.TypeString, value)
+	}
+	if _u.mutation.ConfigTemplatesCleared() {
+		_spec.ClearField(group.FieldConfigTemplates, field.TypeString)
 	}
 	if value, ok := _u.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)

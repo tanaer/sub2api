@@ -141,6 +141,12 @@ import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import type { GroupPlatform } from '@/types'
 
+interface ConfigTemplate {
+  filename: string
+  language?: string
+  content: string
+}
+
 interface Props {
   show: boolean
   apiKey: string
@@ -148,6 +154,7 @@ interface Props {
   platform: GroupPlatform | null
   customInstructions?: string | null
   allowMessagesDispatch?: boolean
+  configTemplates?: string | null
 }
 
 interface Emits {
@@ -176,6 +183,25 @@ const { copyToClipboard: clipboardCopy } = useClipboard()
 const copiedIndex = ref<number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
+
+// Parse group config templates with placeholder replacement
+const parsedConfigTemplates = computed((): FileConfig[] | null => {
+  if (!props.configTemplates) return null
+  try {
+    const templates: ConfigTemplate[] = JSON.parse(props.configTemplates)
+    if (!Array.isArray(templates) || templates.length === 0) return null
+    const baseUrl = props.baseUrl || window.location.origin
+    const apiKey = props.apiKey
+    return templates.map(t => ({
+      path: t.filename,
+      content: t.content
+        .replace(/\{\{API_KEY\}\}/g, apiKey)
+        .replace(/\{\{BASE_URL\}\}/g, baseUrl)
+    }))
+  } catch {
+    return null
+  }
+})
 
 // Reset tabs when platform changes
 const defaultClientTab = computed(() => {
@@ -386,6 +412,10 @@ const comment = (value: string) => wrapToken('text-slate-500', value)
 // Syntax highlighting helpers
 // Generate file configs based on platform and active tab
 const currentFiles = computed((): FileConfig[] => {
+  // Use group config templates if available
+  if (parsedConfigTemplates.value) {
+    return parsedConfigTemplates.value
+  }
   const baseUrl = props.baseUrl || window.location.origin
   const apiKey = props.apiKey
   const baseRoot = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '')

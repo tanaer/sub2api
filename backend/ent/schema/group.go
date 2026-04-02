@@ -47,6 +47,11 @@ func (Group) Fields() []ent.Field {
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "text"}).
 			Comment("用户侧使用密钥弹层的自定义说明"),
+		field.String("config_templates").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "text"}).
+			Comment("分组配置文件模板（JSON 格式，用于使用密钥弹层显示）"),
 		field.Float("rate_multiplier").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),

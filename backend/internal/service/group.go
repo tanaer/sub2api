@@ -10,6 +10,7 @@ type Group struct {
 	Name               string
 	Description        string
 	UseKeyInstructions string
+	ConfigTemplates    string
 	Platform           string
 	RateMultiplier     float64
 	IsExclusive        bool

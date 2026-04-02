@@ -299,6 +299,16 @@
           <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
         </div>
         <div>
+          <label class="input-label">配置文件模板</label>
+          <textarea
+            v-model="createForm.config_templates"
+            rows="6"
+            class="input font-mono text-xs"
+            placeholder='JSON 格式配置模板，用于"使用密钥"弹层。支持占位符：{{API_KEY}}、{{BASE_URL}}'
+          ></textarea>
+          <p class="input-hint">用户在"使用密钥"弹层看到的配置文件内容，留空则使用默认模板</p>
+        </div>
+        <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
           <Select
             v-model="createForm.platform"
@@ -1123,6 +1133,16 @@
             :placeholder="t('admin.groups.useKeyInstructionsPlaceholder')"
           ></textarea>
           <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
+        </div>
+        <div>
+          <label class="input-label">配置文件模板</label>
+          <textarea
+            v-model="editForm.config_templates"
+            rows="6"
+            class="input font-mono text-xs"
+            placeholder='JSON 格式配置模板，用于"使用密钥"弹层。支持占位符：{{API_KEY}}、{{BASE_URL}}'
+          ></textarea>
+          <p class="input-hint">用户在"使用密钥"弹层看到的配置文件内容，留空则使用默认模板</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
@@ -2236,6 +2256,7 @@ const createForm = reactive({
   name: '',
   description: '',
   use_key_instructions: '',
+  config_templates: '',
   platform: 'anthropic' as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -2513,6 +2534,7 @@ const editForm = reactive({
   name: '',
   description: '',
   use_key_instructions: '',
+  config_templates: '',
   platform: 'anthropic' as GroupPlatform,
   rate_multiplier: 1.0,
   is_exclusive: false,
@@ -2668,6 +2690,7 @@ const closeCreateModal = () => {
   createForm.name = ''
   createForm.description = ''
   createForm.use_key_instructions = ''
+  createForm.config_templates = ''
   createForm.platform = 'anthropic'
   createForm.rate_multiplier = 1.0
   createForm.is_exclusive = false
@@ -2759,6 +2782,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.name = group.name
   editForm.description = group.description || ''
   editForm.use_key_instructions = group.use_key_instructions || ''
+  editForm.config_templates = group.config_templates || ''
   editForm.platform = group.platform
   editForm.rate_multiplier = group.rate_multiplier
   editForm.is_exclusive = group.is_exclusive

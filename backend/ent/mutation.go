@@ -8458,6 +8458,7 @@ type GroupMutation struct {
 	name                                    *string
 	description                             *string
 	use_key_instructions                    *string
+	config_templates                        *string
 	rate_multiplier                         *float64
 	addrate_multiplier                      *float64
 	is_exclusive                            *bool
@@ -8880,6 +8881,55 @@ func (m *GroupMutation) UseKeyInstructionsCleared() bool {
 func (m *GroupMutation) ResetUseKeyInstructions() {
 	m.use_key_instructions = nil
 	delete(m.clearedFields, group.FieldUseKeyInstructions)
+}
+
+// SetConfigTemplates sets the "config_templates" field.
+func (m *GroupMutation) SetConfigTemplates(s string) {
+	m.config_templates = &s
+}
+
+// ConfigTemplates returns the value of the "config_templates" field in the mutation.
+func (m *GroupMutation) ConfigTemplates() (r string, exists bool) {
+	v := m.config_templates
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfigTemplates returns the old "config_templates" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldConfigTemplates(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfigTemplates is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfigTemplates requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfigTemplates: %w", err)
+	}
+	return oldValue.ConfigTemplates, nil
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (m *GroupMutation) ClearConfigTemplates() {
+	m.config_templates = nil
+	m.clearedFields[group.FieldConfigTemplates] = struct{}{}
+}
+
+// ConfigTemplatesCleared returns if the "config_templates" field was cleared in this mutation.
+func (m *GroupMutation) ConfigTemplatesCleared() bool {
+	_, ok := m.clearedFields[group.FieldConfigTemplates]
+	return ok
+}
+
+// ResetConfigTemplates resets all changes to the "config_templates" field.
+func (m *GroupMutation) ResetConfigTemplates() {
+	m.config_templates = nil
+	delete(m.clearedFields, group.FieldConfigTemplates)
 }
 
 // SetRateMultiplier sets the "rate_multiplier" field.
@@ -10849,7 +10899,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 36)
+	fields := make([]string, 0, 37)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -10867,6 +10917,9 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.use_key_instructions != nil {
 		fields = append(fields, group.FieldUseKeyInstructions)
+	}
+	if m.config_templates != nil {
+		fields = append(fields, group.FieldConfigTemplates)
 	}
 	if m.rate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
@@ -10978,6 +11031,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case group.FieldUseKeyInstructions:
 		return m.UseKeyInstructions()
+	case group.FieldConfigTemplates:
+		return m.ConfigTemplates()
 	case group.FieldRateMultiplier:
 		return m.RateMultiplier()
 	case group.FieldIsExclusive:
@@ -11059,6 +11114,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDescription(ctx)
 	case group.FieldUseKeyInstructions:
 		return m.OldUseKeyInstructions(ctx)
+	case group.FieldConfigTemplates:
+		return m.OldConfigTemplates(ctx)
 	case group.FieldRateMultiplier:
 		return m.OldRateMultiplier(ctx)
 	case group.FieldIsExclusive:
@@ -11169,6 +11226,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUseKeyInstructions(v)
+		return nil
+	case group.FieldConfigTemplates:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfigTemplates(v)
 		return nil
 	case group.FieldRateMultiplier:
 		v, ok := value.(float64)
@@ -11614,6 +11678,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldUseKeyInstructions) {
 		fields = append(fields, group.FieldUseKeyInstructions)
 	}
+	if m.FieldCleared(group.FieldConfigTemplates) {
+		fields = append(fields, group.FieldConfigTemplates)
+	}
 	if m.FieldCleared(group.FieldDailyLimitUsd) {
 		fields = append(fields, group.FieldDailyLimitUsd)
 	}
@@ -11678,6 +11745,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldUseKeyInstructions:
 		m.ClearUseKeyInstructions()
+		return nil
+	case group.FieldConfigTemplates:
+		m.ClearConfigTemplates()
 		return nil
 	case group.FieldDailyLimitUsd:
 		m.ClearDailyLimitUsd()
@@ -11746,6 +11816,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldUseKeyInstructions:
 		m.ResetUseKeyInstructions()
+		return nil
+	case group.FieldConfigTemplates:
+		m.ResetConfigTemplates()
 		return nil
 	case group.FieldRateMultiplier:
 		m.ResetRateMultiplier()

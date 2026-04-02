@@ -275,6 +275,73 @@ func (r *userGroupRateRepository) GetRequestQuotasByUserID(ctx context.Context, 
 	return result, nil
 }
 
+// GetRequestQuotasByUserIDs 批量获取多个用户的分组按次配额剩余。
+// 返回结构：map[userID]map[groupID]remainingQuota
+func (r *userGroupRateRepository) GetRequestQuotasByUserIDs(ctx context.Context, userIDs []int64) (map[int64]map[int64]int64, error) {
+	result := make(map[int64]map[int64]int64, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+
+	uniqueIDs := make([]int64, 0, len(userIDs))
+	seen := make(map[int64]struct{}, len(userIDs))
+	for _, uid := range userIDs {
+		if uid <= 0 {
+			continue
+		}
+		if _, exists := seen[uid]; exists {
+			continue
+		}
+		seen[uid] = struct{}{}
+		uniqueIDs = append(uniqueIDs, uid)
+	}
+	if len(uniqueIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := sqlExecutorFromContext(ctx, r.sql).QueryContext(ctx, `
+		WITH permanent AS (
+			SELECT user_id, group_id, request_quota
+			FROM user_group_request_quotas
+			WHERE user_id = ANY($1)
+		),
+		active_grants AS (
+			SELECT user_id, group_id, COALESCE(SUM(request_quota_total - request_quota_used), 0) AS active_quota
+			FROM user_group_request_quota_grants
+			WHERE user_id = ANY($1)
+				AND expires_at > NOW()
+				AND request_quota_total > request_quota_used
+			GROUP BY user_id, group_id
+		)
+		SELECT
+			COALESCE(p.user_id, g.user_id) AS user_id,
+			COALESCE(p.group_id, g.group_id) AS group_id,
+			COALESCE(p.request_quota, 0) + COALESCE(g.active_quota, 0) AS request_quota
+		FROM permanent p
+		FULL OUTER JOIN active_grants g ON g.user_id = p.user_id AND g.group_id = p.group_id
+		WHERE COALESCE(p.request_quota, 0) + COALESCE(g.active_quota, 0) > 0
+	`, pq.Array(uniqueIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var userID, groupID, quota int64
+		if err := rows.Scan(&userID, &groupID, &quota); err != nil {
+			return nil, err
+		}
+		if _, ok := result[userID]; !ok {
+			result[userID] = make(map[int64]int64)
+		}
+		result[userID][groupID] = quota
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // GetRequestQuotaByUserAndGroup 获取用户在指定分组下的按次配额状态。
 func (r *userGroupRateRepository) GetRequestQuotaByUserAndGroup(ctx context.Context, userID, groupID int64) (*service.UserGroupRequestQuota, error) {
 	quota := &service.UserGroupRequestQuota{}

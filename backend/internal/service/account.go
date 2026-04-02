@@ -735,6 +735,9 @@ func (a *Account) IsMiniMaxAnthropicAPIKey() bool {
 	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey {
 		return false
 	}
+	if strings.EqualFold(strings.TrimSpace(a.UpstreamProvider), "minimax") {
+		return true
+	}
 	baseURL := strings.ToLower(strings.TrimSpace(a.GetBaseURL()))
 	return strings.Contains(baseURL, "minimaxi.com")
 }

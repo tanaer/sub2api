@@ -130,6 +130,27 @@ func NewBillingService(cfg *config.Config, pricingService *PricingService) *Bill
 // initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）
 // 价格单位：USD per token（与LiteLLM格式一致）
 func (s *BillingService) initFallbackPricing() {
+	// GLM-5 / GLM-5.1（智谱旗舰模型，约 ¥0.05/1K 输入，¥0.05/1K 输出）
+	s.fallbackPrices["glm-5"] = &ModelPricing{
+		InputPricePerToken:  1e-6, // $1 per MTok (近似 ¥0.05/1K tokens)
+		OutputPricePerToken: 1e-6, // $1 per MTok
+	}
+	s.fallbackPrices["glm-5.1"] = s.fallbackPrices["glm-5"]
+	s.fallbackPrices["glm-5-turbo"] = &ModelPricing{
+		InputPricePerToken:  0.5e-6, // $0.50 per MTok
+		OutputPricePerToken: 0.5e-6,
+	}
+	// GLM-4 系列
+	s.fallbackPrices["glm-4.7"] = &ModelPricing{
+		InputPricePerToken:  0.8e-6, // $0.80 per MTok
+		OutputPricePerToken: 0.8e-6,
+	}
+	s.fallbackPrices["glm-4.5-air"] = &ModelPricing{
+		InputPricePerToken:  0.3e-6, // $0.30 per MTok
+		OutputPricePerToken: 0.3e-6,
+	}
+	s.fallbackPrices["glm-z1-air"] = s.fallbackPrices["glm-4.5-air"]
+
 	// Claude 4.5 Opus
 	s.fallbackPrices["claude-opus-4.5"] = &ModelPricing{
 		InputPricePerToken:         5e-6,    // $5 per MTok
@@ -323,6 +344,34 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 		case "gpt-5.1":
 			return s.fallbackPrices["gpt-5.1"]
 		}
+	}
+
+	// GLM 模型系列（智谱 / ZhiPu）
+	if strings.HasPrefix(modelLower, "glm-") || strings.HasPrefix(modelLower, "glm_") {
+		if strings.Contains(modelLower, "5.1") {
+			return s.fallbackPrices["glm-5.1"]
+		}
+		if strings.Contains(modelLower, "5-turbo") || strings.Contains(modelLower, "5_turbo") {
+			return s.fallbackPrices["glm-5-turbo"]
+		}
+		if strings.HasPrefix(modelLower, "glm-5") {
+			return s.fallbackPrices["glm-5"]
+		}
+		if strings.Contains(modelLower, "4.7") {
+			return s.fallbackPrices["glm-4.7"]
+		}
+		if strings.Contains(modelLower, "4.5-air") || strings.Contains(modelLower, "4-5-air") {
+			return s.fallbackPrices["glm-4.5-air"]
+		}
+		if strings.Contains(modelLower, "z1-air") || strings.Contains(modelLower, "z1_air") {
+			return s.fallbackPrices["glm-z1-air"]
+		}
+		// GLM 未知型号回退到 glm-5（避免计费中断）
+		return s.fallbackPrices["glm-5"]
+	}
+	// MiniMax 模型系列
+	if strings.HasPrefix(modelLower, "minimax-") {
+		return s.fallbackPrices["glm-5"]
 	}
 
 	return nil

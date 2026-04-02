@@ -137,6 +137,7 @@ type CreateGroupInput struct {
 	Name               string
 	Description        string
 	UseKeyInstructions string
+	ConfigTemplates    string
 	Platform           string
 	RateMultiplier     float64
 	IsExclusive        bool
@@ -180,6 +181,7 @@ type UpdateGroupInput struct {
 	Name               string
 	Description        string
 	UseKeyInstructions *string
+	ConfigTemplates    *string
 	Platform           string
 	RateMultiplier     *float64 // 使用指针以支持设置为0
 	IsExclusive        *bool
@@ -478,6 +480,7 @@ type adminServiceImpl struct {
 
 type userGroupRateBatchReader interface {
 	GetByUserIDs(ctx context.Context, userIDs []int64) (map[int64]map[int64]float64, error)
+	GetRequestQuotasByUserIDs(ctx context.Context, userIDs []int64) (map[int64]map[int64]int64, error)
 }
 
 // NewAdminService creates a new AdminService
@@ -548,6 +551,25 @@ func (s *adminServiceImpl) ListUsers(ctx context.Context, page, pageSize int, fi
 			}
 		} else {
 			s.loadUserGroupRatesOneByOne(ctx, users)
+		}
+	}
+	// 批量加载用户分组按次配额
+	if s.userGroupRateRepo != nil && len(users) > 0 {
+		if batchRepo, ok := s.userGroupRateRepo.(userGroupRateBatchReader); ok {
+			userIDs := make([]int64, 0, len(users))
+			for i := range users {
+				userIDs = append(userIDs, users[i].ID)
+			}
+			quotasByUser, err := batchRepo.GetRequestQuotasByUserIDs(ctx, userIDs)
+			if err != nil {
+				logger.LegacyPrintf("service.admin", "failed to load user group request quotas in batch: err=%v", err)
+			} else {
+				for i := range users {
+					if quotas, ok := quotasByUser[users[i].ID]; ok {
+						users[i].GroupRequestQuotas = quotas
+					}
+				}
+			}
 		}
 	}
 	return users, result.Total, nil
@@ -951,6 +973,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		Name:                            input.Name,
 		Description:                     input.Description,
 		UseKeyInstructions:              input.UseKeyInstructions,
+		ConfigTemplates:                 input.ConfigTemplates,
 		Platform:                        platform,
 		RateMultiplier:                  input.RateMultiplier,
 		IsExclusive:                     input.IsExclusive,
@@ -1117,6 +1140,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.UseKeyInstructions != nil {
 		group.UseKeyInstructions = *input.UseKeyInstructions
+	}
+	if input.ConfigTemplates != nil {
+		group.ConfigTemplates = *input.ConfigTemplates
 	}
 	if input.RateMultiplier != nil {
 		group.RateMultiplier = *input.RateMultiplier

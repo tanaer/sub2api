@@ -218,6 +218,58 @@
 
 - 日期：2026-04-01 20:08:30 +0800
 - 执行者：Codex
+
+---
+
+- 日期：2026-04-02 01:26:30 +0800
+- 执行者：Codex
+- 任务：本地 PostgreSQL 到阿里云 RDS 的一键增量同步脚本
+
+## 脚本与文档验证
+
+- `bash deploy/test_pg_sync_incremental.sh`
+  - 结果：通过
+  - 覆盖点：
+    - 表同步策略分类
+    - 状态文件读写
+    - 本地 CSV 中转导入链路
+    - 无 `id` 表跳过序列重置
+    - 源库新增列 DDL 生成
+- `PG_SYNC_ENABLE_REMOTE_INTEGRATION=1 bash deploy/test_pg_sync_incremental.sh`
+  - 结果：通过
+  - 覆盖点：本地源库到远端 `aiapi` 库的真实 `COPY` 链路，不再出现 `\.` 被误当作 CSV 数据的问题
+
+## 真实同步验证
+
+- `bash deploy/pg_sync_incremental.sh --sync-only`
+  - 第一次结果：通过
+  - 关键现象：
+    - 自动补齐远端列：`accounts.upstream_provider`
+    - 成功同步 `ops_system_logs`、`usage_logs`、`scheduler_outbox` 等增量表
+    - 最终输出：`增量同步完成`
+- `bash deploy/pg_sync_incremental.sh --sync-only`
+  - 第二次结果：通过
+  - 关键现象：
+    - 脚本可重复执行
+    - 由于应用仍在持续写入日志、指标、队列表，第二次运行继续同步新增数据，属于预期行为
+    - 最终输出：`增量同步完成`
+
+## 远端结果核对
+
+- `psql ... -d aiapi -Atqc "select count(*) from information_schema.columns where table_schema='public' and table_name='accounts' and column_name='upstream_provider';"`
+  - 结果：`1`
+  - 结论：远端 `accounts.upstream_provider` 已自动补齐
+- `psql ... -d aiapi -Atqc "select (select count(*) from public.account_groups), (select count(*) from public.accounts), (select count(*) from public.usage_logs), (select count(*) from public.ops_system_logs);"`
+  - 结果：`12|13|24189|303673`
+  - 结论：远端关键业务表与增量日志表已有数据
+
+## 结论
+
+- `deploy/pg_sync_incremental.sh` 已可在当前服务器上一条命令执行增量同步。
+- 当前脚本已修复两类真实故障：
+  - `COPY FROM STDIN` 管道把 `\.` 误识别为 CSV 数据
+  - 复合主键表无 `id` 时错误执行序列重置
+- 当前脚本支持自动补齐“源端新增、远端缺失”的列，但不负责复杂 schema 演进（删列、改类型、复杂约束变更）。
 - 任务：隔离部署分组 API 密钥说明功能
 
 ## 隔离构建
@@ -270,4 +322,3 @@
 
 - 本次功能已通过隔离 worktree 完成构建并上线，未携带当前工作区里的无关改动。
 - 服务启动成功，迁移链路正常，前后端产物均已切换到本次版本。
-

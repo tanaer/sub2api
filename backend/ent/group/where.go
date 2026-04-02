@@ -85,6 +85,11 @@ func UseKeyInstructions(v string) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldUseKeyInstructions, v))
 }
 
+// ConfigTemplates applies equality check predicate on the "config_templates" field. It's identical to ConfigTemplatesEQ.
+func ConfigTemplates(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldConfigTemplates, v))
+}
+
 // RateMultiplier applies equality check predicate on the "rate_multiplier" field. It's identical to RateMultiplierEQ.
 func RateMultiplier(v float64) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldRateMultiplier, v))
@@ -563,6 +568,81 @@ func UseKeyInstructionsEqualFold(v string) predicate.Group {
 // UseKeyInstructionsContainsFold applies the ContainsFold predicate on the "use_key_instructions" field.
 func UseKeyInstructionsContainsFold(v string) predicate.Group {
 	return predicate.Group(sql.FieldContainsFold(FieldUseKeyInstructions, v))
+}
+
+// ConfigTemplatesEQ applies the EQ predicate on the "config_templates" field.
+func ConfigTemplatesEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesNEQ applies the NEQ predicate on the "config_templates" field.
+func ConfigTemplatesNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesIn applies the In predicate on the "config_templates" field.
+func ConfigTemplatesIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldConfigTemplates, vs...))
+}
+
+// ConfigTemplatesNotIn applies the NotIn predicate on the "config_templates" field.
+func ConfigTemplatesNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldConfigTemplates, vs...))
+}
+
+// ConfigTemplatesGT applies the GT predicate on the "config_templates" field.
+func ConfigTemplatesGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesGTE applies the GTE predicate on the "config_templates" field.
+func ConfigTemplatesGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesLT applies the LT predicate on the "config_templates" field.
+func ConfigTemplatesLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesLTE applies the LTE predicate on the "config_templates" field.
+func ConfigTemplatesLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesContains applies the Contains predicate on the "config_templates" field.
+func ConfigTemplatesContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesHasPrefix applies the HasPrefix predicate on the "config_templates" field.
+func ConfigTemplatesHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesHasSuffix applies the HasSuffix predicate on the "config_templates" field.
+func ConfigTemplatesHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesIsNil applies the IsNil predicate on the "config_templates" field.
+func ConfigTemplatesIsNil() predicate.Group {
+	return predicate.Group(sql.FieldIsNull(FieldConfigTemplates))
+}
+
+// ConfigTemplatesNotNil applies the NotNil predicate on the "config_templates" field.
+func ConfigTemplatesNotNil() predicate.Group {
+	return predicate.Group(sql.FieldNotNull(FieldConfigTemplates))
+}
+
+// ConfigTemplatesEqualFold applies the EqualFold predicate on the "config_templates" field.
+func ConfigTemplatesEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldConfigTemplates, v))
+}
+
+// ConfigTemplatesContainsFold applies the ContainsFold predicate on the "config_templates" field.
+func ConfigTemplatesContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldConfigTemplates, v))
 }
 
 // RateMultiplierEQ applies the EQ predicate on the "rate_multiplier" field.

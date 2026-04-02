@@ -73,6 +73,7 @@ type Group struct {
 	Name               string  `json:"name"`
 	Description        string  `json:"description"`
 	UseKeyInstructions string  `json:"use_key_instructions"`
+	ConfigTemplates    string  `json:"config_templates"`
 	Platform           string  `json:"platform"`
 	RateMultiplier     float64 `json:"rate_multiplier"`
 	IsExclusive        bool    `json:"is_exclusive"`

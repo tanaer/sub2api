@@ -104,6 +104,20 @@ func (_c *GroupCreate) SetNillableUseKeyInstructions(v *string) *GroupCreate {
 	return _c
 }
 
+// SetConfigTemplates sets the "config_templates" field.
+func (_c *GroupCreate) SetConfigTemplates(v string) *GroupCreate {
+	_c.mutation.SetConfigTemplates(v)
+	return _c
+}
+
+// SetNillableConfigTemplates sets the "config_templates" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableConfigTemplates(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetConfigTemplates(*v)
+	}
+	return _c
+}
+
 // SetRateMultiplier sets the "rate_multiplier" field.
 func (_c *GroupCreate) SetRateMultiplier(v float64) *GroupCreate {
 	_c.mutation.SetRateMultiplier(v)
@@ -843,6 +857,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldUseKeyInstructions, field.TypeString, value)
 		_node.UseKeyInstructions = &value
 	}
+	if value, ok := _c.mutation.ConfigTemplates(); ok {
+		_spec.SetField(group.FieldConfigTemplates, field.TypeString, value)
+		_node.ConfigTemplates = &value
+	}
 	if value, ok := _c.mutation.RateMultiplier(); ok {
 		_spec.SetField(group.FieldRateMultiplier, field.TypeFloat64, value)
 		_node.RateMultiplier = value
@@ -1194,6 +1212,24 @@ func (u *GroupUpsert) UpdateUseKeyInstructions() *GroupUpsert {
 // ClearUseKeyInstructions clears the value of the "use_key_instructions" field.
 func (u *GroupUpsert) ClearUseKeyInstructions() *GroupUpsert {
 	u.SetNull(group.FieldUseKeyInstructions)
+	return u
+}
+
+// SetConfigTemplates sets the "config_templates" field.
+func (u *GroupUpsert) SetConfigTemplates(v string) *GroupUpsert {
+	u.Set(group.FieldConfigTemplates, v)
+	return u
+}
+
+// UpdateConfigTemplates sets the "config_templates" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateConfigTemplates() *GroupUpsert {
+	u.SetExcluded(group.FieldConfigTemplates)
+	return u
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (u *GroupUpsert) ClearConfigTemplates() *GroupUpsert {
+	u.SetNull(group.FieldConfigTemplates)
 	return u
 }
 
@@ -1870,6 +1906,27 @@ func (u *GroupUpsertOne) UpdateUseKeyInstructions() *GroupUpsertOne {
 func (u *GroupUpsertOne) ClearUseKeyInstructions() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearUseKeyInstructions()
+	})
+}
+
+// SetConfigTemplates sets the "config_templates" field.
+func (u *GroupUpsertOne) SetConfigTemplates(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetConfigTemplates(v)
+	})
+}
+
+// UpdateConfigTemplates sets the "config_templates" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateConfigTemplates() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateConfigTemplates()
+	})
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (u *GroupUpsertOne) ClearConfigTemplates() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearConfigTemplates()
 	})
 }
 
@@ -2802,6 +2859,27 @@ func (u *GroupUpsertBulk) UpdateUseKeyInstructions() *GroupUpsertBulk {
 func (u *GroupUpsertBulk) ClearUseKeyInstructions() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearUseKeyInstructions()
+	})
+}
+
+// SetConfigTemplates sets the "config_templates" field.
+func (u *GroupUpsertBulk) SetConfigTemplates(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetConfigTemplates(v)
+	})
+}
+
+// UpdateConfigTemplates sets the "config_templates" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateConfigTemplates() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateConfigTemplates()
+	})
+}
+
+// ClearConfigTemplates clears the value of the "config_templates" field.
+func (u *GroupUpsertBulk) ClearConfigTemplates() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.ClearConfigTemplates()
 	})
 }
 

@@ -379,27 +379,39 @@
           </template>
 
           <template #cell-balance="{ value, row }">
-            <div class="flex items-center gap-2">
-              <div class="group relative">
+            <div>
+              <div class="flex items-center gap-2">
+                <div class="group relative">
+                  <button
+                    class="font-medium text-gray-900 underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
+                    @click="handleBalanceHistory(row)"
+                  >
+                    ${{ value.toFixed(2) }}
+                  </button>
+                  <!-- Instant tooltip -->
+                  <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
+                    {{ t('admin.users.balanceHistoryTip') }}
+                    <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
+                  </div>
+                </div>
                 <button
-                  class="font-medium text-gray-900 underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:text-primary-600 dark:text-white dark:decoration-dark-500 dark:hover:text-primary-400"
-                  @click="handleBalanceHistory(row)"
+                  @click.stop="handleDeposit(row)"
+                  class="rounded px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                  :title="t('admin.users.deposit')"
                 >
-                  ${{ value.toFixed(2) }}
+                  {{ t('admin.users.deposit') }}
                 </button>
-                <!-- Instant tooltip -->
-                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
-                  {{ t('admin.users.balanceHistoryTip') }}
-                  <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
+              </div>
+              <!-- Group request quotas -->
+              <div v-if="row.group_request_quotas && Object.keys(row.group_request_quotas).length > 0" class="mt-1 space-y-0.5">
+                <div
+                  v-for="(quota, groupId) in row.group_request_quotas"
+                  :key="groupId"
+                  class="text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ getGroupName(Number(groupId)) }}: {{ quota }} 次
                 </div>
               </div>
-              <button
-                @click.stop="handleDeposit(row)"
-                class="rounded px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                :title="t('admin.users.deposit')"
-              >
-                {{ t('admin.users.deposit') }}
-              </button>
             </div>
           </template>
 
@@ -495,8 +507,19 @@
         </DataTable>
       </template>
 
-      <!-- Pagination -->
+      <!-- Quota Summary + Pagination -->
       <template #pagination>
+      <!-- Total request quotas summary -->
+      <div v-if="Object.keys(totalRequestQuotas).length > 0" class="mb-3 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+        <span class="font-medium">本页剩余次数汇总:</span>
+        <span
+          v-for="(total, groupId) in totalRequestQuotas"
+          :key="groupId"
+          class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
+        >
+          {{ getGroupName(Number(groupId)) }}: {{ total }} 次
+        </span>
+      </div>
       <Pagination
         v-if="pagination.total > 0"
         :page="pagination.page"
@@ -775,6 +798,19 @@ const users = ref<AdminUser[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 
+// Aggregate request quotas across all users on current page
+const totalRequestQuotas = computed(() => {
+  const totals: Record<number, number> = {}
+  for (const user of users.value) {
+    if (!user.group_request_quotas) continue
+    for (const [gid, quota] of Object.entries(user.group_request_quotas)) {
+      const groupId = Number(gid)
+      totals[groupId] = (totals[groupId] || 0) + quota
+    }
+  }
+  return totals
+})
+
 // Groups data for the groups column
 const allGroups = ref<AdminGroup[]>([])
 const loadAllGroups = async () => {
@@ -785,6 +821,12 @@ const loadAllGroups = async () => {
     console.error('Failed to load groups:', e)
   }
 }
+// Resolve group name by ID
+const getGroupName = (groupId: number) => {
+  const g = allGroups.value.find(g => g.id === groupId)
+  return g?.name ?? `分组#${groupId}`
+}
+
 // Resolve user's accessible groups: exclusive groups first, then public groups
 const getUserGroups = (user: AdminUser) => {
   const exclusive: AdminGroup[] = []

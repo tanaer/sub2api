@@ -166,6 +166,7 @@ func groupFromServiceBase(g *service.Group) Group {
 		Name:                            g.Name,
 		Description:                     g.Description,
 		UseKeyInstructions:              g.UseKeyInstructions,
+		ConfigTemplates:                 g.ConfigTemplates,
 		Platform:                        g.Platform,
 		RateMultiplier:                  g.RateMultiplier,
 		IsExclusive:                     g.IsExclusive,

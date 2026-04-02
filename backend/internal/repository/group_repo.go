@@ -39,6 +39,7 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
 		SetUseKeyInstructions(groupIn.UseKeyInstructions).
+		SetConfigTemplates(groupIn.ConfigTemplates).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
 		SetIsExclusive(groupIn.IsExclusive).
@@ -118,6 +119,7 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
 		SetUseKeyInstructions(groupIn.UseKeyInstructions).
+		SetConfigTemplates(groupIn.ConfigTemplates).
 		SetPlatform(groupIn.Platform).
 		SetRateMultiplier(groupIn.RateMultiplier).
 		SetIsExclusive(groupIn.IsExclusive).

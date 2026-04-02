@@ -27,6 +27,8 @@ const (
 	FieldDescription = "description"
 	// FieldUseKeyInstructions holds the string denoting the use_key_instructions field in the database.
 	FieldUseKeyInstructions = "use_key_instructions"
+	// FieldConfigTemplates holds the string denoting the config_templates field in the database.
+	FieldConfigTemplates = "config_templates"
 	// FieldRateMultiplier holds the string denoting the rate_multiplier field in the database.
 	FieldRateMultiplier = "rate_multiplier"
 	// FieldIsExclusive holds the string denoting the is_exclusive field in the database.
@@ -168,6 +170,7 @@ var Columns = []string{
 	FieldName,
 	FieldDescription,
 	FieldUseKeyInstructions,
+	FieldConfigTemplates,
 	FieldRateMultiplier,
 	FieldIsExclusive,
 	FieldStatus,
@@ -313,6 +316,11 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 // ByUseKeyInstructions orders the results by the use_key_instructions field.
 func ByUseKeyInstructions(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUseKeyInstructions, opts...).ToFunc()
+}
+
+// ByConfigTemplates orders the results by the config_templates field.
+func ByConfigTemplates(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldConfigTemplates, opts...).ToFunc()
 }
 
 // ByRateMultiplier orders the results by the rate_multiplier field.

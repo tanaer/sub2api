@@ -85,6 +85,7 @@ type CreateGroupRequest struct {
 	Name               string             `json:"name" binding:"required"`
 	Description        string             `json:"description"`
 	UseKeyInstructions string             `json:"use_key_instructions"`
+	ConfigTemplates    string             `json:"config_templates"`
 	Platform           string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity sora"`
 	RateMultiplier     float64            `json:"rate_multiplier"`
 	IsExclusive        bool               `json:"is_exclusive"`
@@ -127,6 +128,7 @@ type UpdateGroupRequest struct {
 	Name               string             `json:"name"`
 	Description        string             `json:"description"`
 	UseKeyInstructions *string            `json:"use_key_instructions"`
+	ConfigTemplates    *string            `json:"config_templates"`
 	Platform           string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity sora"`
 	RateMultiplier     *float64           `json:"rate_multiplier"`
 	IsExclusive        *bool              `json:"is_exclusive"`
@@ -255,6 +257,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		Name:                            req.Name,
 		Description:                     req.Description,
 		UseKeyInstructions:              req.UseKeyInstructions,
+		ConfigTemplates:                 req.ConfigTemplates,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
@@ -311,6 +314,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		Name:                            req.Name,
 		Description:                     req.Description,
 		UseKeyInstructions:              req.UseKeyInstructions,
+		ConfigTemplates:                 req.ConfigTemplates,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,

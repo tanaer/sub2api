@@ -958,6 +958,7 @@
       :platform="selectedKey?.group?.platform || null"
       :custom-instructions="selectedKey?.group?.use_key_instructions || ''"
       :allow-messages-dispatch="selectedKey?.group?.allow_messages_dispatch || false"
+      :config-templates="selectedKey?.group?.config_templates || ''"
       @close="closeUseKeyModal"
     />
 
