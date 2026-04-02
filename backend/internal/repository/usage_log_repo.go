@@ -2474,7 +2474,8 @@ func (r *usageLogRepository) GetAPIKeyDashboardStats(ctx context.Context, apiKey
 			COALESCE(SUM(cache_read_tokens), 0) as total_cache_read_tokens,
 			COALESCE(SUM(total_cost), 0) as total_cost,
 			COALESCE(SUM(actual_cost), 0) as total_actual_cost,
-			COALESCE(AVG(duration_ms), 0) as avg_duration_ms
+			COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
+			MAX(created_at) as last_success_at
 		FROM usage_logs
 		WHERE api_key_id = $1
 	`
@@ -2491,6 +2492,7 @@ func (r *usageLogRepository) GetAPIKeyDashboardStats(ctx context.Context, apiKey
 		&stats.TotalCost,
 		&stats.TotalActualCost,
 		&stats.AverageDurationMs,
+		&stats.LastSuccessAt,
 	); err != nil {
 		return nil, err
 	}

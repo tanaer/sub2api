@@ -20,6 +20,7 @@ func setupAPIKeyHandler(adminSvc service.AdminService) *gin.Engine {
 	router := gin.New()
 	h := NewAdminAPIKeyHandler(adminSvc)
 	router.PUT("/api/v1/admin/api-keys/:id", h.UpdateGroup)
+	router.DELETE("/api/v1/admin/api-keys/:id", h.Delete)
 	return router
 }
 
@@ -189,6 +190,40 @@ func TestAdminAPIKeyHandler_UpdateGroup_NegativeGroupID(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), "INVALID_GROUP_ID")
+}
+
+func TestAdminAPIKeyHandler_Delete_Success(t *testing.T) {
+	svc := newStubAdminService()
+	router := setupAPIKeyHandler(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/api-keys/10", http.NoBody)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Len(t, svc.apiKeys, 0)
+	require.Contains(t, rec.Body.String(), "API key deleted successfully")
+}
+
+func TestAdminAPIKeyHandler_Delete_InvalidID(t *testing.T) {
+	router := setupAPIKeyHandler(newStubAdminService())
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/api-keys/abc", http.NoBody)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "Invalid API key ID")
+}
+
+func TestAdminAPIKeyHandler_Delete_KeyNotFound(t *testing.T) {
+	router := setupAPIKeyHandler(newStubAdminService())
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/api-keys/999", http.NoBody)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 // failingUpdateGroupService overrides AdminUpdateAPIKeyGroupID to return an error.

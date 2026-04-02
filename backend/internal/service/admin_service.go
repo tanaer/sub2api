@@ -51,6 +51,7 @@ type AdminService interface {
 	// API Key management (admin)
 	AdminUpdateAPIKeyGroupID(ctx context.Context, keyID int64, groupID *int64) (*AdminUpdateAPIKeyGroupIDResult, error)
 	AdminUpdateAPIKeyRequestQuota(ctx context.Context, keyID int64, requestQuota *int64, resetRequestQuotaUsed bool) (*APIKey, error)
+	AdminDeleteAPIKey(ctx context.Context, keyID int64) error
 
 	// ReplaceUserGroup 替换用户的专属分组：授予新分组权限、迁移 Key、移除旧分组权限
 	ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error)
@@ -223,12 +224,12 @@ type UpdateGroupInput struct {
 }
 
 type CreateAccountInput struct {
-	Name             string
-	Notes            *string
-	Platform         string
-	Type             string
-	UpstreamProvider string
-	Credentials      map[string]any
+	Name               string
+	Notes              *string
+	Platform           string
+	Type               string
+	UpstreamProvider   string
+	Credentials        map[string]any
 	Extra              map[string]any
 	ProxyID            *int64
 	Concurrency        int
@@ -1538,6 +1539,24 @@ func (s *adminServiceImpl) AdminUpdateAPIKeyRequestQuota(ctx context.Context, ke
 	return apiKey, nil
 }
 
+// AdminDeleteAPIKey 管理员删除 API Key。
+func (s *adminServiceImpl) AdminDeleteAPIKey(ctx context.Context, keyID int64) error {
+	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.apiKeyRepo.Delete(ctx, keyID); err != nil {
+		return err
+	}
+
+	if s.authCacheInvalidator != nil && strings.TrimSpace(apiKey.Key) != "" {
+		s.authCacheInvalidator.InvalidateAuthCacheByKey(ctx, apiKey.Key)
+	}
+
+	return nil
+}
+
 // ReplaceUserGroup 替换用户的专属分组
 func (s *adminServiceImpl) ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error) {
 	if oldGroupID == newGroupID {
@@ -1671,18 +1690,18 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	}
 
 	account := &Account{
-		Name:        input.Name,
-		Notes:       normalizeAccountNotes(input.Notes),
+		Name:             input.Name,
+		Notes:            normalizeAccountNotes(input.Notes),
 		Platform:         input.Platform,
 		Type:             input.Type,
 		UpstreamProvider: input.UpstreamProvider,
 		Credentials:      input.Credentials,
-		Extra:       input.Extra,
-		ProxyID:     input.ProxyID,
-		Concurrency: input.Concurrency,
-		Priority:    input.Priority,
-		Status:      StatusActive,
-		Schedulable: true,
+		Extra:            input.Extra,
+		ProxyID:          input.ProxyID,
+		Concurrency:      input.Concurrency,
+		Priority:         input.Priority,
+		Status:           StatusActive,
+		Schedulable:      true,
 	}
 	// 预计算固定时间重置的下次重置时间
 	if account.Extra != nil {

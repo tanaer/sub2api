@@ -8,6 +8,7 @@ const {
   getRedeemPresets,
   getRedeemTemplates,
   generateRedeemPreset,
+  deleteApiKey,
   toggleUserStatus,
   getAllGroups,
   showSuccess,
@@ -17,6 +18,7 @@ const {
   getRedeemPresets: vi.fn(),
   getRedeemTemplates: vi.fn(),
   generateRedeemPreset: vi.fn(),
+  deleteApiKey: vi.fn(),
   toggleUserStatus: vi.fn(),
   getAllGroups: vi.fn(),
   showSuccess: vi.fn(),
@@ -30,6 +32,9 @@ vi.mock('@/api/admin', () => ({
       getRedeemPresets,
       getRedeemTemplates,
       generateRedeemPreset,
+    },
+    apiKeys: {
+      delete: deleteApiKey,
     },
     users: {
       toggleStatus: toggleUserStatus,
@@ -63,6 +68,7 @@ describe('WorkbenchView', () => {
     getRedeemPresets.mockReset()
     getRedeemTemplates.mockReset()
     generateRedeemPreset.mockReset()
+    deleteApiKey.mockReset()
     toggleUserStatus.mockReset()
     getAllGroups.mockReset()
     showSuccess.mockReset()
@@ -94,11 +100,12 @@ describe('WorkbenchView', () => {
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
+        readText: vi.fn().mockResolvedValue('密钥：sk-match-1234567890abcdef'),
       },
     })
   })
 
-  it('renders user api keys, copies all results, and toggles user status', async () => {
+  it('supports paste lookup, shows last success time, deletes unused api keys, and toggles user status', async () => {
     lookupAPIKeys.mockResolvedValue({
       extracted_keys: ['sk-match-1234567890abcdef', 'sk-miss-1234567890abcdef'],
       matched_count: 1,
@@ -114,12 +121,14 @@ describe('WorkbenchView', () => {
           username: 'lookup-user',
           user_status: 'active',
           latest_redeem_at: '2026-03-25T08:00:00Z',
+          last_success_at: '2026-04-01T12:30:00Z',
           success_call_count: 19,
           api_keys: [
             {
               id: 11,
               key: 'sk-match-1234567890abcdef',
               created_at: '2026-04-01T10:00:00Z',
+              last_success_at: '2026-04-01T12:30:00Z',
               success_call_count: 12,
               status: 'active',
             },
@@ -127,7 +136,8 @@ describe('WorkbenchView', () => {
               id: 12,
               key: 'sk-second-1234567890abcdef',
               created_at: '2026-04-01T11:00:00Z',
-              success_call_count: 7,
+              last_success_at: null,
+              success_call_count: 0,
               status: 'disabled',
             },
           ],
@@ -135,12 +145,14 @@ describe('WorkbenchView', () => {
         {
           extracted_key: 'sk-miss-1234567890abcdef',
           matched: false,
+          last_success_at: null,
           success_call_count: 0,
           api_keys: [],
         },
       ],
     })
     toggleUserStatus.mockResolvedValue({ status: 'disabled' })
+    deleteApiKey.mockResolvedValue({ message: 'deleted' })
 
     const wrapper = mount(WorkbenchView, {
       global: {
@@ -154,17 +166,31 @@ describe('WorkbenchView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="lookup-input"]').attributes('placeholder')).toContain('API Key 或兑换码')
+    expect(wrapper.get('[data-testid="lookup-submit"]').text()).toContain('粘贴识别')
 
-    await wrapper.get('[data-testid="lookup-input"]').setValue('密钥：sk-match-1234567890abcdef')
+    await wrapper.get('[data-testid="lookup-input"]').setValue('旧内容')
     await wrapper.get('[data-testid="lookup-submit"]').trigger('click')
     await flushPromises()
 
     expect(lookupAPIKeys).toHaveBeenCalledWith('密钥：sk-match-1234567890abcdef')
+    expect(navigator.clipboard.readText).toHaveBeenCalled()
+    expect((wrapper.get('[data-testid="lookup-input"]').element as HTMLTextAreaElement).value).toBe(
+      '密钥：sk-match-1234567890abcdef',
+    )
     expect(wrapper.text()).toContain('lookup@example.com')
+    expect(wrapper.text()).toContain('最后成功调用时间')
     expect(wrapper.text()).toContain('成功调用次数')
     expect(wrapper.text()).toContain('19')
     expect(wrapper.text()).toContain('sk-second-1234567890abcdef')
     expect(wrapper.text()).toContain('未匹配')
+    expect(wrapper.find('[data-testid="delete-user-api-key-11"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="delete-user-api-key-12"]').text()).toContain('删除')
+
+    await wrapper.get('[data-testid="delete-user-api-key-12"]').trigger('click')
+    await flushPromises()
+
+    expect(deleteApiKey).toHaveBeenCalledWith(12)
+    expect(wrapper.text()).not.toContain('sk-second-1234567890abcdef')
 
     await wrapper.get('[data-testid="copy-all-results"]').trigger('click')
     expect(navigator.clipboard.writeText).toHaveBeenCalled()

@@ -91,3 +91,20 @@ func (h *AdminAPIKeyHandler) UpdateRequestQuota(c *gin.Context) {
 
 	response.Success(c, dto.APIKeyFromService(apiKey))
 }
+
+// Delete handles deleting an API key as admin.
+// DELETE /api/v1/admin/api-keys/:id
+func (h *AdminAPIKeyHandler) Delete(c *gin.Context) {
+	keyID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid API key ID")
+		return
+	}
+
+	if err := h.adminService.AdminDeleteAPIKey(c.Request.Context(), keyID); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"message": "API key deleted successfully"})
+}

@@ -98,6 +98,7 @@ func registerAdminAPIKeyRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		apiKeys.PUT("/:id", h.Admin.APIKey.UpdateGroup)
 		apiKeys.PUT("/:id/request-quota", h.Admin.APIKey.UpdateRequestQuota)
+		apiKeys.DELETE("/:id", h.Admin.APIKey.Delete)
 	}
 }
 
@@ -427,6 +428,8 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		adminSettings.GET("/provider-timeout", h.Admin.Setting.GetProviderTimeoutSettings)
 		adminSettings.PUT("/provider-timeout", h.Admin.Setting.UpdateProviderTimeoutSettings)
 		adminSettings.GET("/provider-timeout/stats", h.Admin.Setting.GetProviderLatencyStats)
+		// SLA 监控报告
+		adminSettings.GET("/sla-report", h.Admin.Setting.GetSLAReport)
 		// 529过载冷却配置
 		adminSettings.GET("/overload-cooldown", h.Admin.Setting.GetOverloadCooldownSettings)
 		adminSettings.PUT("/overload-cooldown", h.Admin.Setting.UpdateOverloadCooldownSettings)

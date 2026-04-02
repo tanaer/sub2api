@@ -1131,6 +1131,7 @@ export interface WorkbenchLookupUserApiKey {
   key: string
   status: ApiKey['status']
   created_at?: string | null
+  last_success_at?: string | null
   success_call_count: number
 }
 
@@ -1145,6 +1146,7 @@ export interface WorkbenchLookupItem {
   user_status?: User['status']
   group_id?: number | null
   latest_redeem_at?: string | null
+  last_success_at?: string | null
   success_call_count: number
   api_keys: WorkbenchLookupUserApiKey[]
 }

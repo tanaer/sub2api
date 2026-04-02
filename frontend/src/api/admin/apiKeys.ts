@@ -41,9 +41,15 @@ export async function updateApiKeyRequestQuota(
   return data
 }
 
+export async function deleteApiKey(id: number): Promise<{ message: string }> {
+  const { data } = await apiClient.delete<{ message: string }>(`/admin/api-keys/${id}`)
+  return data
+}
+
 export const apiKeysAPI = {
   updateApiKeyGroup,
-  updateApiKeyRequestQuota
+  updateApiKeyRequestQuota,
+  delete: deleteApiKey
 }
 
 export default apiKeysAPI

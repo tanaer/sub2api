@@ -30,12 +30,14 @@ func (s *toolsAPIKeyLookupStub) GetByKey(ctx context.Context, key string) (*serv
 }
 
 type toolsUsageStatsStub struct {
-	byAPIKeyID map[int64]int64
+	byAPIKeyID         map[int64]int64
+	lastSuccessByKeyID map[int64]*time.Time
 }
 
 func (s *toolsUsageStatsStub) GetAPIKeyDashboardStats(ctx context.Context, apiKeyID int64) (*usagestats.UserDashboardStats, error) {
 	return &usagestats.UserDashboardStats{
 		TotalRequests: s.byAPIKeyID[apiKeyID],
+		LastSuccessAt: s.lastSuccessByKeyID[apiKeyID],
 	}, nil
 }
 
@@ -64,8 +66,8 @@ func (s *toolsRedeemHistoryStub) ListByUser(ctx context.Context, userID int64, l
 }
 
 type toolsRedeemGeneratorStub struct {
-	lastInput    *service.GenerateRedeemCodesInput
-	codes        []service.RedeemCode
+	lastInput     *service.GenerateRedeemCodesInput
+	codes         []service.RedeemCode
 	apiKeysByUser map[int64][]service.APIKey
 }
 
@@ -142,6 +144,8 @@ func setupToolsHandlerRouter(handler *ToolsHandler) *gin.Engine {
 
 func TestToolsHandler_LookupAPIKeys_ExtractsAllMatchedAndUnmatchedKeys(t *testing.T) {
 	createdAt := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	lastSuccessAt := time.Date(2026, 4, 1, 12, 30, 0, 0, time.UTC)
+	secondLastSuccessAt := time.Date(2026, 4, 1, 12, 45, 0, 0, time.UTC)
 	redeemedAt := time.Date(2026, 3, 25, 9, 30, 0, 0, time.UTC)
 	groupID := int64(22)
 
@@ -174,6 +178,9 @@ func TestToolsHandler_LookupAPIKeys_ExtractsAllMatchedAndUnmatchedKeys(t *testin
 		&toolsUsageStatsStub{byAPIKeyID: map[int64]int64{
 			101: 12,
 			102: 4,
+		}, lastSuccessByKeyID: map[int64]*time.Time{
+			101: &lastSuccessAt,
+			102: &secondLastSuccessAt,
 		}},
 		&toolsRedeemHistoryStub{byUser: map[int64][]service.RedeemCode{
 			7: {
@@ -233,12 +240,14 @@ func TestToolsHandler_LookupAPIKeys_ExtractsAllMatchedAndUnmatchedKeys(t *testin
 				UserStatus       string `json:"user_status"`
 				SuccessCallCount int64  `json:"success_call_count"`
 				LatestRedeemAt   string `json:"latest_redeem_at"`
+				LastSuccessAt    string `json:"last_success_at"`
 				APIKeys          []struct {
 					ID               int64  `json:"id"`
 					Key              string `json:"key"`
 					CreatedAt        string `json:"created_at"`
+					LastSuccessAt    string `json:"last_success_at"`
 					SuccessCallCount int64  `json:"success_call_count"`
-					Status string `json:"status"`
+					Status           string `json:"status"`
 				} `json:"api_keys"`
 			} `json:"items"`
 		} `json:"data"`
@@ -262,12 +271,15 @@ func TestToolsHandler_LookupAPIKeys_ExtractsAllMatchedAndUnmatchedKeys(t *testin
 	require.Equal(t, service.StatusActive, resp.Data.Items[0].UserStatus)
 	require.Equal(t, int64(16), resp.Data.Items[0].SuccessCallCount)
 	require.Equal(t, redeemedAt.Format(time.RFC3339), resp.Data.Items[0].LatestRedeemAt)
+	require.Equal(t, secondLastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].LastSuccessAt)
 	require.Len(t, resp.Data.Items[0].APIKeys, 2)
 	require.Equal(t, apiKey.Key, resp.Data.Items[0].APIKeys[0].Key)
 	require.Equal(t, createdAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[0].CreatedAt)
+	require.Equal(t, lastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[0].LastSuccessAt)
 	require.Equal(t, int64(12), resp.Data.Items[0].APIKeys[0].SuccessCallCount)
 	require.Equal(t, service.StatusActive, resp.Data.Items[0].APIKeys[0].Status)
 	require.Equal(t, "sk-second-abcdef1234567890", resp.Data.Items[0].APIKeys[1].Key)
+	require.Equal(t, secondLastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[1].LastSuccessAt)
 	require.Equal(t, int64(4), resp.Data.Items[0].APIKeys[1].SuccessCallCount)
 
 	require.False(t, resp.Data.Items[1].Matched)
@@ -340,6 +352,8 @@ func TestToolsHandler_LookupAPIKeys_FallsBackToRedeemCodeLookup(t *testing.T) {
 	redeemedAt := time.Date(2026, 3, 31, 6, 3, 34, 0, time.UTC)
 	apiKeyCreatedAt := redeemedAt.Add(2 * time.Minute)
 	oldAPIKeyCreatedAt := redeemedAt.Add(-10 * time.Minute)
+	oldLastSuccessAt := redeemedAt.Add(5 * time.Minute)
+	newLastSuccessAt := redeemedAt.Add(9 * time.Minute)
 	groupID := int64(2)
 	userID := int64(18)
 
@@ -373,6 +387,9 @@ func TestToolsHandler_LookupAPIKeys_FallsBackToRedeemCodeLookup(t *testing.T) {
 		&toolsUsageStatsStub{byAPIKeyID: map[int64]int64{
 			23: 99,
 			24: 1,
+		}, lastSuccessByKeyID: map[int64]*time.Time{
+			23: &oldLastSuccessAt,
+			24: &newLastSuccessAt,
 		}},
 		&toolsRedeemHistoryStub{
 			byCode: map[string]*service.RedeemCode{
@@ -415,11 +432,13 @@ func TestToolsHandler_LookupAPIKeys_FallsBackToRedeemCodeLookup(t *testing.T) {
 				UserEmail        string `json:"user_email"`
 				UserStatus       string `json:"user_status"`
 				LatestRedeemAt   string `json:"latest_redeem_at"`
+				LastSuccessAt    string `json:"last_success_at"`
 				SuccessCallCount int64  `json:"success_call_count"`
 				APIKeys          []struct {
 					ID               int64  `json:"id"`
 					Key              string `json:"key"`
 					CreatedAt        string `json:"created_at"`
+					LastSuccessAt    string `json:"last_success_at"`
 					SuccessCallCount int64  `json:"success_call_count"`
 				} `json:"api_keys"`
 			} `json:"items"`
@@ -434,13 +453,16 @@ func TestToolsHandler_LookupAPIKeys_FallsBackToRedeemCodeLookup(t *testing.T) {
 	require.Equal(t, "328867132@qq.com", resp.Data.Items[0].UserEmail)
 	require.Equal(t, service.StatusActive, resp.Data.Items[0].UserStatus)
 	require.Equal(t, redeemedAt.Format(time.RFC3339), resp.Data.Items[0].LatestRedeemAt)
+	require.Equal(t, newLastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].LastSuccessAt)
 	require.Equal(t, int64(100), resp.Data.Items[0].SuccessCallCount)
 	require.Len(t, resp.Data.Items[0].APIKeys, 2)
 	require.Equal(t, int64(23), resp.Data.Items[0].APIKeys[0].ID)
 	require.Equal(t, oldAPIKeyCreatedAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[0].CreatedAt)
+	require.Equal(t, oldLastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[0].LastSuccessAt)
 	require.Equal(t, int64(99), resp.Data.Items[0].APIKeys[0].SuccessCallCount)
 	require.Equal(t, int64(24), resp.Data.Items[0].APIKeys[1].ID)
 	require.Equal(t, apiKeyCreatedAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[1].CreatedAt)
+	require.Equal(t, newLastSuccessAt.Format(time.RFC3339), resp.Data.Items[0].APIKeys[1].LastSuccessAt)
 	require.Equal(t, int64(1), resp.Data.Items[0].APIKeys[1].SuccessCallCount)
 }
 

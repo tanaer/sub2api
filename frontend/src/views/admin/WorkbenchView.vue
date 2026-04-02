@@ -27,7 +27,7 @@
           <div>
             <h2 class="text-lg font-semibold text-slate-900 sm:text-xl">智能查询</h2>
             <p class="mt-1 text-sm leading-6 text-slate-500">
-              支持整段消息、多行文本和混合内容，自动提取全部 API Key 或兑换码，并返回用户、用户生成的全部 API Key、生成时间和成功调用次数。
+              支持整段消息、多行文本和混合内容，自动提取全部 API Key 或兑换码，并返回用户、用户生成的全部 API Key、生成时间、最后成功调用时间和成功调用次数。
             </p>
           </div>
           <button
@@ -52,10 +52,10 @@
             <button
               data-testid="lookup-submit"
               class="btn btn-primary"
-              :disabled="lookupLoading || !lookupInput.trim()"
-              @click="handleLookup"
+              :disabled="lookupLoading"
+              @click="handlePasteLookup"
             >
-              {{ lookupLoading ? '识别中...' : '开始识别' }}
+              {{ lookupLoading ? '识别中...' : '粘贴识别' }}
             </button>
             <button class="btn btn-secondary" :disabled="lookupLoading" @click="clearLookup">清空内容</button>
           </div>
@@ -103,7 +103,7 @@
               </div>
             </div>
 
-            <dl class="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+            <dl class="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-5">
               <div class="rounded-2xl bg-slate-50 px-4 py-3">
                 <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">用户</dt>
                 <dd class="mt-1 break-all text-slate-900">
@@ -133,6 +133,10 @@
                 <dd class="mt-1 text-slate-900">{{ formatDateTime(item.latest_redeem_at) }}</dd>
               </div>
               <div class="rounded-2xl bg-slate-50 px-4 py-3">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">最后成功调用时间</dt>
+                <dd class="mt-1 text-slate-900">{{ formatDateTime(item.last_success_at) }}</dd>
+              </div>
+              <div class="rounded-2xl bg-slate-50 px-4 py-3">
                 <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">该用户 API Key 数量</dt>
                 <dd class="mt-1 text-lg font-semibold text-slate-900">{{ item.api_keys.length }}</dd>
               </div>
@@ -147,7 +151,7 @@
                 <div>
                   <h3 class="text-sm font-semibold text-slate-900">该用户生成的 API Key</h3>
                   <p class="text-xs leading-5 text-slate-500">
-                    展示该用户名下全部 API Key 的生成时间和成功调用次数。
+                    展示该用户名下全部 API Key 的生成时间、最后成功调用时间和成功调用次数。未使用的 Key 可直接删除。
                   </p>
                 </div>
               </div>
@@ -163,10 +167,14 @@
                       <div class="break-all rounded-2xl bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100">
                         {{ userApiKey.key }}
                       </div>
-                      <div class="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+                      <div class="mt-3 grid gap-3 text-sm text-slate-600 md:grid-cols-4">
                         <div class="rounded-2xl bg-slate-50 px-3 py-2">
                           <p class="text-[11px] uppercase tracking-wide text-slate-400">生成时间</p>
                           <p class="mt-1 text-slate-900">{{ formatDateTime(userApiKey.created_at) }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-slate-50 px-3 py-2">
+                          <p class="text-[11px] uppercase tracking-wide text-slate-400">最后成功调用时间</p>
+                          <p class="mt-1 text-slate-900">{{ formatDateTime(userApiKey.last_success_at) }}</p>
                         </div>
                         <div class="rounded-2xl bg-slate-50 px-3 py-2">
                           <p class="text-[11px] uppercase tracking-wide text-slate-400">成功调用次数</p>
@@ -180,7 +188,18 @@
                         </div>
                       </div>
                     </div>
-                    <button class="btn btn-secondary whitespace-nowrap" @click="copyText(userApiKey.key)">复制这个 Key</button>
+                    <div class="flex flex-wrap gap-2">
+                      <button class="btn btn-secondary whitespace-nowrap" @click="copyText(userApiKey.key)">复制这个 Key</button>
+                      <button
+                        v-if="userApiKey.success_call_count === 0"
+                        :data-testid="`delete-user-api-key-${userApiKey.id}`"
+                        class="btn btn-secondary whitespace-nowrap border-red-200 text-red-600 hover:bg-red-50"
+                        :disabled="deletingAPIKeyId === userApiKey.id"
+                        @click="deleteUnusedAPIKey(userApiKey)"
+                      >
+                        {{ deletingAPIKeyId === userApiKey.id ? '删除中...' : '删除' }}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -541,6 +560,7 @@ import type {
   RedeemCodeType,
   WorkbenchLookupItem,
   WorkbenchLookupResponse,
+  WorkbenchLookupUserApiKey,
   WorkbenchRedeemPreset,
   WorkbenchRedeemPresetGenerateResponse,
   WorkbenchRedeemTemplate,
@@ -554,6 +574,7 @@ const lookupInput = ref('')
 const lookupLoading = ref(false)
 const lookupResults = ref<WorkbenchLookupResponse | null>(null)
 const togglingUserId = ref<number | null>(null)
+const deletingAPIKeyId = ref<number | null>(null)
 
 const presets = ref<WorkbenchRedeemPreset[]>([])
 const templates = ref<WorkbenchRedeemTemplate[]>([])
@@ -608,16 +629,33 @@ async function loadTemplates() {
   }
 }
 
-async function handleLookup() {
-  if (!lookupInput.value.trim()) {
+async function runLookup(rawText: string) {
+  try {
+    lookupResults.value = await adminAPI.tools.lookupAPIKeys(rawText)
+  } catch (error) {
+    appStore.showError(getErrorMessage(error, '查询失败'))
+  }
+}
+
+async function handlePasteLookup() {
+  if (lookupLoading.value) {
     return
   }
 
+  lookupInput.value = ''
+  lookupResults.value = null
   lookupLoading.value = true
+
   try {
-    lookupResults.value = await adminAPI.tools.lookupAPIKeys(lookupInput.value)
+    const clipboardText = (await navigator.clipboard.readText()).trim()
+    if (!clipboardText) {
+      throw new Error('剪贴板为空')
+    }
+
+    lookupInput.value = clipboardText
+    await runLookup(clipboardText)
   } catch (error) {
-    appStore.showError(getErrorMessage(error, '查询失败'))
+    appStore.showError(getErrorMessage(error, '读取剪贴板失败'))
   } finally {
     lookupLoading.value = false
   }
@@ -670,6 +708,19 @@ async function copyText(text: string) {
   }
 }
 
+async function deleteUnusedAPIKey(userApiKey: WorkbenchLookupUserApiKey) {
+  deletingAPIKeyId.value = userApiKey.id
+  try {
+    await adminAPI.apiKeys.delete(userApiKey.id)
+    removeLookupAPIKey(userApiKey.id)
+    appStore.showSuccess('API Key 已删除')
+  } catch (error) {
+    appStore.showError(getErrorMessage(error, '删除 API Key 失败'))
+  } finally {
+    deletingAPIKeyId.value = null
+  }
+}
+
 function copyLookupCard(item: WorkbenchLookupItem) {
   void copyText(formatLookupCard(item))
 }
@@ -704,6 +755,26 @@ function copyGeneratedCard() {
     generatedResult.value.rendered_message,
   ]
   void copyText(lines.join('\n'))
+}
+
+function removeLookupAPIKey(apiKeyID: number) {
+  if (!lookupResults.value) {
+    return
+  }
+
+  for (const item of lookupResults.value.items) {
+    const hasTarget = item.api_keys.some((userApiKey) => userApiKey.id === apiKeyID)
+    if (!hasTarget) {
+      continue
+    }
+
+    item.api_keys = item.api_keys.filter((userApiKey) => userApiKey.id !== apiKeyID)
+    item.success_call_count = item.api_keys.reduce(
+      (total, userApiKey) => total + userApiKey.success_call_count,
+      0,
+    )
+    item.last_success_at = getLatestSuccessAt(item.api_keys)
+  }
 }
 
 function openPresetManager() {
@@ -954,6 +1025,21 @@ function formatDateTime(value?: string | null) {
   })
 }
 
+function getLatestSuccessAt(apiKeys: WorkbenchLookupUserApiKey[]) {
+  let latestSuccessAt: string | null = null
+
+  for (const apiKey of apiKeys) {
+    if (!apiKey.last_success_at) {
+      continue
+    }
+    if (!latestSuccessAt || new Date(apiKey.last_success_at).getTime() > new Date(latestSuccessAt).getTime()) {
+      latestSuccessAt = apiKey.last_success_at
+    }
+  }
+
+  return latestSuccessAt
+}
+
 function formatLookupCard(item: WorkbenchLookupItem) {
   const lines = [
     `识别值: ${item.api_key || item.extracted_key}`,
@@ -962,6 +1048,7 @@ function formatLookupCard(item: WorkbenchLookupItem) {
     `用户名: ${item.username || '-'}`,
     `用户状态: ${userStatusLabel(item.user_status)}`,
     `最近兑换时间: ${formatDateTime(item.latest_redeem_at)}`,
+    `最后成功调用时间: ${formatDateTime(item.last_success_at)}`,
     `总成功调用次数: ${item.success_call_count}`,
   ]
 
@@ -969,7 +1056,7 @@ function formatLookupCard(item: WorkbenchLookupItem) {
     lines.push('该用户 API Key:')
     for (const userApiKey of item.api_keys) {
       lines.push(
-        `- ${userApiKey.key} | 生成时间: ${formatDateTime(userApiKey.created_at)} | 成功调用次数: ${userApiKey.success_call_count}`,
+        `- ${userApiKey.key} | 生成时间: ${formatDateTime(userApiKey.created_at)} | 最后成功调用时间: ${formatDateTime(userApiKey.last_success_at)} | 成功调用次数: ${userApiKey.success_call_count}`,
       )
     }
   } else {
