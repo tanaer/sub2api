@@ -27,6 +27,7 @@ type OpsRepository interface {
 	// Lightweight realtime traffic summary (for the Ops dashboard header card).
 	GetRealtimeTrafficSummary(ctx context.Context, filter *OpsDashboardFilter) (*OpsRealtimeTrafficSummary, error)
 
+	GetProviderLatencyStats(ctx context.Context, hours int) ([]*ProviderLatencyStats, error)
 	GetDashboardOverview(ctx context.Context, filter *OpsDashboardFilter) (*OpsDashboardOverview, error)
 	GetThroughputTrend(ctx context.Context, filter *OpsDashboardFilter, bucketSeconds int) (*OpsThroughputTrendResponse, error)
 	GetLatencyHistogram(ctx context.Context, filter *OpsDashboardFilter) (*OpsLatencyHistogramResponse, error)

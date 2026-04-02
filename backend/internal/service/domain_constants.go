@@ -184,6 +184,13 @@ const (
 	SettingKeyOverloadCooldownSettings = "overload_cooldown_settings"
 
 	// =========================
+	// Provider Timeout Settings
+	// =========================
+
+	// SettingKeyProviderTimeoutSettings stores JSON config for per-provider response header timeouts.
+	SettingKeyProviderTimeoutSettings = "provider_timeout_settings"
+
+	// =========================
 	// Stream Timeout Handling
 	// =========================
 

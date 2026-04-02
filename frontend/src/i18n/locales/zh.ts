@@ -4745,6 +4745,28 @@ export default {
       failedToSendTestEmail: '发送测试邮件失败'
     },
 
+    // Provider Timeout Config
+    providerTimeout: {
+      title: '供应商超时配置',
+      description: '查看各上游供应商的请求时长统计，并配置每个供应商的响应超时时间',
+      hours1: '最近 1 小时',
+      hours6: '最近 6 小时',
+      hours24: '最近 24 小时',
+      hours72: '最近 3 天',
+      hours168: '最近 7 天',
+      noStats: '暂无统计数据，可能没有足够的请求记录',
+      columns: {
+        provider: '供应商',
+        count: '请求数',
+        timeout: '超时(秒)'
+      },
+      enableLabel: '启用按供应商超时',
+      enableHint: '启用后，将对已配置的供应商使用独立的超时时间，未配置的使用全局默认值',
+      unit: '超时单位：秒（范围 10-600）',
+      defaultPlaceholder: '默认',
+      saveSuccess: '供应商超时配置已保存'
+    },
+
     // Error Passthrough Rules
     errorPassthrough: {
       title: '错误透传规则',

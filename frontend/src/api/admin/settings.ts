@@ -252,6 +252,49 @@ export async function deleteAdminApiKey(): Promise<{ message: string }> {
   return data
 }
 
+// ==================== Provider Timeout Settings ====================
+
+export interface ProviderTimeoutSettings {
+  enabled: boolean
+  timeouts: Record<string, number>
+}
+
+export interface ProviderLatencyStats {
+  provider: string
+  count: number
+  p50_ms: number
+  p90_ms: number
+  p99_ms: number
+  avg_ms: number
+  max_ms: number
+  timeout_pct: number
+}
+
+export async function getProviderTimeoutSettings(): Promise<ProviderTimeoutSettings> {
+  const { data } = await apiClient.get<ProviderTimeoutSettings>('/admin/settings/provider-timeout')
+  return data
+}
+
+export async function updateProviderTimeoutSettings(
+  settings: ProviderTimeoutSettings
+): Promise<ProviderTimeoutSettings> {
+  const { data } = await apiClient.put<ProviderTimeoutSettings>(
+    '/admin/settings/provider-timeout',
+    settings
+  )
+  return data
+}
+
+export async function getProviderLatencyStats(
+  hours: number = 24
+): Promise<ProviderLatencyStats[]> {
+  const { data } = await apiClient.get<ProviderLatencyStats[]>(
+    '/admin/settings/provider-timeout/stats',
+    { params: { hours } }
+  )
+  return data
+}
+
 // ==================== Overload Cooldown Settings ====================
 
 /**
@@ -538,6 +581,9 @@ export const settingsAPI = {
   getAdminApiKey,
   regenerateAdminApiKey,
   deleteAdminApiKey,
+  getProviderTimeoutSettings,
+  updateProviderTimeoutSettings,
+  getProviderLatencyStats,
   getOverloadCooldownSettings,
   updateOverloadCooldownSettings,
   getStreamTimeoutSettings,

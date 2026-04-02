@@ -423,6 +423,10 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		adminSettings.GET("/admin-api-key", h.Admin.Setting.GetAdminAPIKey)
 		adminSettings.POST("/admin-api-key/regenerate", h.Admin.Setting.RegenerateAdminAPIKey)
 		adminSettings.DELETE("/admin-api-key", h.Admin.Setting.DeleteAdminAPIKey)
+		// 按上游供应商的超时配置
+		adminSettings.GET("/provider-timeout", h.Admin.Setting.GetProviderTimeoutSettings)
+		adminSettings.PUT("/provider-timeout", h.Admin.Setting.UpdateProviderTimeoutSettings)
+		adminSettings.GET("/provider-timeout/stats", h.Admin.Setting.GetProviderLatencyStats)
 		// 529过载冷却配置
 		adminSettings.GET("/overload-cooldown", h.Admin.Setting.GetOverloadCooldownSettings)
 		adminSettings.PUT("/overload-cooldown", h.Admin.Setting.UpdateOverloadCooldownSettings)

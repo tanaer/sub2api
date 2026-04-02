@@ -105,6 +105,10 @@ func (m *opsRepoMock) GetThroughputTrend(ctx context.Context, filter *OpsDashboa
 	return &OpsThroughputTrendResponse{}, nil
 }
 
+func (m *opsRepoMock) GetProviderLatencyStats(ctx context.Context, hours int) ([]*ProviderLatencyStats, error) {
+	return nil, nil
+}
+
 func (m *opsRepoMock) GetLatencyHistogram(ctx context.Context, filter *OpsDashboardFilter) (*OpsLatencyHistogramResponse, error) {
 	return &OpsLatencyHistogramResponse{}, nil
 }

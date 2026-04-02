@@ -232,6 +232,32 @@ type BetaPolicySettings struct {
 	Rules []BetaPolicyRule `json:"rules"`
 }
 
+// ProviderTimeoutSettings 按上游供应商配置的响应超时（秒）
+type ProviderTimeoutSettings struct {
+	Enabled  bool           `json:"enabled"`
+	Timeouts map[string]int `json:"timeouts"` // upstream_provider -> timeout seconds
+}
+
+// DefaultProviderTimeoutSettings 返回默认配置（禁用，空映射）
+func DefaultProviderTimeoutSettings() *ProviderTimeoutSettings {
+	return &ProviderTimeoutSettings{
+		Enabled:  false,
+		Timeouts: map[string]int{},
+	}
+}
+
+// ProviderLatencyStats 某个上游供应商的请求时长统计
+type ProviderLatencyStats struct {
+	Provider   string `json:"provider"`
+	Count      int64  `json:"count"`
+	P50Ms      int    `json:"p50_ms"`
+	P90Ms      int    `json:"p90_ms"`
+	P99Ms      int    `json:"p99_ms"`
+	AvgMs      int    `json:"avg_ms"`
+	MaxMs      int    `json:"max_ms"`
+	TimeoutPct float64 `json:"timeout_pct"` // 超时比例（%）
+}
+
 // OverloadCooldownSettings 529过载冷却配置
 type OverloadCooldownSettings struct {
 	// Enabled 是否在收到529时暂停账号调度

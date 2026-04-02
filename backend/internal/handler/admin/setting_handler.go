@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1135,6 +1136,95 @@ func (h *SettingHandler) DeleteAdminAPIKey(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Admin API key deleted"})
+}
+
+// GetProviderTimeoutSettings 获取按上游供应商的超时配置
+// GET /api/v1/admin/settings/provider-timeout
+func (h *SettingHandler) GetProviderTimeoutSettings(c *gin.Context) {
+	settings, err := h.settingService.GetProviderTimeoutSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, dto.ProviderTimeoutSettings{
+		Enabled:  settings.Enabled,
+		Timeouts: settings.Timeouts,
+	})
+}
+
+// UpdateProviderTimeoutSettingsRequest 更新按上游供应商的超时配置请求
+type UpdateProviderTimeoutSettingsRequest struct {
+	Enabled  bool           `json:"enabled"`
+	Timeouts map[string]int `json:"timeouts"`
+}
+
+// UpdateProviderTimeoutSettings 更新按上游供应商的超时配置
+// PUT /api/v1/admin/settings/provider-timeout
+func (h *SettingHandler) UpdateProviderTimeoutSettings(c *gin.Context) {
+	var req UpdateProviderTimeoutSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	settings := &service.ProviderTimeoutSettings{
+		Enabled:  req.Enabled,
+		Timeouts: req.Timeouts,
+	}
+
+	if err := h.settingService.SetProviderTimeoutSettings(c.Request.Context(), settings); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	updatedSettings, err := h.settingService.GetProviderTimeoutSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, dto.ProviderTimeoutSettings{
+		Enabled:  updatedSettings.Enabled,
+		Timeouts: updatedSettings.Timeouts,
+	})
+}
+
+// GetProviderLatencyStats 获取各上游供应商的请求时长统计
+// GET /api/v1/admin/settings/provider-timeout/stats?hours=24
+func (h *SettingHandler) GetProviderLatencyStats(c *gin.Context) {
+	hours := 24
+	if v := c.Query("hours"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h >= 1 && h <= 168 {
+			hours = h
+		}
+	}
+
+	if h.opsService == nil {
+		response.Success(c, []dto.ProviderLatencyStats{})
+		return
+	}
+
+	stats, err := h.opsService.GetProviderLatencyStats(c.Request.Context(), hours)
+	if err != nil {
+		log.Printf("[SettingHandler] GetProviderLatencyStats error: %v", err)
+		response.Success(c, []dto.ProviderLatencyStats{})
+		return
+	}
+
+	result := make([]dto.ProviderLatencyStats, 0, len(stats))
+	for _, s := range stats {
+		result = append(result, dto.ProviderLatencyStats{
+			Provider:   s.Provider,
+			Count:      s.Count,
+			P50Ms:      s.P50Ms,
+			P90Ms:      s.P90Ms,
+			P99Ms:      s.P99Ms,
+			AvgMs:      s.AvgMs,
+			MaxMs:      s.MaxMs,
+			TimeoutPct: s.TimeoutPct,
+		})
+	}
+	response.Success(c, result)
 }
 
 // GetOverloadCooldownSettings 获取529过载冷却配置

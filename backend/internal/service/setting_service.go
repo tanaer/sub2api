@@ -1279,6 +1279,59 @@ func (s *SettingService) GetLinuxDoConnectOAuthConfig(ctx context.Context) (conf
 	return effective, nil
 }
 
+// GetProviderTimeoutSettings 获取按上游供应商的超时配置
+func (s *SettingService) GetProviderTimeoutSettings(ctx context.Context) (*ProviderTimeoutSettings, error) {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyProviderTimeoutSettings)
+	if err != nil {
+		if errors.Is(err, ErrSettingNotFound) {
+			return DefaultProviderTimeoutSettings(), nil
+		}
+		return nil, fmt.Errorf("get provider timeout settings: %w", err)
+	}
+	if value == "" {
+		return DefaultProviderTimeoutSettings(), nil
+	}
+
+	var settings ProviderTimeoutSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return DefaultProviderTimeoutSettings(), nil
+	}
+	if settings.Timeouts == nil {
+		settings.Timeouts = map[string]int{}
+	}
+	// 确保每个超时值在合理范围内
+	for k, v := range settings.Timeouts {
+		if v < 10 {
+			settings.Timeouts[k] = 10
+		}
+		if v > 600 {
+			settings.Timeouts[k] = 600
+		}
+	}
+	return &settings, nil
+}
+
+// SetProviderTimeoutSettings 设置按上游供应商的超时配置
+func (s *SettingService) SetProviderTimeoutSettings(ctx context.Context, settings *ProviderTimeoutSettings) error {
+	if settings == nil {
+		return fmt.Errorf("settings cannot be nil")
+	}
+	if settings.Timeouts == nil {
+		settings.Timeouts = map[string]int{}
+	}
+	for k, v := range settings.Timeouts {
+		if v < 10 || v > 600 {
+			return fmt.Errorf("timeout for provider %q must be between 10-600 seconds", k)
+		}
+	}
+
+	data, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("marshal provider timeout settings: %w", err)
+	}
+	return s.settingRepo.Set(ctx, SettingKeyProviderTimeoutSettings, string(data))
+}
+
 // GetOverloadCooldownSettings 获取529过载冷却配置
 func (s *SettingService) GetOverloadCooldownSettings(ctx context.Context) (*OverloadCooldownSettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyOverloadCooldownSettings)

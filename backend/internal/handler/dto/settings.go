@@ -171,6 +171,24 @@ type ListSoraS3ProfilesResponse struct {
 	Items           []SoraS3Profile `json:"items"`
 }
 
+// ProviderTimeoutSettings 按上游供应商的超时配置 DTO
+type ProviderTimeoutSettings struct {
+	Enabled  bool           `json:"enabled"`
+	Timeouts map[string]int `json:"timeouts"`
+}
+
+// ProviderLatencyStats 上游供应商请求时长统计 DTO
+type ProviderLatencyStats struct {
+	Provider   string  `json:"provider"`
+	Count      int64   `json:"count"`
+	P50Ms      int     `json:"p50_ms"`
+	P90Ms      int     `json:"p90_ms"`
+	P99Ms      int     `json:"p99_ms"`
+	AvgMs      int     `json:"avg_ms"`
+	MaxMs      int     `json:"max_ms"`
+	TimeoutPct float64 `json:"timeout_pct"`
+}
+
 // OverloadCooldownSettings 529过载冷却配置 DTO
 type OverloadCooldownSettings struct {
 	Enabled         bool `json:"enabled"`

@@ -120,6 +120,11 @@ func (s *OpsService) IsMonitoringEnabled(ctx context.Context) bool {
 	}
 }
 
+// GetProviderLatencyStats returns latency percentile stats grouped by upstream_provider.
+func (s *OpsService) GetProviderLatencyStats(ctx context.Context, hours int) ([]*ProviderLatencyStats, error) {
+	return s.opsRepo.GetProviderLatencyStats(ctx, hours)
+}
+
 func (s *OpsService) RecordError(ctx context.Context, entry *OpsInsertErrorLogInput, rawRequestBody []byte) error {
 	prepared, ok, err := s.prepareErrorLogInput(ctx, entry, rawRequestBody)
 	if err != nil {

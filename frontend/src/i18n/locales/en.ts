@@ -4585,6 +4585,28 @@ export default {
       failedToSendTestEmail: 'Failed to send test email'
     },
 
+    // Provider Timeout Config
+    providerTimeout: {
+      title: 'Provider Timeouts',
+      description: 'View latency stats per upstream provider and configure individual timeout thresholds',
+      hours1: 'Last 1 hour',
+      hours6: 'Last 6 hours',
+      hours24: 'Last 24 hours',
+      hours72: 'Last 3 days',
+      hours168: 'Last 7 days',
+      noStats: 'No stats available — not enough request data yet',
+      columns: {
+        provider: 'Provider',
+        count: 'Requests',
+        timeout: 'Timeout(s)'
+      },
+      enableLabel: 'Enable per-provider timeouts',
+      enableHint: 'When enabled, configured providers use individual timeouts; others use the global default',
+      unit: 'Timeout unit: seconds (range 10–600)',
+      defaultPlaceholder: 'Default',
+      saveSuccess: 'Provider timeout settings saved'
+    },
+
     // Error Passthrough Rules
     errorPassthrough: {
       title: 'Error Passthrough Rules',
