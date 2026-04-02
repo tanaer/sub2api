@@ -217,6 +217,20 @@
           <template #cell-status="{ row }">
             <AccountStatusIndicator :account="row" @show-temp-unsched="handleShowTempUnsched" />
           </template>
+          <template #cell-health_score="{ row }">
+            <span
+              v-if="typeof row.health_score === 'number'"
+              class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="row.health_score >= 90 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                : row.health_score >= 70 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                : row.health_score >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'"
+              :title="`${t('admin.accounts.columns.healthScore')}: ${row.health_score}%`"
+            >
+              {{ row.health_score }}%
+            </span>
+            <span v-else class="text-xs text-gray-400 dark:text-gray-500">-</span>
+          </template>
           <template #cell-schedulable="{ row }">
             <button @click="handleToggleSchedulable(row)" :disabled="togglingSchedulable === row.id" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-dark-800" :class="[row.schedulable ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500']" :title="row.schedulable ? t('admin.accounts.schedulableEnabled') : t('admin.accounts.schedulableDisabled')">
               <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out" :class="[row.schedulable ? 'translate-x-4' : 'translate-x-0']" />
@@ -750,6 +764,7 @@ const shouldReplaceAutoRefreshRow = (current: Account, next: Account) => {
   return (
     current.updated_at !== next.updated_at ||
     current.current_concurrency !== next.current_concurrency ||
+    current.health_score !== next.health_score ||
     current.current_window_cost !== next.current_window_cost ||
     current.active_sessions !== next.active_sessions ||
     current.schedulable !== next.schedulable ||
@@ -918,6 +933,7 @@ const allColumns = computed(() => {
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
+    { key: 'health_score', label: t('admin.accounts.columns.healthScore'), sortable: true },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
     { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
   ]
@@ -1182,6 +1198,7 @@ const accountMatchesCurrentFilters = (account: Account) => {
 const mergeRuntimeFields = (oldAccount: Account, updatedAccount: Account): Account => ({
   ...updatedAccount,
   current_concurrency: updatedAccount.current_concurrency ?? oldAccount.current_concurrency,
+  health_score: updatedAccount.health_score ?? oldAccount.health_score,
   current_window_cost: updatedAccount.current_window_cost ?? oldAccount.current_window_cost,
   active_sessions: updatedAccount.active_sessions ?? oldAccount.active_sessions
 })

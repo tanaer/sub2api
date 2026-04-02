@@ -161,7 +161,8 @@ type CheckMixedChannelRequest struct {
 // AccountWithConcurrency extends Account with real-time concurrency info
 type AccountWithConcurrency struct {
 	*dto.Account
-	CurrentConcurrency int `json:"current_concurrency"`
+	CurrentConcurrency int  `json:"current_concurrency"`
+	HealthScore        *int `json:"health_score,omitempty"` // 账号健康分数（0-100），仅当有统计数据时返回
 	// 以下字段仅对 Anthropic OAuth/SetupToken 账号有效，且仅在启用相应功能时返回
 	CurrentWindowCost *float64 `json:"current_window_cost,omitempty"` // 当前窗口费用
 	ActiveSessions    *int     `json:"active_sessions,omitempty"`     // 当前活跃会话数
@@ -208,6 +209,13 @@ func (h *AccountHandler) buildAccountResponseWithRuntime(ctx context.Context, ac
 			if rpm, err := h.rpmCache.GetRPM(ctx, account.ID); err == nil {
 				item.CurrentRPM = &rpm
 			}
+		}
+	}
+
+	if h.rateLimitService != nil {
+		if ht := h.rateLimitService.HealthTracker(); ht != nil {
+			score := ht.HealthScore(account.ID)
+			item.HealthScore = &score
 		}
 	}
 
@@ -364,6 +372,14 @@ func (h *AccountHandler) List(c *gin.Context) {
 		if rpmCounts != nil {
 			if rpm, ok := rpmCounts[acc.ID]; ok {
 				item.CurrentRPM = &rpm
+			}
+		}
+
+		// 添加健康分数
+		if h.rateLimitService != nil {
+			if ht := h.rateLimitService.HealthTracker(); ht != nil {
+				score := ht.HealthScore(acc.ID)
+				item.HealthScore = &score
 			}
 		}
 

@@ -2056,6 +2056,7 @@ export default {
         billingRateMultiplier: '账号倍率',
         weight: '权重',
         status: '状态',
+        healthScore: '健康度',
         schedulable: '调度',
         todayStats: '今日统计',
         groups: '分组',

@@ -780,6 +780,7 @@ export interface Account {
   quota_weekly_reset_at?: string | null
 
   // 运行时状态（仅当启用对应限制时返回）
+  health_score?: number | null // 账号健康分数（0-100）
   current_window_cost?: number | null // 当前窗口费用
   active_sessions?: number | null // 当前活跃会话数
   current_rpm?: number | null // 当前分钟 RPM 计数

@@ -2018,6 +2018,7 @@ export default {
         billingRateMultiplier: 'Billing Rate',
         weight: 'Weight',
         status: 'Status',
+        healthScore: 'Health',
         schedulable: 'Schedulable',
         todayStats: 'Today Stats',
         groups: 'Groups',
