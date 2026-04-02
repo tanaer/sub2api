@@ -258,6 +258,69 @@ type ProviderLatencyStats struct {
 	TimeoutPct float64 `json:"timeout_pct"` // 超时比例（%）
 }
 
+// SLAReport 运维监控 SLA 报告
+type SLAReport struct {
+	ClientMetrics   SLAClientMetrics   `json:"client_metrics"`
+	FailoverMetrics SLAFailoverMetrics `json:"failover_metrics"`
+	UpstreamErrors  []UpstreamErrorStat  `json:"upstream_errors"`
+	ClientErrors    []ClientErrorStat    `json:"client_errors"`
+	FailoverPaths   []FailoverPath       `json:"failover_paths"`
+	ProviderLatency []ProviderSLALatency `json:"provider_latency"`
+}
+
+type SLAClientMetrics struct {
+	Successful              int64   `json:"successful"`
+	UsageLogFailed          int64   `json:"usage_log_failed"`
+	ClientErrors            int64   `json:"client_errors"`
+	RecoveredUpstreamErrors int64   `json:"recovered_upstream_errors"`
+	TotalRequests           int64   `json:"total_requests"`
+	SuccessRate             float64 `json:"success_rate"`
+}
+
+type SLAFailoverMetrics struct {
+	TotalWithFailover      int64   `json:"total_with_failover"`
+	AvgAttempts            float64 `json:"avg_attempts"`
+	MaxAttempts            int     `json:"max_attempts"`
+	RecoveredAfterFailover int64   `json:"recovered_after_failover"`
+	FailedAfterFailover    int64   `json:"failed_after_failover"`
+	FailoverSuccessRate    float64 `json:"failover_success_rate"`
+}
+
+type UpstreamErrorStat struct {
+	Account        string `json:"account"`
+	Provider       string `json:"provider"`
+	UpstreamStatus int    `json:"upstream_status"`
+	Total          int64  `json:"total"`
+	Recovered      int64  `json:"recovered"`
+	ClientFacing   int64  `json:"client_facing"`
+}
+
+type ClientErrorStat struct {
+	StatusCode   int    `json:"status_code"`
+	ErrorPhase   string `json:"error_phase"`
+	ErrorMessage string `json:"error_message"`
+	Count        int64  `json:"count"`
+}
+
+type FailoverPath struct {
+	RequestID        *string `json:"request_id"`
+	Model            *string `json:"model"`
+	FinalStatus      int     `json:"final_status"`
+	FinalError       *string `json:"final_error"`
+	UpstreamErrorsRaw string `json:"upstream_errors"`
+	DurationMs       int     `json:"duration_ms"`
+	CreatedAt        any     `json:"created_at"`
+}
+
+type ProviderSLALatency struct {
+	Provider  string `json:"provider"`
+	Total     int64  `json:"total"`
+	P50Ms     int    `json:"p50_ms"`
+	P90Ms     int    `json:"p90_ms"`
+	P99Ms     int    `json:"p99_ms"`
+	TTFBAvgMs *int   `json:"ttfb_avg_ms"`
+}
+
 // OverloadCooldownSettings 529过载冷却配置
 type OverloadCooldownSettings struct {
 	// Enabled 是否在收到529时暂停账号调度

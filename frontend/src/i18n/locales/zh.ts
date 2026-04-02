@@ -4746,6 +4746,42 @@ export default {
     },
 
     // Provider Timeout Config
+    sla: {
+      title: 'SLA 服务质量监控',
+      description: '查看客户端请求成功率、故障转移路径、上游错误和真实返回给客户端的错误',
+      timeRange: '时间范围',
+      successRate: '客户端成功率',
+      clientErrors: '客户端错误',
+      failedToClient: '返回给客户端的错误',
+      failoverSaved: '故障转移挽救',
+      recoveredByFailover: '通过故障转移恢复',
+      failoverRate: '故障转移率',
+      failoverEvents: '次故障转移',
+      failoverAvg: '平均切换',
+      failoverMax: '最大切换',
+      account: '账号',
+      provider: '供应商',
+      upstreamStatus: '上游状态码',
+      total: '总数',
+      recovered: '已恢复',
+      clientFacing: '客户端可见',
+      statusCode: '状态码',
+      phase: '阶段',
+      errorMessage: '错误信息',
+      count: '次数',
+      time: '时间',
+      model: '模型',
+      finalResult: '最终结果',
+      failoverChain: '故障转移链',
+      requests: '请求数',
+      noData: '暂无数据',
+      tab: {
+        upstream: '上游错误',
+        clientErrors: '客户端错误',
+        failover: '故障转移路径',
+        latency: '延迟统计'
+      }
+    },
     providerTimeout: {
       title: '供应商超时配置',
       description: '查看各上游供应商的请求时长统计，并配置每个供应商的响应超时时间',

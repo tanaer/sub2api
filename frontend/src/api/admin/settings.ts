@@ -295,6 +295,65 @@ export async function getProviderLatencyStats(
   return data
 }
 
+// ==================== SLA Report ====================
+
+export interface SLAReport {
+  client_metrics: {
+    successful: number
+    usage_log_failed: number
+    client_errors: number
+    recovered_upstream_errors: number
+    total_requests: number
+    success_rate: number
+  }
+  failover_metrics: {
+    total_with_failover: number
+    avg_attempts: number
+    max_attempts: number
+    recovered_after_failover: number
+    failed_after_failover: number
+    failover_success_rate: number
+  }
+  upstream_errors: Array<{
+    account: string
+    provider: string
+    upstream_status: number
+    total: number
+    recovered: number
+    client_facing: number
+  }>
+  client_errors: Array<{
+    status_code: number
+    error_phase: string
+    error_message: string
+    count: number
+  }>
+  failover_paths: Array<{
+    request_id: string | null
+    model: string | null
+    final_status: number
+    final_error: string | null
+    upstream_errors: string
+    duration_ms: number
+    created_at: string
+  }>
+  provider_latency: Array<{
+    provider: string
+    total: number
+    p50_ms: number
+    p90_ms: number
+    p99_ms: number
+    ttfb_avg_ms: number | null
+  }>
+}
+
+export async function getSLAReport(hours: number = 1): Promise<SLAReport> {
+  const { data } = await apiClient.get<SLAReport>('/admin/settings/sla-report', {
+    params: { hours },
+  })
+  return data
+}
+
 // ==================== Overload Cooldown Settings ====================
 
 /**
@@ -584,6 +643,7 @@ export const settingsAPI = {
   getProviderTimeoutSettings,
   updateProviderTimeoutSettings,
   getProviderLatencyStats,
+  getSLAReport,
   getOverloadCooldownSettings,
   updateOverloadCooldownSettings,
   getStreamTimeoutSettings,

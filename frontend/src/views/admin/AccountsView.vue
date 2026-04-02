@@ -83,6 +83,16 @@
                 <span class="hidden md:inline">{{ t('admin.providerTimeout.title') }}</span>
               </button>
 
+              <!-- SLA Monitor -->
+              <button
+                @click="showSLAMonitor = true"
+                class="btn btn-secondary"
+                :title="t('admin.sla.title')"
+              >
+                <Icon name="chart" size="md" class="mr-1.5" />
+                <span class="hidden md:inline">{{ t('admin.sla.title') }}</span>
+              </button>
+
               <!-- TLS Fingerprint Profiles -->
               <button
                 @click="showTLSFingerprintProfiles = true"
@@ -322,6 +332,7 @@
     <ErrorPassthroughRulesModal :show="showErrorPassthrough" @close="showErrorPassthrough = false" />
     <TLSFingerprintProfilesModal :show="showTLSFingerprintProfiles" @close="showTLSFingerprintProfiles = false" />
     <ProviderTimeoutModal :show="showProviderTimeout" @close="showProviderTimeout = false" />
+    <SLAMonitorModal :show="showSLAMonitor" @close="showSLAMonitor = false" />
   </AppLayout>
 </template>
 
@@ -361,6 +372,7 @@ import Icon from '@/components/icons/Icon.vue'
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import ProviderTimeoutModal from '@/components/admin/ProviderTimeoutModal.vue'
+import SLAMonitorModal from '@/components/admin/SLAMonitorModal.vue'
 import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import type { Account, AccountPlatform, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel } from '@/types'
@@ -403,6 +415,7 @@ const showStats = ref(false)
 const showErrorPassthrough = ref(false)
 const showTLSFingerprintProfiles = ref(false)
 const showProviderTimeout = ref(false)
+const showSLAMonitor = ref(false)
 const createTemplateAcc = ref<Account | null>(null)
 const edAcc = ref<Account | null>(null)
 const tempUnschedAcc = ref<Account | null>(null)

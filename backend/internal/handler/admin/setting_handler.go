@@ -1227,6 +1227,31 @@ func (h *SettingHandler) GetProviderLatencyStats(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// GetSLAReport returns a comprehensive SLA monitoring report.
+// GET /api/v1/admin/settings/sla-report?hours=1
+func (h *SettingHandler) GetSLAReport(c *gin.Context) {
+	hours := 1
+	if v := c.Query("hours"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 1 && parsed <= 168 {
+			hours = parsed
+		}
+	}
+
+	if h.opsService == nil {
+		response.Error(c, 500, "OPS service not available")
+		return
+	}
+
+	report, err := h.opsService.GetSLAReport(c.Request.Context(), hours)
+	if err != nil {
+		log.Printf("[SettingHandler] GetSLAReport error: %v", err)
+		response.Error(c, 500, "Failed to generate SLA report")
+		return
+	}
+
+	response.Success(c, report)
+}
+
 // GetOverloadCooldownSettings 获取529过载冷却配置
 // GET /api/v1/admin/settings/overload-cooldown
 func (h *SettingHandler) GetOverloadCooldownSettings(c *gin.Context) {

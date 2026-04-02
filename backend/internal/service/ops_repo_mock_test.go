@@ -109,6 +109,10 @@ func (m *opsRepoMock) GetProviderLatencyStats(ctx context.Context, hours int) ([
 	return nil, nil
 }
 
+func (m *opsRepoMock) GetSLAReport(ctx context.Context, hours int) (*SLAReport, error) {
+	return &SLAReport{}, nil
+}
+
 func (m *opsRepoMock) GetLatencyHistogram(ctx context.Context, filter *OpsDashboardFilter) (*OpsLatencyHistogramResponse, error) {
 	return &OpsLatencyHistogramResponse{}, nil
 }

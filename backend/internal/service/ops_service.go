@@ -125,6 +125,26 @@ func (s *OpsService) GetProviderLatencyStats(ctx context.Context, hours int) ([]
 	return s.opsRepo.GetProviderLatencyStats(ctx, hours)
 }
 
+// GetSLAReport returns a comprehensive SLA monitoring report.
+func (s *OpsService) GetSLAReport(ctx context.Context, hours int) (*SLAReport, error) {
+	report, err := s.opsRepo.GetSLAReport(ctx, hours)
+	if err != nil {
+		return nil, err
+	}
+	// Compute derived metrics
+	m := &report.ClientMetrics
+	m.TotalRequests = m.Successful + m.ClientErrors + m.UsageLogFailed
+	if m.TotalRequests > 0 {
+		m.SuccessRate = float64(m.Successful) / float64(m.TotalRequests) * 100
+	}
+	f := &report.FailoverMetrics
+	totalFailover := f.RecoveredAfterFailover + f.FailedAfterFailover
+	if totalFailover > 0 {
+		f.FailoverSuccessRate = float64(f.RecoveredAfterFailover) / float64(totalFailover) * 100
+	}
+	return report, nil
+}
+
 func (s *OpsService) RecordError(ctx context.Context, entry *OpsInsertErrorLogInput, rawRequestBody []byte) error {
 	prepared, ok, err := s.prepareErrorLogInput(ctx, entry, rawRequestBody)
 	if err != nil {

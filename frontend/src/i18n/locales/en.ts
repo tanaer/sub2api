@@ -4586,6 +4586,42 @@ export default {
     },
 
     // Provider Timeout Config
+    sla: {
+      title: 'SLA Monitor',
+      description: 'View client success rate, failover paths, upstream errors, and real errors returned to clients',
+      timeRange: 'Time Range',
+      successRate: 'Client Success Rate',
+      clientErrors: 'Client Errors',
+      failedToClient: 'Errors returned to clients',
+      failoverSaved: 'Failover Saved',
+      recoveredByFailover: 'Recovered by failover',
+      failoverRate: 'Failover Rate',
+      failoverEvents: 'failover events',
+      failoverAvg: 'Avg switches',
+      failoverMax: 'Max switches',
+      account: 'Account',
+      provider: 'Provider',
+      upstreamStatus: 'Upstream Status',
+      total: 'Total',
+      recovered: 'Recovered',
+      clientFacing: 'Client-Facing',
+      statusCode: 'Status Code',
+      phase: 'Phase',
+      errorMessage: 'Error Message',
+      count: 'Count',
+      time: 'Time',
+      model: 'Model',
+      finalResult: 'Final Result',
+      failoverChain: 'Failover Chain',
+      requests: 'Requests',
+      noData: 'No data',
+      tab: {
+        upstream: 'Upstream Errors',
+        clientErrors: 'Client Errors',
+        failover: 'Failover Paths',
+        latency: 'Latency Stats'
+      }
+    },
     providerTimeout: {
       title: 'Provider Timeouts',
       description: 'View latency stats per upstream provider and configure individual timeout thresholds',
