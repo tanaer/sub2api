@@ -740,6 +740,33 @@ func (a *Account) ShouldStripAnthropicExtensions() bool {
 	return p != "" && p != "native"
 }
 
+// MaxTokensCap 返回账号的 max_tokens 上限。
+// 优先使用 Extra["max_tokens_cap"]，否则对非 native 上游默认 32768。
+// 返回 0 表示不限制。
+func (a *Account) MaxTokensCap() int {
+	if a == nil {
+		return 0
+	}
+	// 优先读取账号级配置
+	if v, ok := a.Extra["max_tokens_cap"]; ok {
+		switch n := v.(type) {
+		case float64:
+			if int(n) > 0 {
+				return int(n)
+			}
+		case int:
+			if n > 0 {
+				return n
+			}
+		}
+	}
+	// 非 native 上游默认 clamp（GLM/MiniMax/其他第三方 API 通常不支持 64000）
+	if a.ShouldStripAnthropicExtensions() {
+		return 32768
+	}
+	return 0
+}
+
 func (a *Account) IsMiniMaxAnthropicAPIKey() bool {
 	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey {
 		return false

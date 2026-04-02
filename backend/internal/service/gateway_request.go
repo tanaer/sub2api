@@ -1208,3 +1208,22 @@ func StripAnthropicExtensionsForGLM(body []byte) []byte {
 
 	return out
 }
+
+// ClampMaxTokens 将请求中的 max_tokens 值截断到指定上限。
+// 用于适配上游 API 的 max_tokens 限制（例如 GLM/MiniMax 最大 32768）。
+func ClampMaxTokens(body []byte, cap int) []byte {
+	if cap <= 0 || len(body) == 0 {
+		return body
+	}
+	v := gjson.GetBytes(body, "max_tokens")
+	if !v.Exists() || v.Type != gjson.Number {
+		return body
+	}
+	if int(v.Int()) <= cap {
+		return body
+	}
+	if result, err := sjson.SetBytes(body, "max_tokens", cap); err == nil {
+		return result
+	}
+	return body
+}

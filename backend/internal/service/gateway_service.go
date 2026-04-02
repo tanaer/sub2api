@@ -3837,7 +3837,7 @@ func (s *GatewayService) shouldRetryUpstreamError(account *Account, statusCode i
 // shouldFailoverUpstreamError determines whether an upstream error should trigger account failover.
 func (s *GatewayService) shouldFailoverUpstreamError(statusCode int) bool {
 	switch statusCode {
-	case 401, 403, 429, 529:
+	case 400, 401, 403, 429, 529:
 		return true
 	default:
 		return statusCode >= 500
@@ -4405,6 +4405,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	// Native Anthropic / Antigravity support these fields; all third-party Anthropic-compatible APIs reject them.
 	if IsGLMModel(reqModel) || account.ShouldStripAnthropicExtensions() {
 		body = StripAnthropicExtensionsForGLM(body)
+	}
+	// Pre-filter: clamp max_tokens for non-native providers that have lower limits than Claude.
+	if cap := account.MaxTokensCap(); cap > 0 {
+		body = ClampMaxTokens(body, cap)
 	}
 	// Pre-filter: strip empty text blocks (including nested in tool_result) to prevent upstream 400.
 	body = StripEmptyTextBlocks(body)

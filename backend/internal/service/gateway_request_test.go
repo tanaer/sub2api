@@ -101,6 +101,30 @@ func TestStripMiniMaxAnthropicIgnoredFieldsForRetry(t *testing.T) {
 	require.Equal(t, "glm-5.1", gjson.GetBytes(out, "model").String())
 }
 
+func TestClampMaxTokens(t *testing.T) {
+	t.Run("clamps when exceeds cap", func(t *testing.T) {
+		body := []byte(`{"max_tokens":64000,"model":"glm-5.1"}`)
+		out := ClampMaxTokens(body, 32768)
+		require.Equal(t, int64(32768), gjson.GetBytes(out, "max_tokens").Int())
+		require.Equal(t, "glm-5.1", gjson.GetBytes(out, "model").String())
+	})
+	t.Run("no-op when within cap", func(t *testing.T) {
+		body := []byte(`{"max_tokens":8192,"model":"glm-5.1"}`)
+		out := ClampMaxTokens(body, 32768)
+		require.Equal(t, int64(8192), gjson.GetBytes(out, "max_tokens").Int())
+	})
+	t.Run("no-op when no max_tokens", func(t *testing.T) {
+		body := []byte(`{"model":"glm-5.1"}`)
+		out := ClampMaxTokens(body, 32768)
+		require.Equal(t, string(body), string(out))
+	})
+	t.Run("no-op when cap is 0", func(t *testing.T) {
+		body := []byte(`{"max_tokens":64000}`)
+		out := ClampMaxTokens(body, 0)
+		require.Equal(t, int64(64000), gjson.GetBytes(out, "max_tokens").Int())
+	})
+}
+
 func TestParseGatewayRequest_SystemNull(t *testing.T) {
 	body := []byte(`{"model":"claude-3","system":null}`)
 	parsed, err := ParseGatewayRequest(body, "")
