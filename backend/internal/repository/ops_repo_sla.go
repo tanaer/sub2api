@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 )
 
 func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service.SLAReport, error) {
@@ -155,6 +157,9 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 		report.FailoverPaths = append(report.FailoverPaths, fp)
 	}
 
+	// Backfill account names in failover paths from accounts table
+	report.FailoverPaths = r.backfillFailoverAccountNames(ctx, report.FailoverPaths)
+
 	// === 6. Per-provider latency ===
 	rows4, err := r.db.QueryContext(ctx, `
 		SELECT
@@ -235,4 +240,95 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	}
 
 	return report, nil
+}
+
+// backfillFailoverAccountNames parses upstream_errors JSON in each FailoverPath,
+// collects account IDs that are missing names, looks them up from the accounts table,
+// and re-serializes the JSON with names filled in.
+func (r *opsRepository) backfillFailoverAccountNames(ctx context.Context, paths []service.FailoverPath) []service.FailoverPath {
+	if len(paths) == 0 {
+		return paths
+	}
+
+	// Collect all account IDs that need name lookup
+	needIDs := make(map[int64]struct{})
+	for _, fp := range paths {
+		var events []map[string]any
+		if err := json.Unmarshal([]byte(fp.UpstreamErrorsRaw), &events); err != nil {
+			continue
+		}
+		for _, ev := range events {
+			name, _ := ev["account_name"].(string)
+			if name != "" {
+				continue
+			}
+			var accountID int64
+			switch v := ev["account_id"].(type) {
+			case float64:
+				accountID = int64(v)
+			case int64:
+				accountID = v
+			}
+			if accountID > 0 {
+				needIDs[accountID] = struct{}{}
+			}
+		}
+	}
+	if len(needIDs) == 0 {
+		return paths
+	}
+
+	// Batch lookup account names
+	nameMap := make(map[int64]string, len(needIDs))
+	ids := make([]int64, 0, len(needIDs))
+	for id := range needIDs {
+		ids = append(ids, id)
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name FROM accounts WHERE id = ANY($1)`, pq.Array(ids))
+	if err != nil {
+		return paths
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err == nil {
+			nameMap[id] = name
+		}
+	}
+
+	// Backfill names into JSON
+	for i, fp := range paths {
+		var events []map[string]any
+		if err := json.Unmarshal([]byte(fp.UpstreamErrorsRaw), &events); err != nil {
+			continue
+		}
+		changed := false
+		for _, ev := range events {
+			name, _ := ev["account_name"].(string)
+			if name != "" {
+				continue
+			}
+			var accountID int64
+			switch v := ev["account_id"].(type) {
+			case float64:
+				accountID = int64(v)
+			case int64:
+				accountID = v
+			}
+			if accountID > 0 {
+				if n, ok := nameMap[accountID]; ok && n != "" {
+					ev["account_name"] = n
+					changed = true
+				}
+			}
+		}
+		if changed {
+			if raw, err := json.Marshal(events); err == nil {
+				paths[i].UpstreamErrorsRaw = string(raw)
+			}
+		}
+	}
+
+	return paths
 }

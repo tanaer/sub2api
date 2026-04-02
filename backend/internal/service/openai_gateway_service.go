@@ -3306,8 +3306,9 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	if s.rateLimitService != nil {
 		shouldDisable = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	}
+	shouldFailover := shouldDisable || s.shouldFailoverUpstreamError(resp.StatusCode)
 	kind := "http_error"
-	if shouldDisable {
+	if shouldFailover {
 		kind = "failover"
 	}
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -3321,7 +3322,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
 	})
-	if shouldDisable {
+	if shouldFailover {
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,
 			ResponseBody:           body,
@@ -3456,8 +3457,9 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			c.Request.Context(), account, resp.StatusCode, resp.Header, body,
 		)
 	}
+	shouldFailover := shouldDisable || s.shouldFailoverUpstreamError(resp.StatusCode)
 	kind := "http_error"
-	if shouldDisable {
+	if shouldFailover {
 		kind = "failover"
 	}
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -3471,7 +3473,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		Message:            upstreamMsg,
 		Detail:             upstreamDetail,
 	})
-	if shouldDisable {
+	if shouldFailover {
 		return nil, &UpstreamFailoverError{
 			StatusCode:             resp.StatusCode,
 			ResponseBody:           body,

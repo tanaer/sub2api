@@ -6977,7 +6977,7 @@ func (s *GatewayService) handleErrorResponse(ctx context.Context, resp *http.Res
 	if s.rateLimitService != nil {
 		shouldDisable = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	}
-	if shouldDisable {
+	if shouldDisable || s.shouldFailoverUpstreamError(resp.StatusCode) {
 		return nil, &UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: body}
 	}
 
