@@ -1846,7 +1846,7 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 
 func (s *GatewayService) tryAcquireByLegacyOrder(ctx context.Context, candidates []*Account, groupID *int64, sessionHash string, preferOAuth bool) (*AccountSelectionResult, bool) {
 	ordered := append([]*Account(nil), candidates...)
-	sortAccountsByPriorityAndLastUsed(ordered, preferOAuth)
+	sortAccountsWithHealthWeighting(ordered, preferOAuth, s.accountHealthScore)
 
 	for _, acc := range ordered {
 		result, err := s.tryAcquireAccountSlot(ctx, acc.ID, acc.Concurrency)
@@ -2704,6 +2704,42 @@ func selectByLRU(accounts []accountWithLoad, preferOAuth bool) *accountWithLoad 
 	return &accounts[selectedIdx]
 }
 
+// sortAccountsWithHealthWeighting 按健康度加权优先级排序。
+// healthScoreFn 返回账号健康分数（0-100），用于调整有效优先级。
+func sortAccountsWithHealthWeighting(accounts []*Account, preferOAuth bool, healthScoreFn func(int64) int) {
+	effectivePriority := func(acc *Account) int {
+		p := acc.Priority
+		score := healthScoreFn(acc.ID)
+		if score < 50 {
+			p += 2
+		} else if score < 70 {
+			p += 1
+		}
+		return p
+	}
+	sort.SliceStable(accounts, func(i, j int) bool {
+		a, b := accounts[i], accounts[j]
+		ap, bp := effectivePriority(a), effectivePriority(b)
+		if ap != bp {
+			return ap < bp
+		}
+		switch {
+		case a.LastUsedAt == nil && b.LastUsedAt != nil:
+			return true
+		case a.LastUsedAt != nil && b.LastUsedAt == nil:
+			return false
+		case a.LastUsedAt == nil && b.LastUsedAt == nil:
+			if preferOAuth && a.Type != b.Type {
+				return a.Type == AccountTypeOAuth
+			}
+			return false
+		default:
+			return a.LastUsedAt.Before(*b.LastUsedAt)
+		}
+	})
+	shuffleWithinPriorityAndLastUsed(accounts, preferOAuth)
+}
+
 func sortAccountsByPriorityAndLastUsed(accounts []*Account, preferOAuth bool) {
 	sort.SliceStable(accounts, func(i, j int) bool {
 		a, b := accounts[i], accounts[j]
@@ -2832,8 +2868,8 @@ func (s *GatewayService) sortCandidatesForFallback(accounts []*Account, preferOA
 		sortAccountsByPriorityOnly(accounts, preferOAuth)
 		shuffleWithinPriority(accounts)
 	} else {
-		// 默认按最后使用时间排序
-		sortAccountsByPriorityAndLastUsed(accounts, preferOAuth)
+		// 默认按最后使用时间排序（含健康度加权）
+		sortAccountsWithHealthWeighting(accounts, preferOAuth, s.accountHealthScore)
 	}
 }
 
@@ -2981,9 +3017,11 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 				selected = acc
 				continue
 			}
-			if acc.Priority < selected.Priority {
+			accP := s.healthAdjustedPriority(acc)
+			selP := s.healthAdjustedPriority(selected)
+			if accP < selP {
 				selected = acc
-			} else if acc.Priority == selected.Priority {
+			} else if accP == selP {
 				switch {
 				case acc.LastUsedAt == nil && selected.LastUsedAt != nil:
 					selected = acc
@@ -3089,9 +3127,11 @@ func (s *GatewayService) selectAccountForModelWithPlatform(ctx context.Context, 
 			selected = acc
 			continue
 		}
-		if acc.Priority < selected.Priority {
+		accP := s.healthAdjustedPriority(acc)
+		selP := s.healthAdjustedPriority(selected)
+		if accP < selP {
 			selected = acc
-		} else if acc.Priority == selected.Priority {
+		} else if accP == selP {
 			switch {
 			case acc.LastUsedAt == nil && selected.LastUsedAt != nil:
 				selected = acc
@@ -3235,9 +3275,11 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 				selected = acc
 				continue
 			}
-			if acc.Priority < selected.Priority {
+			accP := s.healthAdjustedPriority(acc)
+			selP := s.healthAdjustedPriority(selected)
+			if accP < selP {
 				selected = acc
-			} else if acc.Priority == selected.Priority {
+			} else if accP == selP {
 				switch {
 				case acc.LastUsedAt == nil && selected.LastUsedAt != nil:
 					selected = acc
@@ -3345,9 +3387,11 @@ func (s *GatewayService) selectAccountWithMixedScheduling(ctx context.Context, g
 			selected = acc
 			continue
 		}
-		if acc.Priority < selected.Priority {
+		accP := s.healthAdjustedPriority(acc)
+		selP := s.healthAdjustedPriority(selected)
+		if accP < selP {
 			selected = acc
-		} else if acc.Priority == selected.Priority {
+		} else if accP == selP {
 			switch {
 			case acc.LastUsedAt == nil && selected.LastUsedAt != nil:
 				selected = acc
@@ -4981,7 +5025,9 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	}
 
 	// 健康度追踪：记录成功
-	s.rateLimitService.RecordSuccess(account.ID)
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
 
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-request-id"),
@@ -5272,7 +5318,9 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 		usage = &ClaudeUsage{}
 	}
 
-	s.rateLimitService.RecordSuccess(account.ID)
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
 
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-request-id"),
@@ -5822,7 +5870,9 @@ func (s *GatewayService) forwardBedrock(
 		usage = &ClaudeUsage{}
 	}
 
-	s.rateLimitService.RecordSuccess(account.ID)
+	if s.rateLimitService != nil {
+		s.rateLimitService.RecordSuccess(account.ID)
+	}
 
 	return &ForwardResult{
 		RequestID:        resp.Header.Get("x-amzn-requestid"),
@@ -7061,7 +7111,9 @@ func (s *GatewayService) handleRetryExhaustedSideEffects(ctx context.Context, re
 
 func (s *GatewayService) handleFailoverSideEffects(ctx context.Context, resp *http.Response, account *Account) {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
+	if s.rateLimitService != nil {
+		s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
+	}
 }
 
 // handleRetryExhaustedError 处理重试耗尽后的错误

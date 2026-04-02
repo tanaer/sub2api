@@ -1265,30 +1265,50 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, accounts [
 //
 // isBetterAccount checks if candidate is better than current.
 // Rules: higher priority (lower value) wins; same priority: never used > least recently used.
+// accountHealthScore 返回账号健康分数（0-100）。
+func (s *OpenAIGatewayService) accountHealthScore(accountID int64) int {
+	if s.rateLimitService == nil {
+		return 100
+	}
+	ht := s.rateLimitService.HealthTracker()
+	if ht == nil {
+		return 100
+	}
+	return ht.HealthScore(accountID)
+}
+
+// healthAdjustedPriority 根据健康度调整有效优先级。
+func (s *OpenAIGatewayService) healthAdjustedPriority(acc *Account) int {
+	score := s.accountHealthScore(acc.ID)
+	p := acc.Priority
+	if score < 50 {
+		p += 2
+	} else if score < 70 {
+		p += 1
+	}
+	return p
+}
+
 func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool {
-	// 优先级更高（数值更小）
-	// Higher priority (lower value)
-	if candidate.Priority < current.Priority {
+	// 使用健康度加权优先级
+	candP := s.healthAdjustedPriority(candidate)
+	currP := s.healthAdjustedPriority(current)
+	if candP < currP {
 		return true
 	}
-	if candidate.Priority > current.Priority {
+	if candP > currP {
 		return false
 	}
 
 	// 同优先级，比较最后使用时间
-	// Same priority, compare last used time
 	switch {
 	case candidate.LastUsedAt == nil && current.LastUsedAt != nil:
-		// candidate 从未使用，优先
 		return true
 	case candidate.LastUsedAt != nil && current.LastUsedAt == nil:
-		// current 从未使用，保持
 		return false
 	case candidate.LastUsedAt == nil && current.LastUsedAt == nil:
-		// 都未使用，保持
 		return false
 	default:
-		// 都使用过，选择最久未使用的
 		return candidate.LastUsedAt.Before(*current.LastUsedAt)
 	}
 }
@@ -1444,7 +1464,7 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 	loadMap, err := s.concurrencyService.GetAccountsLoadBatch(ctx, accountLoads)
 	if err != nil {
 		ordered := append([]*Account(nil), candidates...)
-		sortAccountsByPriorityAndLastUsed(ordered, false)
+		sortAccountsWithHealthWeighting(ordered, false, s.accountHealthScore)
 		for _, acc := range ordered {
 			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel)
 			if fresh == nil {
@@ -1520,7 +1540,7 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 	}
 
 	// ============ Layer 3: Fallback wait ============
-	sortAccountsByPriorityAndLastUsed(candidates, false)
+	sortAccountsWithHealthWeighting(candidates, false, s.accountHealthScore)
 	for _, acc := range candidates {
 		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel)
 		if fresh == nil {
@@ -1690,7 +1710,9 @@ func (s *OpenAIGatewayService) shouldFailoverOpenAIUpstreamResponse(statusCode i
 
 func (s *OpenAIGatewayService) handleFailoverSideEffects(ctx context.Context, resp *http.Response, account *Account) {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
+	if s.rateLimitService != nil {
+		s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
+	}
 }
 
 // Forward forwards request to OpenAI API

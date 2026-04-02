@@ -464,7 +464,7 @@ func TestShouldFailoverUpstreamError(t *testing.T) {
 	require.True(t, svc.shouldFailoverUpstreamError(500))
 	require.True(t, svc.shouldFailoverUpstreamError(502))
 	require.False(t, svc.shouldFailoverUpstreamError(200))
-	require.False(t, svc.shouldFailoverUpstreamError(400))
+	require.True(t, svc.shouldFailoverUpstreamError(400))
 }
 
 func TestWithSoraTimeout_NilService(t *testing.T) {

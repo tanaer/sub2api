@@ -378,28 +378,50 @@ func (s *GeminiMessagesCompatService) buildPreCheckUsageResultMap(ctx context.Co
 //
 // isBetterGeminiAccount checks if candidate is better than current.
 // Rules: higher priority (lower value) wins; same priority: never used (OAuth > non-OAuth) > least recently used.
+// accountHealthScore 返回账号健康分数（0-100）。
+func (s *GeminiMessagesCompatService) accountHealthScore(accountID int64) int {
+	if s.rateLimitService == nil {
+		return 100
+	}
+	ht := s.rateLimitService.HealthTracker()
+	if ht == nil {
+		return 100
+	}
+	return ht.HealthScore(accountID)
+}
+
+// healthAdjustedPriority 根据健康度调整有效优先级。
+func (s *GeminiMessagesCompatService) healthAdjustedPriority(acc *Account) int {
+	score := s.accountHealthScore(acc.ID)
+	p := acc.Priority
+	if score < 50 {
+		p += 2
+	} else if score < 70 {
+		p += 1
+	}
+	return p
+}
+
 func (s *GeminiMessagesCompatService) isBetterGeminiAccount(candidate, current *Account) bool {
-	// 优先级更高（数值更小）
-	if candidate.Priority < current.Priority {
+	// 使用健康度加权优先级
+	candP := s.healthAdjustedPriority(candidate)
+	currP := s.healthAdjustedPriority(current)
+	if candP < currP {
 		return true
 	}
-	if candidate.Priority > current.Priority {
+	if candP > currP {
 		return false
 	}
 
 	// 同优先级，比较最后使用时间
 	switch {
 	case candidate.LastUsedAt == nil && current.LastUsedAt != nil:
-		// candidate 从未使用，优先
 		return true
 	case candidate.LastUsedAt != nil && current.LastUsedAt == nil:
-		// current 从未使用，保持
 		return false
 	case candidate.LastUsedAt == nil && current.LastUsedAt == nil:
-		// 都未使用，优先选择 OAuth 账号（更兼容 Code Assist 流程）
 		return candidate.Type == AccountTypeOAuth && current.Type != AccountTypeOAuth
 	default:
-		// 都使用过，选择最久未使用的
 		return candidate.LastUsedAt.Before(*current.LastUsedAt)
 	}
 }
