@@ -68,7 +68,7 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, hours int) (*service.S
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			COALESCE(a.name, 'unknown') AS account_name,
-			COALESCE(a.upstream_provider, a.platform, 'unknown') AS provider,
+			COALESCE(NULLIF(a.upstream_provider, ''), NULLIF(a.platform, ''), 'unknown') AS provider,
 			COALESCE(e.upstream_status_code, 0) AS upstream_status,
 			COUNT(*) AS total,
 			COUNT(*) FILTER (WHERE e.status_code = 200) AS recovered,
@@ -77,7 +77,7 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, hours int) (*service.S
 		LEFT JOIN accounts a ON a.id = e.account_id
 		WHERE e.created_at >= NOW() - $1::interval
 			AND e.error_phase = 'upstream'
-		GROUP BY a.name, COALESCE(a.upstream_provider, a.platform, 'unknown'), e.upstream_status_code
+		GROUP BY a.name, COALESCE(NULLIF(a.upstream_provider, ''), NULLIF(a.platform, ''), 'unknown'), e.upstream_status_code
 		ORDER BY total DESC
 		LIMIT 30
 	`, interval)
@@ -158,17 +158,17 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, hours int) (*service.S
 	// === 6. Per-provider latency ===
 	rows4, err := r.db.QueryContext(ctx, `
 		SELECT
-			COALESCE(a.upstream_provider, a.platform) AS provider,
+			COALESCE(a.upstream_provider, a.platform, 'unknown') AS provider,
 			COUNT(*) AS total,
-			ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY u.duration_ms))::int AS p50,
-			ROUND(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY u.duration_ms))::int AS p90,
-			ROUND(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY u.duration_ms))::int AS p99,
+			COALESCE(ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY u.duration_ms))::int, 0) AS p50,
+			COALESCE(ROUND(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY u.duration_ms))::int, 0) AS p90,
+			COALESCE(ROUND(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY u.duration_ms))::int, 0) AS p99,
 			ROUND(AVG(u.first_token_ms) FILTER (WHERE u.first_token_ms IS NOT NULL))::int AS ttfb_avg
 		FROM usage_logs u
 		JOIN accounts a ON a.id = u.account_id
 		WHERE u.created_at >= NOW() - $1::interval
 			AND u.duration_ms > 0
-		GROUP BY COALESCE(a.upstream_provider, a.platform)
+		GROUP BY COALESCE(a.upstream_provider, a.platform, 'unknown')
 		HAVING COUNT(*) >= 5
 		ORDER BY total DESC
 	`, interval)

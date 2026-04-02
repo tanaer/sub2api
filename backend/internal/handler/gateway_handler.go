@@ -378,6 +378,16 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						zap.Int64("account_id", account.ID),
 						zap.Int("max_waiting", selection.WaitPlan.MaxWaiting),
 					)
+					// 等待队列满时尝试 failover 到其他账号，而不是直接拒绝
+					fs.FailedAccountIDs[account.ID] = struct{}{}
+					if fs.SwitchCount < fs.MaxSwitches {
+						fs.SwitchCount++
+						reqLog.Info("gateway.account_wait_queue_full_failover",
+							zap.Int64("account_id", account.ID),
+							zap.Int("switch_count", fs.SwitchCount),
+						)
+						continue
+					}
 					h.handleStreamingAwareError(c, http.StatusTooManyRequests, "rate_limit_error", "Too many pending requests, please retry later", streamStarted)
 					return
 				}
@@ -402,6 +412,16 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if err != nil {
 					reqLog.Warn("gateway.account_slot_acquire_failed", zap.Int64("account_id", account.ID), zap.Error(err))
 					releaseWait()
+					// 账号并发超时时尝试 failover 到其他账号
+					fs.FailedAccountIDs[account.ID] = struct{}{}
+					if fs.SwitchCount < fs.MaxSwitches {
+						fs.SwitchCount++
+						reqLog.Info("gateway.account_concurrency_timeout_failover",
+							zap.Int64("account_id", account.ID),
+							zap.Int("switch_count", fs.SwitchCount),
+						)
+						continue
+					}
 					h.handleConcurrencyError(c, err, "account", streamStarted)
 					return
 				}
@@ -600,6 +620,16 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 						zap.Int64("account_id", account.ID),
 						zap.Int("max_waiting", selection.WaitPlan.MaxWaiting),
 					)
+					// 等待队列满时尝试 failover 到其他账号
+					fs.FailedAccountIDs[account.ID] = struct{}{}
+					if fs.SwitchCount < fs.MaxSwitches {
+						fs.SwitchCount++
+						reqLog.Info("gateway.account_wait_queue_full_failover",
+							zap.Int64("account_id", account.ID),
+							zap.Int("switch_count", fs.SwitchCount),
+						)
+						continue
+					}
 					h.handleStreamingAwareError(c, http.StatusTooManyRequests, "rate_limit_error", "Too many pending requests, please retry later", streamStarted)
 					return
 				}
@@ -624,6 +654,16 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if err != nil {
 					reqLog.Warn("gateway.account_slot_acquire_failed", zap.Int64("account_id", account.ID), zap.Error(err))
 					releaseWait()
+					// 账号并发超时时尝试 failover 到其他账号
+					fs.FailedAccountIDs[account.ID] = struct{}{}
+					if fs.SwitchCount < fs.MaxSwitches {
+						fs.SwitchCount++
+						reqLog.Info("gateway.account_concurrency_timeout_failover",
+							zap.Int64("account_id", account.ID),
+							zap.Int("switch_count", fs.SwitchCount),
+						)
+						continue
+					}
 					h.handleConcurrencyError(c, err, "account", streamStarted)
 					return
 				}

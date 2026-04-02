@@ -363,6 +363,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	}
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 
+	identityGuardMsg := newStreamingIdentityGuard(originalModel)
 	// resultWithUsage builds the final result snapshot.
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
@@ -395,6 +396,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			return false
 		}
 		rewriteResponsesStreamEventText(&event, originalModel)
+		rewriteResponsesStreamEventWithGuard(&event, identityGuardMsg)
 
 		// Extract usage from completion events
 		if (event.Type == "response.completed" || event.Type == "response.incomplete" || event.Type == "response.failed") &&

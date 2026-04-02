@@ -205,8 +205,21 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		_ = scheduleDecision
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 
-		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, reqStream, &streamStarted, reqLog)
+		accountReleaseFunc, acquired, accountBusy := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, reqStream, &streamStarted, reqLog)
 		if !acquired {
+			if accountBusy {
+				failedAccountIDs[account.ID] = struct{}{}
+				if switchCount < maxAccountSwitches {
+					switchCount++
+					reqLog.Info("openai_chat_completions.account_concurrency_failover",
+						zap.Int64("account_id", account.ID),
+						zap.Int("switch_count", switchCount),
+						zap.Int("max_switches", maxAccountSwitches),
+					)
+					continue
+				}
+				h.handleStreamingAwareError(c, http.StatusTooManyRequests, "rate_limit_error", "All accounts are busy, please retry later", streamStarted)
+			}
 			return
 		}
 

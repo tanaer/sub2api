@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 
@@ -209,6 +210,15 @@ func ParseOpsUpstreamErrors(raw string) ([]*OpsUpstreamErrorEvent, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// safeUpstreamURLFromResp extracts the upstream URL from an *http.Response,
+// returning "" if resp or resp.Request is nil.
+func safeUpstreamURLFromResp(resp *http.Response) string {
+	if resp == nil || resp.Request == nil || resp.Request.URL == nil {
+		return ""
+	}
+	return safeUpstreamURL(resp.Request.URL.String())
 }
 
 // safeUpstreamURL returns scheme + host + path from a URL, stripping query/fragment

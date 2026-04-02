@@ -1018,20 +1018,20 @@ func parseOpsErrorResponse(body []byte) parsedOpsError {
 	}
 
 	// Claude/OpenAI-style gateway error: { type:"error", error:{ type, message } }
+	// Gemini/Google-style: { error: { code, message, status } }
+	// Sora/Antigravity: { error: { message } }
 	if errObj, ok := m["error"].(map[string]any); ok {
 		t, _ := errObj["type"].(string)
 		msg, _ := errObj["message"].(string)
-		// Gemini googleError also uses "error": { code, message, status }
-		if msg == "" {
-			if v, ok := errObj["message"]; ok {
-				msg, _ = v.(string)
+		if t == "" {
+			// Gemini/Google errors use "status" instead of "type" (e.g. "RESOURCE_EXHAUSTED").
+			if s, ok := errObj["status"].(string); ok && s != "" {
+				t = s
+			} else {
+				t = "api_error"
 			}
 		}
-		if t == "" {
-			// Gemini error does not have "type" field.
-			t = "api_error"
-		}
-		// For gemini error, capture numeric code as string for business-limited mapping if needed.
+		// Capture numeric code for Gemini or string code for other providers.
 		var code string
 		if v, ok := errObj["code"]; ok {
 			switch n := v.(type) {
@@ -1039,9 +1039,16 @@ func parseOpsErrorResponse(body []byte) parsedOpsError {
 				code = strconvItoa(int(n))
 			case int:
 				code = strconvItoa(n)
+			case string:
+				code = n
 			}
 		}
 		return parsedOpsError{ErrorType: t, Message: msg, Code: code}
+	}
+
+	// ChatGPT internal API: { detail: "..." }
+	if detail, ok := m["detail"].(string); ok && strings.TrimSpace(detail) != "" {
+		return parsedOpsError{ErrorType: "api_error", Message: detail}
 	}
 
 	// APIKeyAuth-style: { code:"INSUFFICIENT_BALANCE", message:"..." }

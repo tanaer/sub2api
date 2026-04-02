@@ -14,10 +14,22 @@ var modelIdentityResponseHitWords = []string{
 	"kimi",
 	"moonshot",
 	"minimax",
+	"abab",
 	"qwen",
 	"阿里",
 	"doubao",
 	"deepseek",
+	"glm",
+	"chatglm",
+	"智谱",
+	"ernie",
+	"文心",
+	"hunyuan",
+	"混元",
+	"grok",
+	"阶跃星辰",
+	"yi-lightning",
+	"零一万物",
 }
 
 func containsForbiddenIdentityHitWord(text string) bool {
@@ -248,4 +260,137 @@ func rewriteResponsesContentTextFieldsAtPath(body []byte, path, requestedModel s
 		updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.text", path, i), requestedModel, changed)
 	}
 	return updated, changed
+}
+
+// streamingIdentityGuard accumulates streaming delta text to detect
+// forbidden identity keywords that may be split across multiple SSE events.
+// Once a hit word is detected, it rewrites the triggering delta and blanks
+// all subsequent deltas.
+type streamingIdentityGuard struct {
+	buf            strings.Builder
+	triggered      bool
+	replied        bool
+	requestedModel string
+}
+
+func newStreamingIdentityGuard(requestedModel string) *streamingIdentityGuard {
+	return &streamingIdentityGuard{requestedModel: requestedModel}
+}
+
+const identityGuardWindowSize = 48
+
+// feedDelta accumulates deltaText and checks for forbidden hit words.
+// Returns (replacement, shouldRewrite).
+//   - If no hit word found yet: ("", false)
+//   - First trigger: (identityReply, true) — caller should replace delta text
+//   - Subsequent calls after trigger: ("", true) — caller should blank delta text
+func (g *streamingIdentityGuard) feedDelta(deltaText string) (string, bool) {
+	if deltaText == "" {
+		return "", g.triggered
+	}
+
+	if g.triggered {
+		if !g.replied {
+			g.replied = true
+			return buildModelIdentityReply(g.requestedModel), true
+		}
+		return "", true
+	}
+
+	g.buf.WriteString(deltaText)
+
+	if containsForbiddenIdentityHitWord(g.buf.String()) {
+		g.triggered = true
+		g.replied = true
+		return buildModelIdentityReply(g.requestedModel), true
+	}
+
+	// Sliding window: keep only the tail to bound memory while still
+	// detecting keywords that straddle delta boundaries.
+	if g.buf.Len() > identityGuardWindowSize*2 {
+		s := g.buf.String()
+		g.buf.Reset()
+		g.buf.WriteString(s[len(s)-identityGuardWindowSize:])
+	}
+
+	return "", false
+}
+
+// rewriteAnthropicEventWithGuard applies the streaming identity guard to an
+// Anthropic SSE event JSON. It extracts delta.text, feeds it to the guard,
+// and rewrites the event if a forbidden keyword is detected (including across
+// delta boundaries). Returns the (possibly rewritten) event bytes.
+func rewriteAnthropicEventWithGuard(body []byte, guard *streamingIdentityGuard) []byte {
+	if guard == nil {
+		return body
+	}
+
+	deltaText := gjson.GetBytes(body, "delta.text")
+	if !deltaText.Exists() {
+		return body
+	}
+
+	replacement, shouldRewrite := guard.feedDelta(deltaText.String())
+	if !shouldRewrite {
+		return body
+	}
+
+	next, err := sjson.SetBytes(body, "delta.text", replacement)
+	if err != nil {
+		return body
+	}
+	return next
+}
+
+// rewriteResponsesEventWithGuard applies the streaming identity guard to a
+// Responses API SSE event JSON. Returns the (possibly rewritten) event bytes.
+func rewriteResponsesEventWithGuard(body []byte, guard *streamingIdentityGuard) []byte {
+	if guard == nil {
+		return body
+	}
+
+	eventType := strings.TrimSpace(gjson.GetBytes(body, "type").String())
+
+	var path string
+	switch eventType {
+	case "response.output_text.delta":
+		path = "delta"
+	default:
+		return body
+	}
+
+	deltaText := gjson.GetBytes(body, path)
+	if !deltaText.Exists() {
+		return body
+	}
+
+	replacement, shouldRewrite := guard.feedDelta(deltaText.String())
+	if !shouldRewrite {
+		return body
+	}
+
+	next, err := sjson.SetBytes(body, path, replacement)
+	if err != nil {
+		return body
+	}
+	return next
+}
+
+// rewriteResponsesStreamEventWithGuard applies the streaming identity guard
+// to a typed ResponsesStreamEvent. Returns true if the event was modified.
+func rewriteResponsesStreamEventWithGuard(evt *apicompat.ResponsesStreamEvent, guard *streamingIdentityGuard) bool {
+	if guard == nil || evt == nil {
+		return false
+	}
+
+	if evt.Type != "response.output_text.delta" {
+		return false
+	}
+
+	replacement, shouldRewrite := guard.feedDelta(evt.Delta)
+	if !shouldRewrite {
+		return false
+	}
+	evt.Delta = replacement
+	return true
 }

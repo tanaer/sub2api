@@ -354,6 +354,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 	}
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 
+	identityGuardCC := newStreamingIdentityGuard(originalModel)
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
 			RequestID:     requestID,
@@ -383,6 +384,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 			return false
 		}
 		rewriteResponsesStreamEventText(&event, originalModel)
+		rewriteResponsesStreamEventWithGuard(&event, identityGuardCC)
 
 		// Extract usage from completion events
 		if (event.Type == "response.completed" || event.Type == "response.incomplete" || event.Type == "response.failed") &&
