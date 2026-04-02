@@ -747,7 +747,11 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 				continue
 			}
 			setOpsUpstreamError(c, 0, safeErr, "")
-			return nil, s.writeClaudeError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed after retries: "+safeErr)
+			// Transport-level errors should trigger failover after exhausting internal retries.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"type":"error","error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		// Special-case: signature/thought_signature validation errors are not transient, but may be fixed by
@@ -1296,7 +1300,11 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				}, nil
 			}
 			setOpsUpstreamError(c, 0, safeErr, "")
-			return nil, s.writeGoogleError(c, http.StatusBadGateway, "Upstream request failed after retries: "+safeErr)
+			// Transport-level errors should trigger failover after exhausting internal retries.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"error":{"code":502,"message":"%s","status":"UNAVAILABLE"}}`, safeErr)),
+			}
 		}
 
 		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {

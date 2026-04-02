@@ -135,8 +135,11 @@ func (s *GatewayService) ForwardAsChatCompletions(
 			Kind:               "request_error",
 			Message:            safeErr,
 		})
-		writeGatewayCCError(c, http.StatusBadGateway, "server_error", "Upstream request failed")
-		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+		// Transport-level errors should trigger failover instead of returning 502 directly.
+		return nil, &UpstreamFailoverError{
+			StatusCode:   502,
+			ResponseBody: []byte(fmt.Sprintf(`{"error":{"type":"server_error","message":"%s"}}`, safeErr)),
+		}
 	}
 	defer func() { _ = resp.Body.Close() }()
 

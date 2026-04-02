@@ -141,8 +141,12 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 			Kind:               "request_error",
 			Message:            safeErr,
 		})
-		writeChatCompletionsError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed")
-		return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+		// Transport-level errors (timeout, DNS, connection refused) should trigger failover
+		// instead of returning 502 directly to the client.
+		return nil, &UpstreamFailoverError{
+			StatusCode:   502,
+			ResponseBody: []byte(fmt.Sprintf(`{"error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+		}
 	}
 	defer func() { _ = resp.Body.Close() }()
 

@@ -4416,9 +4416,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 			if resp != nil && resp.Body != nil {
 				_ = resp.Body.Close()
 			}
-			// Ensure the client receives an error response (handlers assume Forward writes on non-failover errors).
 			safeErr := sanitizeUpstreamErrorMessage(err.Error())
-			setOpsUpstreamError(c, 0, safeErr, "")
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 				Platform:           account.Platform,
 				AccountID:          account.ID,
@@ -4428,14 +4426,12 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
-				"type": "error",
-				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
-				},
-			})
-			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+			// Transport-level errors (timeout, DNS, connection refused) should trigger failover
+			// instead of returning 502 directly to the client.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"type":"error","error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		// 优先检测thinking block签名错误（400）并重试一次
@@ -5039,14 +5035,11 @@ func (s *GatewayService) forwardAnthropicAPIKeyPassthroughWithInput(
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
-				"type": "error",
-				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
-				},
-			})
-			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+			// Transport-level errors should trigger failover instead of returning 502 directly.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"type":"error","error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		if resp.StatusCode >= 400 && modelRetryIndex+1 < len(modelRetryChain) {
@@ -5819,14 +5812,11 @@ func (s *GatewayService) executeBedrockUpstream(
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
-				"type": "error",
-				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
-				},
-			})
-			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+			// Transport-level errors should trigger failover instead of returning 502 directly.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"type":"error","error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		if resp.StatusCode >= 400 && resp.StatusCode != 400 && s.shouldRetryUpstreamError(account, resp.StatusCode) {

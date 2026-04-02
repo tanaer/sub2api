@@ -2269,7 +2269,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		resp, err := s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
 		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 		if err != nil {
-			// Ensure the client receives an error response (handlers assume Forward writes on non-failover errors).
 			safeErr := sanitizeUpstreamErrorMessage(err.Error())
 			setOpsUpstreamError(c, 0, safeErr, "")
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -2280,13 +2279,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
-				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
-				},
-			})
-			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+			// Transport-level errors should trigger failover instead of returning 502 directly.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		// Handle error response
@@ -2531,13 +2528,11 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
-			c.JSON(http.StatusBadGateway, gin.H{
-				"error": gin.H{
-					"type":    "upstream_error",
-					"message": "Upstream request failed",
-				},
-			})
-			return nil, fmt.Errorf("upstream request failed: %s", safeErr)
+			// Transport-level errors should trigger failover instead of returning 502 directly.
+			return nil, &UpstreamFailoverError{
+				StatusCode:   502,
+				ResponseBody: []byte(fmt.Sprintf(`{"error":{"type":"upstream_error","message":"%s"}}`, safeErr)),
+			}
 		}
 
 		if resp.StatusCode >= 400 {
