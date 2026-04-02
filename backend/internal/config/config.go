@@ -469,6 +469,23 @@ type GatewayConfig struct {
 	// UserMessageQueue: 用户消息串行队列配置
 	// 对 role:"user" 的真实用户消息实施账号级串行化 + RPM 自适应延迟
 	UserMessageQueue UserMessageQueueConfig `mapstructure:"user_message_queue"`
+
+	// ErrorThrottle: 网关错误惩罚限流配置
+	// 当客户端在短时间内累积过多 4xx 错误（401/403/429）时，
+	// 直接返回 429，避免无效请求反复消耗服务器资源。
+	ErrorThrottle GatewayErrorThrottleConfig `mapstructure:"error_throttle"`
+}
+
+// GatewayErrorThrottleConfig 网关错误惩罚限流配置
+type GatewayErrorThrottleConfig struct {
+	// Enabled: 是否启用错误惩罚限流（默认开启）
+	Enabled bool `mapstructure:"enabled"`
+	// ErrorLimit: 窗口期内允许的最大错误次数（超过后触发限流，默认 30）
+	ErrorLimit int `mapstructure:"error_limit"`
+	// WindowSeconds: 错误计数的时间窗口（秒，默认 60）
+	WindowSeconds int `mapstructure:"window_seconds"`
+	// CooldownSeconds: 触发限流后的冷却时间（秒，默认等于窗口时间）
+	CooldownSeconds int `mapstructure:"cooldown_seconds"`
 }
 
 // UserMessageQueueConfig 用户消息串行队列配置
@@ -1486,6 +1503,12 @@ func setDefaults() {
 	viper.SetDefault("gateway.user_message_queue.min_delay_ms", 200)
 	viper.SetDefault("gateway.user_message_queue.max_delay_ms", 2000)
 	viper.SetDefault("gateway.user_message_queue.cleanup_interval_seconds", 60)
+
+	// 网关错误惩罚限流默认值
+	viper.SetDefault("gateway.error_throttle.enabled", true)
+	viper.SetDefault("gateway.error_throttle.error_limit", 30)
+	viper.SetDefault("gateway.error_throttle.window_seconds", 60)
+	viper.SetDefault("gateway.error_throttle.cooldown_seconds", 60)
 
 	viper.SetDefault("gateway.tls_fingerprint.enabled", true)
 	viper.SetDefault("concurrency.ping_interval", 10)

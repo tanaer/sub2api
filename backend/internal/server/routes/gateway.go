@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/handler"
@@ -9,6 +10,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // RegisterGatewayRoutes 注册 API 网关路由（Claude/OpenAI/Gemini 兼容）
@@ -21,6 +23,7 @@ func RegisterGatewayRoutes(
 	opsService *service.OpsService,
 	settingService *service.SettingService,
 	cfg *config.Config,
+	redisClient *redis.Client,
 ) {
 	bodyLimit := middleware.RequestBodyLimit(cfg.Gateway.MaxBodySize)
 	soraMaxBodySize := cfg.Gateway.SoraMaxBodySize
@@ -31,6 +34,12 @@ func RegisterGatewayRoutes(
 	clientRequestID := middleware.ClientRequestID()
 	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService)
 	endpointNorm := handler.InboundEndpointMiddleware()
+	errorThrottle := middleware.GatewayErrorThrottle(redisClient, middleware.GatewayErrorThrottleConfig{
+		Enabled:    cfg.Gateway.ErrorThrottle.Enabled,
+		ErrorLimit: cfg.Gateway.ErrorThrottle.ErrorLimit,
+		Window:     time.Duration(cfg.Gateway.ErrorThrottle.WindowSeconds) * time.Second,
+		CooldownSecs: cfg.Gateway.ErrorThrottle.CooldownSeconds,
+	})
 
 	// 未分组 Key 拦截中间件（按协议格式区分错误响应）
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
@@ -38,6 +47,7 @@ func RegisterGatewayRoutes(
 
 	// API网关（Claude API兼容）
 	gateway := r.Group("/v1")
+	gateway.Use(errorThrottle)
 	gateway.Use(bodyLimit)
 	gateway.Use(clientRequestID)
 	gateway.Use(opsErrorLogger)
@@ -97,6 +107,7 @@ func RegisterGatewayRoutes(
 
 	// Gemini 原生 API 兼容层（Gemini SDK/CLI 直连）
 	gemini := r.Group("/v1beta")
+	gemini.Use(errorThrottle)
 	gemini.Use(bodyLimit)
 	gemini.Use(clientRequestID)
 	gemini.Use(opsErrorLogger)
@@ -118,11 +129,11 @@ func RegisterGatewayRoutes(
 		}
 		h.Gateway.Responses(c)
 	}
-	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
-	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
-	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.OpenAIGateway.ResponsesWebSocket)
+	r.POST("/responses", errorThrottle, bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
+	r.POST("/responses/*subpath", errorThrottle, bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
+	r.GET("/responses", errorThrottle, bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.OpenAIGateway.ResponsesWebSocket)
 	// OpenAI Chat Completions API（不带v1前缀的别名）— auto-route based on group platform
-	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
+	r.POST("/chat/completions", errorThrottle, bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
 		if getGroupPlatform(c) == service.PlatformOpenAI {
 			h.OpenAIGateway.ChatCompletions(c)
 			return
@@ -135,6 +146,7 @@ func RegisterGatewayRoutes(
 
 	// Antigravity 专用路由（仅使用 antigravity 账户，不混合调度）
 	antigravityV1 := r.Group("/antigravity/v1")
+	antigravityV1.Use(errorThrottle)
 	antigravityV1.Use(bodyLimit)
 	antigravityV1.Use(clientRequestID)
 	antigravityV1.Use(opsErrorLogger)
@@ -150,6 +162,7 @@ func RegisterGatewayRoutes(
 	}
 
 	antigravityV1Beta := r.Group("/antigravity/v1beta")
+	antigravityV1Beta.Use(errorThrottle)
 	antigravityV1Beta.Use(bodyLimit)
 	antigravityV1Beta.Use(clientRequestID)
 	antigravityV1Beta.Use(opsErrorLogger)
@@ -165,6 +178,7 @@ func RegisterGatewayRoutes(
 
 	// Sora 专用路由（强制使用 sora 平台）
 	soraV1 := r.Group("/sora/v1")
+	soraV1.Use(errorThrottle)
 	soraV1.Use(soraBodyLimit)
 	soraV1.Use(clientRequestID)
 	soraV1.Use(opsErrorLogger)
