@@ -184,12 +184,29 @@ const copiedIndex = ref<number | null>(null)
 const activeTab = ref<string>('unix')
 const activeClientTab = ref<string>('claude')
 
-// Parse group config templates with placeholder replacement
+// Parse custom model names from config_templates (new format: string array)
+const customModelNames = computed((): string[] => {
+  if (!props.configTemplates) return []
+  try {
+    const parsed = JSON.parse(props.configTemplates)
+    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+      return parsed.filter((m: string) => m.trim())
+    }
+    return []
+  } catch {
+    return []
+  }
+})
+
+// Parse group config templates with placeholder replacement (legacy format: object array)
 const parsedConfigTemplates = computed((): FileConfig[] | null => {
   if (!props.configTemplates) return null
   try {
-    const templates: ConfigTemplate[] = JSON.parse(props.configTemplates)
-    if (!Array.isArray(templates) || templates.length === 0) return null
+    const parsed = JSON.parse(props.configTemplates)
+    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    // New format (string array) is handled by customModelNames
+    if (typeof parsed[0] === 'string') return null
+    const templates: ConfigTemplate[] = parsed
     const baseUrl = props.baseUrl || window.location.origin
     const apiKey = props.apiKey
     return templates.map(t => ({
@@ -521,7 +538,7 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
 }
 
 function generateGeminiCliContent(baseUrl: string, apiKey: string): FileConfig {
-  const model = 'gemini-2.0-flash'
+  const model = customModelNames.value[0] || 'gemini-2.0-flash'
   const modelComment = t('keys.useKeyModal.gemini.modelComment')
   let path: string
   let content: string
@@ -568,11 +585,13 @@ ${keyword('$env:')}${variable('GEMINI_MODEL')}${operator('=')}${string(`"${model
 function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
+  const primaryModel = customModelNames.value[0] || 'gpt-5.4'
+  const reviewModel = customModelNames.value[1] || primaryModel
 
   // config.toml content
   const configContent = `model_provider = "OpenAI"
-model = "gpt-5.4"
-review_model = "gpt-5.4"
+model = "${primaryModel}"
+review_model = "${reviewModel}"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -607,11 +626,13 @@ requires_openai_auth = true`
 function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
+  const primaryModel = customModelNames.value[0] || 'gpt-5.4'
+  const reviewModel = customModelNames.value[1] || primaryModel
 
   // config.toml content with WebSocket v2
   const configContent = `model_provider = "OpenAI"
-model = "gpt-5.4"
-review_model = "gpt-5.4"
+model = "${primaryModel}"
+review_model = "${reviewModel}"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 network_access = "enabled"
@@ -1107,21 +1128,31 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     }
   }
 
+  // Use custom model names if provided, otherwise use hardcoded defaults
+  const hasCustomModels = customModelNames.value.length > 0
+  if (hasCustomModels) {
+    const models: Record<string, any> = {}
+    for (const m of customModelNames.value) {
+      models[m] = { name: m }
+    }
+    provider[platform].models = models
+  }
+
   if (platform === 'gemini') {
     provider[platform].npm = '@ai-sdk/google'
-    provider[platform].models = geminiModels
+    if (!hasCustomModels) provider[platform].models = geminiModels
   } else if (platform === 'anthropic') {
     provider[platform].npm = '@ai-sdk/anthropic'
   } else if (platform === 'antigravity-claude') {
     provider[platform].npm = '@ai-sdk/anthropic'
     provider[platform].name = 'Antigravity (Claude)'
-    provider[platform].models = claudeModels
+    if (!hasCustomModels) provider[platform].models = claudeModels
   } else if (platform === 'antigravity-gemini') {
     provider[platform].npm = '@ai-sdk/google'
     provider[platform].name = 'Antigravity (Gemini)'
-    provider[platform].models = antigravityGeminiModels
+    if (!hasCustomModels) provider[platform].models = antigravityGeminiModels
   } else if (platform === 'openai') {
-    provider[platform].models = openaiModels
+    if (!hasCustomModels) provider[platform].models = openaiModels
   }
 
   const agent =

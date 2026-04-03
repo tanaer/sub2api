@@ -299,14 +299,13 @@
           <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
         </div>
         <div>
-          <label class="input-label">配置文件模板</label>
-          <textarea
-            v-model="createForm.config_templates"
-            rows="6"
-            class="input font-mono text-xs"
-            placeholder='JSON 格式配置模板，用于"使用密钥"弹层。支持占位符：{{API_KEY}}、{{BASE_URL}}'
-          ></textarea>
-          <p class="input-hint">用户在"使用密钥"弹层看到的配置文件内容，留空则使用默认模板</p>
+          <label class="input-label">自定义模型名称</label>
+          <div class="space-y-2">
+            <input v-model="createModelNames[0]" class="input font-mono text-sm" placeholder="模型 1，如 claude-opus-4-6" />
+            <input v-model="createModelNames[1]" class="input font-mono text-sm" placeholder="模型 2，如 claude-sonnet-4-6" />
+            <input v-model="createModelNames[2]" class="input font-mono text-sm" placeholder="模型 3，如 claude-haiku-4-5" />
+          </div>
+          <p class="input-hint">用户在"使用密钥"弹层配置中显示的模型名称，留空则使用默认模型列表</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
@@ -1144,14 +1143,13 @@
           <p class="input-hint">{{ t('admin.groups.useKeyInstructionsHint') }}</p>
         </div>
         <div>
-          <label class="input-label">配置文件模板</label>
-          <textarea
-            v-model="editForm.config_templates"
-            rows="6"
-            class="input font-mono text-xs"
-            placeholder='JSON 格式配置模板，用于"使用密钥"弹层。支持占位符：{{API_KEY}}、{{BASE_URL}}'
-          ></textarea>
-          <p class="input-hint">用户在"使用密钥"弹层看到的配置文件内容，留空则使用默认模板</p>
+          <label class="input-label">自定义模型名称</label>
+          <div class="space-y-2">
+            <input v-model="editModelNames[0]" class="input font-mono text-sm" placeholder="模型 1，如 claude-opus-4-6" />
+            <input v-model="editModelNames[1]" class="input font-mono text-sm" placeholder="模型 2，如 claude-sonnet-4-6" />
+            <input v-model="editModelNames[2]" class="input font-mono text-sm" placeholder="模型 3，如 claude-haiku-4-5" />
+          </div>
+          <p class="input-hint">用户在"使用密钥"弹层配置中显示的模型名称，留空则使用默认模型列表</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.groups.form.platform') }}</label>
@@ -2270,6 +2268,8 @@ const showRateMultipliersModal = ref(false)
 const rateMultipliersGroup = ref<AdminGroup | null>(null)
 const sortableGroups = ref<AdminGroup[]>([])
 
+const createModelNames = reactive(['', '', ''])
+
 const createForm = reactive({
   name: '',
   description: '',
@@ -2550,6 +2550,8 @@ const convertApiFormatToRoutingRules = async (apiFormat: Record<string, number[]
   return rules
 }
 
+const editModelNames = reactive(['', '', ''])
+
 const editForm = reactive({
   name: '',
   description: '',
@@ -2713,6 +2715,9 @@ const closeCreateModal = () => {
   createForm.description = ''
   createForm.use_key_instructions = ''
   createForm.config_templates = ''
+  createModelNames[0] = ''
+  createModelNames[1] = ''
+  createModelNames[2] = ''
   createForm.platform = 'anthropic'
   createForm.rate_multiplier = 1.0
   createForm.is_exclusive = false
@@ -2782,6 +2787,8 @@ const handleCreateGroup = async () => {
     requestData.daily_limit_usd = emptyToNull(requestData.daily_limit_usd)
     requestData.weekly_limit_usd = emptyToNull(requestData.weekly_limit_usd)
     requestData.monthly_limit_usd = emptyToNull(requestData.monthly_limit_usd)
+    const createModels = createModelNames.filter(m => m.trim())
+    requestData.config_templates = createModels.length ? JSON.stringify(createModels) : ''
     await adminAPI.groups.create(requestData)
     appStore.showSuccess(t('admin.groups.groupCreated'))
     closeCreateModal()
@@ -2805,6 +2812,22 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.description = group.description || ''
   editForm.use_key_instructions = group.use_key_instructions || ''
   editForm.config_templates = group.config_templates || ''
+  try {
+    const models = JSON.parse(group.config_templates || '[]')
+    if (Array.isArray(models) && models.every((m: any) => typeof m === 'string')) {
+      editModelNames[0] = models[0] || ''
+      editModelNames[1] = models[1] || ''
+      editModelNames[2] = models[2] || ''
+    } else {
+      editModelNames[0] = ''
+      editModelNames[1] = ''
+      editModelNames[2] = ''
+    }
+  } catch {
+    editModelNames[0] = ''
+    editModelNames[1] = ''
+    editModelNames[2] = ''
+  }
   editForm.platform = group.platform
   editForm.rate_multiplier = group.rate_multiplier
   editForm.is_exclusive = group.is_exclusive
@@ -2882,6 +2905,8 @@ const handleUpdateGroup = async () => {
     payload.daily_limit_usd = emptyToNull(payload.daily_limit_usd)
     payload.weekly_limit_usd = emptyToNull(payload.weekly_limit_usd)
     payload.monthly_limit_usd = emptyToNull(payload.monthly_limit_usd)
+    const editModels = editModelNames.filter(m => m.trim())
+    payload.config_templates = editModels.length ? JSON.stringify(editModels) : ''
     await adminAPI.groups.update(editingGroup.value.id, payload)
     appStore.showSuccess(t('admin.groups.groupUpdated'))
     closeEditModal()
