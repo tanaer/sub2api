@@ -220,6 +220,10 @@ type UpdateSettingsRequest struct {
 	// Gateway forwarding behavior
 	EnableFingerprintUnification *bool `json:"enable_fingerprint_unification"`
 	EnableMetadataPassthrough    *bool `json:"enable_metadata_passthrough"`
+
+	// Gateway failover status codes
+	FailoverStatusCodes *[]int `json:"failover_status_codes"`
+	FailoverInclude5xx  *bool  `json:"failover_include_5xx"`
 }
 
 // UpdateSettings 更新系统设置
@@ -625,6 +629,18 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 				return *req.EnableMetadataPassthrough
 			}
 			return previousSettings.EnableMetadataPassthrough
+		}(),
+		FailoverStatusCodes: func() []int {
+			if req.FailoverStatusCodes != nil {
+				return *req.FailoverStatusCodes
+			}
+			return previousSettings.FailoverStatusCodes
+		}(),
+		FailoverInclude5xx: func() bool {
+			if req.FailoverInclude5xx != nil {
+				return *req.FailoverInclude5xx
+			}
+			return previousSettings.FailoverInclude5xx
 		}(),
 	}
 
