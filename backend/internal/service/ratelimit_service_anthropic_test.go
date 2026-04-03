@@ -46,7 +46,7 @@ func (r *anthropic429AccountRepo) List(context.Context, pagination.PaginationPar
 	return nil, nil, nil
 }
 
-func (r *anthropic429AccountRepo) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, string, int64, string) ([]Account, *pagination.PaginationResult, error) {
+func (r *anthropic429AccountRepo) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, string, int64, string, string) ([]Account, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
 
