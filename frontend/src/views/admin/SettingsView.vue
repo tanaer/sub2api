@@ -1304,7 +1304,7 @@
                 </div>
                 <div class="flex gap-2">
                   <input
-                    v-model="newFailoverCode"
+                    v-model.number="newFailoverCode"
                     type="number"
                     min="100"
                     max="599"
