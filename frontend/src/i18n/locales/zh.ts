@@ -1598,6 +1598,15 @@ export default {
         failedToReorder: '更新排序失败',
         keyExists: '属性键已存在',
         dragToReorder: '拖拽排序'
+      },
+      bulkEdit: {
+        title: '批量编辑用户',
+        button: '编辑 ({count})',
+        selectionInfo: '已选择 {count} 个用户。仅勾选的字段会被更新。',
+        concurrencyPlaceholder: '最大并发请求数（0 = 无限制）',
+        concurrencyHint: '设为 0 表示不限制并发',
+        notesPlaceholder: '为所选用户设置备注',
+        groupsHint: '留空保持现有的可用分组'
       }
     },
 

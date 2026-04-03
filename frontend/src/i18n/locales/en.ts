@@ -1542,6 +1542,15 @@ export default {
         failedToReorder: 'Failed to update order',
         keyExists: 'Attribute key already exists',
         dragToReorder: 'Drag to reorder'
+      },
+      bulkEdit: {
+        title: 'Bulk Edit Users',
+        button: 'Edit ({count})',
+        selectionInfo: '{count} user(s) selected. Only checked fields will be updated.',
+        concurrencyPlaceholder: 'Max concurrent requests (0 = unlimited)',
+        concurrencyHint: 'Set to 0 to allow unlimited concurrent requests',
+        notesPlaceholder: 'Set notes for all selected users',
+        groupsHint: 'Leave empty to keep existing allowed groups'
       }
     },
 

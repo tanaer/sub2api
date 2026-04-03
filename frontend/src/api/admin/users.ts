@@ -244,6 +244,33 @@ export async function replaceGroup(
   return data
 }
 
+/**
+ * Batch update multiple users with the same field values.
+ * Only fields that are provided will be updated.
+ * @param ids - Array of user IDs to update
+ * @param fields - Fields to update (partial UpdateUserRequest)
+ * @returns Batch update result with count of updated users
+ */
+export async function batchUpdate(
+  ids: number[],
+  fields: {
+    email?: string
+    password?: string
+    username?: string
+    notes?: string
+    balance?: number
+    concurrency?: number
+    status?: 'active' | 'disabled'
+    allowed_groups?: number[] | null
+  }
+): Promise<{ updated: number; total: number; errors: string[] }> {
+  const { data } = await apiClient.put<{ updated: number; total: number; errors: string[] }>(
+    '/admin/users/batch',
+    { ids, fields }
+  )
+  return data
+}
+
 export const usersAPI = {
   list,
   getById,
@@ -256,7 +283,8 @@ export const usersAPI = {
   getUserApiKeys,
   getUserUsageStats,
   getUserBalanceHistory,
-  replaceGroup
+  replaceGroup,
+  batchUpdate
 }
 
 export default usersAPI

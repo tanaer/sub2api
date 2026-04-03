@@ -229,6 +229,16 @@
               <Icon name="plus" size="md" class="mr-2" />
               {{ t('admin.users.createUser') }}
             </button>
+
+            <!-- Bulk Edit Button -->
+            <button
+              v-if="selIds.length > 0"
+              @click="showBulkEditModal = true"
+              class="btn btn-secondary flex-1 md:flex-initial"
+            >
+              <Icon name="edit" size="md" class="mr-2" />
+              {{ t('admin.users.bulkEdit.button', { count: selIds.length }) }}
+            </button>
           </div>
         </div>
       </template>
@@ -236,6 +246,9 @@
       <!-- Users Table -->
       <template #table>
         <DataTable :columns="columns" :data="users" :loading="loading" :actions-count="7">
+          <template #cell-select="{ row }">
+            <input type="checkbox" :checked="selIds.includes(row.id)" @change="toggleSel(row.id)" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+          </template>
           <template #cell-email="{ value }">
             <div class="flex items-center gap-2">
               <div
@@ -616,6 +629,7 @@
     <UserBalanceHistoryModal :show="showBalanceHistoryModal" :user="balanceHistoryUser" @close="closeBalanceHistoryModal" @deposit="handleDepositFromHistory" @withdraw="handleWithdrawFromHistory" />
     <GroupReplaceModal :show="showGroupReplaceModal" :user="groupReplaceUser" :old-group="groupReplaceOldGroup" :all-groups="allGroups" @close="closeGroupReplaceModal" @success="loadUsers" />
     <UserAttributesConfigModal :show="showAttributesModal" @close="handleAttributesModalClose" />
+    <BulkEditUserModal :show="showBulkEditModal" :user-ids="selIds" @close="showBulkEditModal = false" @success="handleBulkEditSuccess" />
   </AppLayout>
 </template>
 
@@ -649,6 +663,7 @@ import UserAllowedGroupsModal from '@/components/admin/user/UserAllowedGroupsMod
 import UserBalanceModal from '@/components/admin/user/UserBalanceModal.vue'
 import UserBalanceHistoryModal from '@/components/admin/user/UserBalanceHistoryModal.vue'
 import GroupReplaceModal from '@/components/admin/user/GroupReplaceModal.vue'
+import BulkEditUserModal from '@/components/admin/user/BulkEditUserModal.vue'
 
 const appStore = useAppStore()
 
@@ -700,6 +715,7 @@ const getAttributeValue = (userId: number, attrId: number): string => {
 
 // All possible columns (for column settings)
 const allColumns = computed<Column[]>(() => [
+  { key: 'select', label: '', sortable: false },
   { key: 'email', label: t('admin.users.columns.user'), sortable: true },
   { key: 'id', label: 'ID', sortable: true },
   { key: 'username', label: t('admin.users.columns.username'), sortable: true },
@@ -717,9 +733,9 @@ const allColumns = computed<Column[]>(() => [
   { key: 'actions', label: t('admin.users.columns.actions'), sortable: false }
 ])
 
-// Columns that can be toggled (exclude email and actions which are always visible)
+// Columns that can be toggled (exclude select, email and actions which are always visible)
 const toggleableColumns = computed(() =>
-  allColumns.value.filter(col => col.key !== 'email' && col.key !== 'actions')
+  allColumns.value.filter(col => col.key !== 'select' && col.key !== 'email' && col.key !== 'actions')
 )
 
 // Hidden columns (stored in Set - columns NOT in this set are visible)
@@ -790,12 +806,23 @@ const hasVisibleAttributeColumns = computed(() =>
 // Filtered columns based on visibility
 const columns = computed<Column[]>(() =>
   allColumns.value.filter(col =>
-    col.key === 'email' || col.key === 'actions' || !hiddenColumns.has(col.key)
+    col.key === 'select' || col.key === 'email' || col.key === 'actions' || !hiddenColumns.has(col.key)
   )
 )
 
 const users = ref<AdminUser[]>([])
 const loading = ref(false)
+const selIds = ref<number[]>([])
+const toggleSel = (id: number) => {
+  const idx = selIds.value.indexOf(id)
+  if (idx >= 0) selIds.value.splice(idx, 1)
+  else selIds.value.push(id)
+}
+const showBulkEditModal = ref(false)
+const handleBulkEditSuccess = () => {
+  selIds.value = []
+  loadUsers()
+}
 const searchQuery = ref('')
 
 // Aggregate request quotas across all users on current page
@@ -1149,6 +1176,8 @@ const loadUsers = async () => {
   abortController = currentAbortController
   const { signal } = currentAbortController
   loading.value = true
+  // Clear selection when list reloads (pagination/filter/search)
+  selIds.value = []
   try {
     // Build attribute filters from active filters
     const attrFilters: Record<number, string> = {}
