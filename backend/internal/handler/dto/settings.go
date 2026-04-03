@@ -217,6 +217,16 @@ type RectifierSettings struct {
 	APIKeySignaturePatterns  []string `json:"apikey_signature_patterns"`
 }
 
+// ModelIdentitySettings DTO for model identity masking configuration
+type ModelIdentitySettings struct {
+	LocalResponseEnabled        bool     `json:"local_response_enabled"`
+	InstructionInjectionEnabled bool     `json:"instruction_injection_enabled"`
+	ResponseRewriteEnabled      bool     `json:"response_rewrite_enabled"`
+	HitWords                    []string `json:"hit_words"`
+	IdentityPatterns            []string `json:"identity_patterns"`
+	ReplyTemplate               string   `json:"reply_template"`
+}
+
 // BetaPolicyRule Beta 策略规则 DTO
 type BetaPolicyRule struct {
 	BetaToken    string `json:"beta_token"`

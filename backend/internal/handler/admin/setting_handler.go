@@ -224,6 +224,9 @@ type UpdateSettingsRequest struct {
 	// Gateway failover status codes
 	FailoverStatusCodes *[]int `json:"failover_status_codes"`
 	FailoverInclude5xx  *bool  `json:"failover_include_5xx"`
+
+	// Health circuit breaker configuration
+	HealthCircuitBreakerConfig *service.HealthCircuitBreakerConfig `json:"health_circuit_breaker_config"`
 }
 
 // UpdateSettings 更新系统设置
@@ -641,6 +644,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 				return *req.FailoverInclude5xx
 			}
 			return previousSettings.FailoverInclude5xx
+		}(),
+		HealthCircuitBreakerConfig: func() *service.HealthCircuitBreakerConfig {
+			if req.HealthCircuitBreakerConfig != nil {
+				return req.HealthCircuitBreakerConfig
+			}
+			return previousSettings.HealthCircuitBreakerConfig
 		}(),
 	}
 
@@ -1824,6 +1833,139 @@ func (h *SettingHandler) UpdateRectifierSettings(c *gin.Context) {
 		ThinkingBudgetEnabled:    updatedSettings.ThinkingBudgetEnabled,
 		APIKeySignatureEnabled:   updatedSettings.APIKeySignatureEnabled,
 		APIKeySignaturePatterns:  updatedPatterns,
+	})
+}
+
+// GetModelIdentitySettings retrieves model identity masking configuration.
+// GET /api/v1/admin/settings/model-identity
+func (h *SettingHandler) GetModelIdentitySettings(c *gin.Context) {
+	settings, err := h.settingService.GetModelIdentitySettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	hitWords := settings.HitWords
+	if hitWords == nil {
+		hitWords = []string{}
+	}
+	patterns := settings.IdentityPatterns
+	if patterns == nil {
+		patterns = []string{}
+	}
+	response.Success(c, dto.ModelIdentitySettings{
+		LocalResponseEnabled:        settings.LocalResponseEnabled,
+		InstructionInjectionEnabled: settings.InstructionInjectionEnabled,
+		ResponseRewriteEnabled:      settings.ResponseRewriteEnabled,
+		HitWords:                    hitWords,
+		IdentityPatterns:            patterns,
+		ReplyTemplate:               settings.ReplyTemplate,
+	})
+}
+
+// UpdateModelIdentitySettingsRequest is the request body for updating model identity settings.
+type UpdateModelIdentitySettingsRequest struct {
+	LocalResponseEnabled        bool     `json:"local_response_enabled"`
+	InstructionInjectionEnabled bool     `json:"instruction_injection_enabled"`
+	ResponseRewriteEnabled      bool     `json:"response_rewrite_enabled"`
+	HitWords                    []string `json:"hit_words"`
+	IdentityPatterns            []string `json:"identity_patterns"`
+	ReplyTemplate               string   `json:"reply_template"`
+}
+
+// UpdateModelIdentitySettings updates model identity masking configuration.
+// PUT /api/v1/admin/settings/model-identity
+func (h *SettingHandler) UpdateModelIdentitySettings(c *gin.Context) {
+	var req UpdateModelIdentitySettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	const maxHitWords = 100
+	const maxPatterns = 50
+	const maxWordLen = 200
+	const maxPatternLen = 1000
+	const maxTemplateLen = 2000
+
+	if len(req.HitWords) > maxHitWords {
+		response.BadRequest(c, fmt.Sprintf("Too many hit words (max %d)", maxHitWords))
+		return
+	}
+	if len(req.IdentityPatterns) > maxPatterns {
+		response.BadRequest(c, fmt.Sprintf("Too many identity patterns (max %d)", maxPatterns))
+		return
+	}
+	if len(req.ReplyTemplate) > maxTemplateLen {
+		response.BadRequest(c, fmt.Sprintf("Reply template too long (max %d characters)", maxTemplateLen))
+		return
+	}
+
+	var cleanedWords []string
+	for _, w := range req.HitWords {
+		w = strings.TrimSpace(w)
+		if w == "" {
+			continue
+		}
+		if len(w) > maxWordLen {
+			response.BadRequest(c, fmt.Sprintf("Hit word too long (max %d characters)", maxWordLen))
+			return
+		}
+		cleanedWords = append(cleanedWords, w)
+	}
+
+	var cleanedPatterns []string
+	for _, p := range req.IdentityPatterns {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if len(p) > maxPatternLen {
+			response.BadRequest(c, fmt.Sprintf("Pattern too long (max %d characters)", maxPatternLen))
+			return
+		}
+		if _, err := regexp.Compile("(?i)" + p); err != nil {
+			response.BadRequest(c, fmt.Sprintf("Invalid regex pattern %q: %v", p, err))
+			return
+		}
+		cleanedPatterns = append(cleanedPatterns, p)
+	}
+
+	settings := &service.ModelIdentitySettings{
+		LocalResponseEnabled:        req.LocalResponseEnabled,
+		InstructionInjectionEnabled: req.InstructionInjectionEnabled,
+		ResponseRewriteEnabled:      req.ResponseRewriteEnabled,
+		HitWords:                    cleanedWords,
+		IdentityPatterns:            cleanedPatterns,
+		ReplyTemplate:               strings.TrimSpace(req.ReplyTemplate),
+	}
+
+	if err := h.settingService.SetModelIdentitySettings(c.Request.Context(), settings); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	updated, err := h.settingService.GetModelIdentitySettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	updatedWords := updated.HitWords
+	if updatedWords == nil {
+		updatedWords = []string{}
+	}
+	updatedPatterns := updated.IdentityPatterns
+	if updatedPatterns == nil {
+		updatedPatterns = []string{}
+	}
+	response.Success(c, dto.ModelIdentitySettings{
+		LocalResponseEnabled:        updated.LocalResponseEnabled,
+		InstructionInjectionEnabled: updated.InstructionInjectionEnabled,
+		ResponseRewriteEnabled:      updated.ResponseRewriteEnabled,
+		HitWords:                    updatedWords,
+		IdentityPatterns:            updatedPatterns,
+		ReplyTemplate:               updated.ReplyTemplate,
 	})
 }
 
