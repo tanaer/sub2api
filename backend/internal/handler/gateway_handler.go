@@ -925,6 +925,25 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		return
 	}
 
+	// Check custom model list from settings
+	customModels := h.settingService.GetCustomModelList(c.Request.Context())
+	if len(customModels) > 0 {
+		models := make([]claude.Model, 0, len(customModels))
+		for _, modelID := range customModels {
+			models = append(models, claude.Model{
+				ID:          modelID,
+				Type:        "model",
+				DisplayName: modelID,
+				CreatedAt:   "2024-01-01T00:00:00Z",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"object": "list",
+			"data":   models,
+		})
+		return
+	}
+
 	// Get available models from account configurations (without platform filter)
 	availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, "")
 

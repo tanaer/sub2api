@@ -967,6 +967,19 @@ func (s *SettingService) GetDefaultSubscriptions(ctx context.Context) []DefaultS
 	return parseDefaultSubscriptions(value)
 }
 
+// GetCustomModelList 获取自定义模型列表
+func (s *SettingService) GetCustomModelList(ctx context.Context) []string {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyCustomModelList)
+	if err != nil || raw == "" || raw == "[]" {
+		return nil
+	}
+	var models []string
+	if err := json.Unmarshal([]byte(raw), &models); err != nil {
+		return nil
+	}
+	return models
+}
+
 // InitializeDefaultSettings 初始化默认设置
 func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 	// 检查是否已有设置
