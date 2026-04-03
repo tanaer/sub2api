@@ -81,6 +81,10 @@ type SystemSettings struct {
 	// Gateway forwarding behavior
 	EnableFingerprintUnification bool // 是否统一 OAuth 账号的指纹头（默认 true）
 	EnableMetadataPassthrough    bool // 是否透传客户端原始 metadata（默认 false）
+
+	// Gateway failover status codes
+	FailoverStatusCodes []int `json:"failover_status_codes"`
+	FailoverInclude5xx  bool  `json:"failover_include_5xx"`
 }
 
 type DefaultSubscriptionSetting struct {

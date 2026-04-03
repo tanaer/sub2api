@@ -543,6 +543,19 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 	updates[SettingKeyEnableFingerprintUnification] = strconv.FormatBool(settings.EnableFingerprintUnification)
 	updates[SettingKeyEnableMetadataPassthrough] = strconv.FormatBool(settings.EnableMetadataPassthrough)
 
+	// Gateway failover status codes
+	if len(settings.FailoverStatusCodes) > 0 {
+		fsCfg := FailoverStatusCodesConfig{
+			Codes:      settings.FailoverStatusCodes,
+			Include5xx: settings.FailoverInclude5xx,
+		}
+		fsJSON, jsonErr := json.Marshal(fsCfg)
+		if jsonErr != nil {
+			return fmt.Errorf("marshal failover status codes: %w", jsonErr)
+		}
+		updates[SettingKeyGatewayFailoverStatusCodes] = string(fsJSON)
+	}
+
 	err = s.settingRepo.SetMultiple(ctx, updates)
 	if err == nil {
 		// 先使 inflight singleflight 失效，再刷新缓存，缩小旧值覆盖新值的竞态窗口
@@ -563,6 +576,22 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 			metadataPassthrough:    settings.EnableMetadataPassthrough,
 			expiresAt:              time.Now().Add(gatewayForwardingCacheTTL).UnixNano(),
 		})
+		failoverPolicySF.Forget("failover_policy")
+		if len(settings.FailoverStatusCodes) > 0 {
+			fsCfg := &FailoverStatusCodesConfig{
+				Codes:      settings.FailoverStatusCodes,
+				Include5xx: settings.FailoverInclude5xx,
+			}
+			fsCacheMap := make(map[int]bool, len(fsCfg.Codes))
+			for _, code := range fsCfg.Codes {
+				fsCacheMap[code] = true
+			}
+			failoverPolicyCache.Store(&cachedFailoverPolicy{
+				codeMap:    fsCacheMap,
+				include5xx: fsCfg.Include5xx,
+				expiresAt:  time.Now().Add(failoverPolicyCacheTTL).UnixNano(),
+			})
+		}
 		if s.onUpdate != nil {
 			s.onUpdate() // Invalidate cache after settings update
 		}
@@ -1038,6 +1067,21 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		result.EnableFingerprintUnification = true // default: enabled (current behavior)
 	}
 	result.EnableMetadataPassthrough = settings[SettingKeyEnableMetadataPassthrough] == "true"
+
+	// Gateway failover status codes
+	if v, ok := settings[SettingKeyGatewayFailoverStatusCodes]; ok && v != "" {
+		var fsCfg FailoverStatusCodesConfig
+		if err := json.Unmarshal([]byte(v), &fsCfg); err == nil && len(fsCfg.Codes) > 0 {
+			result.FailoverStatusCodes = fsCfg.Codes
+			result.FailoverInclude5xx = fsCfg.Include5xx
+		} else {
+			result.FailoverStatusCodes = defaultFailoverCodes.Codes
+			result.FailoverInclude5xx = defaultFailoverCodes.Include5xx
+		}
+	} else {
+		result.FailoverStatusCodes = defaultFailoverCodes.Codes
+		result.FailoverInclude5xx = defaultFailoverCodes.Include5xx
+	}
 
 	return result
 }
