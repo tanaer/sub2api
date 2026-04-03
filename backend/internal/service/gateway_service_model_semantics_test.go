@@ -12,6 +12,18 @@ import (
 func TestSelectAccount_UsesResolvedLookupModel(t *testing.T) {
 	ctx := context.Background()
 
+	group := &Group{
+		ID:       1,
+		Hydrated: true,
+		Platform: PlatformAnthropic,
+		Status:   StatusActive,
+		ModelAliases: map[string]string{
+			"sonnet": "glm-4.5-air",
+		},
+	}
+	resolvedModel := group.ResolveModelAlias("sonnet")
+	require.Equal(t, "glm-4.5-air", resolvedModel)
+
 	repo := &mockAccountRepoForPlatform{
 		accounts: []Account{
 			{
@@ -45,7 +57,7 @@ func TestSelectAccount_UsesResolvedLookupModel(t *testing.T) {
 		cfg:         testConfig(),
 	}
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "glm-4.5-air", nil, PlatformAnthropic)
+	acc, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", resolvedModel, nil, PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.ID)

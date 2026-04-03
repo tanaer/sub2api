@@ -96,7 +96,7 @@ export function decodeModelRestriction(mapping?: Record<string, string> | null):
     }
   }
   const entries = Object.entries(mapping)
-  const isWhitelist = entries.every(([from, to]) => from === to)
+  const isWhitelist = entries.every(([from, to]) => from === to && !from.includes('*'))
   if (isWhitelist) {
     const allowedModels = entries
       .map(([from]) => from.trim())

@@ -101,6 +101,26 @@ describe('modelRestriction helpers', () => {
     expect(decoded.modelMappings).toEqual([])
   })
 
+  it('通配符自映射不应被解码为白名单', () => {
+    const decoded = decodeModelRestriction({ 'claude-*': 'claude-*' })
+    expect(decoded.mode).toBe('mapping')
+    expect(decoded.allowedModels).toEqual([])
+    expect(decoded.modelMappings).toEqual([{ from: 'claude-*', to: 'claude-*' }])
+  })
+
+  it('混合自映射含通配符时保持映射语义', () => {
+    const decoded = decodeModelRestriction({
+      'claude-*': 'claude-*',
+      'glm-4.5-air': 'glm-4.5-air'
+    })
+    expect(decoded.mode).toBe('mapping')
+    expect(decoded.allowedModels).toEqual([])
+    expect(decoded.modelMappings).toEqual([
+      { from: 'claude-*', to: 'claude-*' },
+      { from: 'glm-4.5-air', to: 'glm-4.5-air' }
+    ])
+  })
+
   it('decodeModelRestriction 处理空值与空对象', () => {
     expect(decodeModelRestriction(undefined)).toEqual({
       mode: 'whitelist',
