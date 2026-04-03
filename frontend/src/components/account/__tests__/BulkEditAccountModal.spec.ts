@@ -130,6 +130,56 @@ describe('BulkEditAccountModal', () => {
     })
   })
 
+  it('白名单模式支持批量粘贴并提交自映射 model_mapping', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['anthropic'],
+      selectedTypes: ['apikey']
+    })
+
+    await wrapper.get('#bulk-edit-model-restriction-enabled').setValue(true)
+    await wrapper.get('[data-testid="model-whitelist-paste-toggle"]').trigger('click')
+    await wrapper
+      .get('[data-testid="model-whitelist-paste-input"]')
+      .setValue('claude-sonnet-4\ngpt-4.1 claude-sonnet-4')
+    await wrapper.get('[data-testid="model-whitelist-paste-apply"]').trigger('click')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      credentials: {
+        model_mapping: {
+          'claude-sonnet-4': 'claude-sonnet-4',
+          'gpt-4.1': 'gpt-4.1'
+        }
+      }
+    })
+  })
+
+  it('映射模式批量粘贴解析为空时，仍显式提交空 model_mapping', async () => {
+    const wrapper = mountModal({
+      selectedPlatforms: ['anthropic'],
+      selectedTypes: ['apikey']
+    })
+
+    await wrapper.get('#bulk-edit-model-restriction-enabled').setValue(true)
+    const mappingTab = wrapper.findAll('button').find((btn) => btn.text().includes('admin.accounts.modelMapping'))
+    expect(mappingTab).toBeTruthy()
+    await mappingTab!.trigger('click')
+    await wrapper.get('[data-testid="model-mapping-paste-toggle"]').trigger('click')
+    await wrapper.get('[data-testid="model-mapping-paste-input"]').setValue('invalid-line\nfoo* -> bar*')
+    await wrapper.get('[data-testid="model-mapping-paste-apply"]').trigger('click')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      credentials: {
+        model_mapping: {}
+      }
+    })
+  })
+
   it('OpenAI OAuth 批量编辑应提交 OAuth 专属 WS mode 字段', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['openai'],

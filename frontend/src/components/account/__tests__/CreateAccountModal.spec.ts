@@ -418,4 +418,32 @@ describe('CreateAccountModal', () => {
       })
     )
   })
+
+  it('在映射模式支持批量粘贴并回填提交 model_mapping', async () => {
+    const templateAccount = buildApiKeyTemplateAccount()
+    const wrapper = mountModal(templateAccount)
+
+    await flushPromises()
+
+    const mappingTab = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('admin.accounts.modelMapping'))
+    expect(mappingTab).toBeTruthy()
+    await mappingTab!.trigger('click')
+
+    await wrapper.get('[data-testid="model-mapping-paste-toggle"]').trigger('click')
+    await wrapper
+      .get('[data-testid="model-mapping-paste-input"]')
+      .setValue('gpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')
+    await wrapper.get('[data-testid="model-mapping-paste-apply"]').trigger('click')
+
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock).toHaveBeenCalledTimes(1)
+    expect(createAccountMock.mock.calls[0]?.[0]?.credentials?.model_mapping).toEqual({
+      'gpt-5.2': 'gpt-5.2-2025-12-11',
+      'claude-3-5-sonnet': 'claude-sonnet-4'
+    })
+  })
 })

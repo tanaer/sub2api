@@ -259,6 +259,44 @@
                 </p>
               </div>
 
+              <div class="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-toggle"
+                  @click="showModelMappingPaste = !showModelMappingPaste"
+                  class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+                >
+                  {{
+                    showModelMappingPaste
+                      ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                      : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                  }}
+                </button>
+              </div>
+
+              <div
+                v-if="showModelMappingPaste"
+                class="mb-3 rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+              >
+                <textarea
+                  v-model="modelMappingPasteInput"
+                  data-testid="model-mapping-paste-input"
+                  rows="4"
+                  class="input w-full"
+                  :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+                />
+                <div class="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    data-testid="model-mapping-paste-apply"
+                    @click="applyModelMappingPaste"
+                    class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                  >
+                    {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                  </button>
+                </div>
+              </div>
+
               <!-- Model Mapping List -->
               <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
                 <div
@@ -916,6 +954,7 @@ import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { parseMappingPaste } from '@/components/account/modelRestriction'
 import {
   buildModelMappingObject as buildModelMappingPayload,
   getPresetMappingsByPlatform
@@ -1023,6 +1062,8 @@ const baseUrl = ref('')
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
 const modelMappings = ref<ModelMapping[]>([])
+const showModelMappingPaste = ref(false)
+const modelMappingPasteInput = ref('')
 const selectedErrorCodes = ref<number[]>([])
 const customErrorCodeInput = ref<number | null>(null)
 const interceptWarmupRequests = ref(false)
@@ -1090,6 +1131,12 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
+}
+
+const applyModelMappingPaste = () => {
+  modelMappings.value = parseMappingPaste(modelMappingPasteInput.value)
+  modelMappingPasteInput.value = ''
+  showModelMappingPaste.value = false
 }
 
 // Error code helpers
@@ -1442,6 +1489,8 @@ watch(
       modelRestrictionMode.value = 'whitelist'
       allowedModels.value = []
       modelMappings.value = []
+      showModelMappingPaste.value = false
+      modelMappingPasteInput.value = ''
       selectedErrorCodes.value = []
       customErrorCodeInput.value = null
       interceptWarmupRequests.value = false

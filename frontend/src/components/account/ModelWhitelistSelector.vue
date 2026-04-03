@@ -92,6 +92,34 @@
       >
         {{ t('admin.accounts.clearAllModels') }}
       </button>
+      <button
+        type="button"
+        data-testid="model-whitelist-paste-toggle"
+        @click="showWhitelistPaste = !showWhitelistPaste"
+        class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+      >
+        {{ showWhitelistPaste ? t('admin.accounts.hideBulkPasteModels', '收起批量粘贴') : t('admin.accounts.bulkPasteModels', '批量粘贴模型') }}
+      </button>
+    </div>
+
+    <div v-if="showWhitelistPaste" class="mb-4 rounded-lg border border-purple-200 p-3 dark:border-purple-800">
+      <textarea
+        v-model="whitelistPasteInput"
+        data-testid="model-whitelist-paste-input"
+        rows="4"
+        class="input w-full"
+        :placeholder="t('admin.accounts.bulkPasteModelsPlaceholder', '每行/空格/逗号分隔模型名，例如：\nclaude-sonnet-4\ngpt-4.1,gemini-2.5-pro')"
+      />
+      <div class="mt-2 flex justify-end">
+        <button
+          type="button"
+          data-testid="model-whitelist-paste-apply"
+          @click="applyWhitelistPaste"
+          class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+        >
+          {{ t('admin.accounts.applyBulkPasteModels', '应用批量粘贴') }}
+        </button>
+      </div>
     </div>
 
     <!-- Custom Model Input -->
@@ -126,6 +154,7 @@ import { useAppStore } from '@/stores/app'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { allModels, getModelsByPlatform } from '@/composables/useModelWhitelist'
+import { parseWhitelistPaste } from '@/components/account/modelRestriction'
 
 const { t } = useI18n()
 
@@ -145,6 +174,8 @@ const showDropdown = ref(false)
 const searchQuery = ref('')
 const customModel = ref('')
 const isComposing = ref(false)
+const showWhitelistPaste = ref(false)
+const whitelistPasteInput = ref('')
 const normalizedPlatforms = computed(() => {
   const rawPlatforms =
     props.platforms && props.platforms.length > 0
@@ -231,6 +262,12 @@ const fillRelated = () => {
 
 const clearAll = () => {
   emit('update:modelValue', [])
+}
+
+const applyWhitelistPaste = () => {
+  emit('update:modelValue', parseWhitelistPaste(whitelistPasteInput.value))
+  whitelistPasteInput.value = ''
+  showWhitelistPaste.value = false
 }
 
 </script>

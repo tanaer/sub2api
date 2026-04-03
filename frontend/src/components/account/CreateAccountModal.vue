@@ -1089,6 +1089,44 @@
                 </p>
               </div>
 
+              <div class="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-toggle"
+                  @click="showModelMappingPaste = !showModelMappingPaste"
+                  class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+                >
+                  {{
+                    showModelMappingPaste
+                      ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                      : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                  }}
+                </button>
+              </div>
+
+              <div
+                v-if="showModelMappingPaste"
+                class="mb-3 rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+              >
+                <textarea
+                  v-model="modelMappingPasteInput"
+                  data-testid="model-mapping-paste-input"
+                  rows="4"
+                  class="input w-full"
+                  :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+                />
+                <div class="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    data-testid="model-mapping-paste-apply"
+                    @click="applyModelMappingPaste"
+                    class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                  >
+                    {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                  </button>
+                </div>
+              </div>
+
             <!-- Model Mapping List -->
             <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
               <div
@@ -1494,6 +1532,42 @@
 
           <!-- Mapping Mode -->
           <div v-else class="space-y-3">
+            <div class="flex justify-end">
+              <button
+                type="button"
+                data-testid="model-mapping-paste-toggle"
+                @click="showModelMappingPaste = !showModelMappingPaste"
+                class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+              >
+                {{
+                  showModelMappingPaste
+                    ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                    : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                }}
+              </button>
+            </div>
+            <div
+              v-if="showModelMappingPaste"
+              class="rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+            >
+              <textarea
+                v-model="modelMappingPasteInput"
+                data-testid="model-mapping-paste-input"
+                rows="4"
+                class="input w-full"
+                :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+              />
+              <div class="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-apply"
+                  @click="applyModelMappingPaste"
+                  class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                >
+                  {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                </button>
+              </div>
+            </div>
             <div v-for="(mapping, index) in modelMappings" :key="index" class="flex items-center gap-2">
               <input v-model="mapping.from" type="text" class="input flex-1" :placeholder="t('admin.accounts.fromModel')" />
               <span class="text-gray-400">→</span>
@@ -1665,6 +1739,44 @@
               <p class="text-xs text-purple-700 dark:text-purple-400">
                 {{ t('admin.accounts.mapRequestModels') }}
               </p>
+            </div>
+
+            <div class="mb-3 flex justify-end">
+              <button
+                type="button"
+                data-testid="model-mapping-paste-toggle"
+                @click="showModelMappingPaste = !showModelMappingPaste"
+                class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+              >
+                {{
+                  showModelMappingPaste
+                    ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                    : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                }}
+              </button>
+            </div>
+
+            <div
+              v-if="showModelMappingPaste"
+              class="mb-3 rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+            >
+              <textarea
+                v-model="modelMappingPasteInput"
+                data-testid="model-mapping-paste-input"
+                rows="4"
+                class="input w-full"
+                :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+              />
+              <div class="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-apply"
+                  @click="applyModelMappingPaste"
+                  class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                >
+                  {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                </button>
+              </div>
             </div>
 
             <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
@@ -2932,6 +3044,7 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
 import QuotaLimitCard from '@/components/account/QuotaLimitCard.vue'
 import { applyInterceptWarmup } from '@/components/account/credentialsBuilder'
+import { decodeModelRestriction, parseMappingPaste } from '@/components/account/modelRestriction'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
@@ -3068,6 +3181,8 @@ const editResetTimezone = ref<string | null>(null)
 const modelMappings = ref<ModelMapping[]>([])
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
+const showModelMappingPaste = ref(false)
+const modelMappingPasteInput = ref('')
 const DEFAULT_POOL_MODE_RETRY_COUNT = 3
 const MAX_POOL_MODE_RETRY_COUNT = 10
 const poolModeEnabled = ref(false)
@@ -3544,18 +3659,13 @@ function syncFormFromTemplate(account: Account) {
   modelRestrictionMode.value = 'whitelist'
   allowedModels.value = []
   modelMappings.value = []
+  showModelMappingPaste.value = false
+  modelMappingPasteInput.value = ''
   const rawModelMapping = credentials.model_mapping as Record<string, string> | undefined
-  if (rawModelMapping && typeof rawModelMapping === 'object') {
-    const entries = Object.entries(rawModelMapping)
-    const isWhitelistMode = entries.length > 0 && entries.every(([from, to]) => from === to)
-    if (isWhitelistMode) {
-      modelRestrictionMode.value = 'whitelist'
-      allowedModels.value = entries.map(([from]) => from)
-    } else {
-      modelRestrictionMode.value = 'mapping'
-      modelMappings.value = entries.map(([from, to]) => ({ from, to }))
-    }
-  }
+  const decodedModelRestriction = decodeModelRestriction(rawModelMapping)
+  modelRestrictionMode.value = decodedModelRestriction.mode
+  allowedModels.value = decodedModelRestriction.allowedModels
+  modelMappings.value = decodedModelRestriction.modelMappings
 
   antigravityModelRestrictionMode.value = 'mapping'
   antigravityWhitelistModels.value = []
@@ -3829,6 +3939,12 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
+}
+
+const applyModelMappingPaste = () => {
+  modelMappings.value = parseMappingPaste(modelMappingPasteInput.value)
+  modelMappingPasteInput.value = ''
+  showModelMappingPaste.value = false
 }
 
 const addAntigravityModelMapping = () => {
@@ -4113,6 +4229,8 @@ const resetForm = () => {
   modelMappings.value = []
   modelRestrictionMode.value = 'whitelist'
   allowedModels.value = [...claudeModels] // Default fill related models
+  showModelMappingPaste.value = false
+  modelMappingPasteInput.value = ''
 
   antigravityModelRestrictionMode.value = 'mapping'
   antigravityWhitelistModels.value = []

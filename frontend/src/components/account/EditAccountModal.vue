@@ -161,11 +161,11 @@
               </p>
             </div>
 
-            <!-- Mapping Mode -->
-            <div v-else>
-              <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <svg
+          <!-- Mapping Mode -->
+          <div v-else>
+            <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
+              <p class="text-xs text-purple-700 dark:text-purple-400">
+                <svg
                     class="mr-1 inline h-4 w-4"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -180,6 +180,44 @@
                   </svg>
                   {{ t('admin.accounts.mapRequestModels') }}
                 </p>
+              </div>
+
+              <div class="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-toggle"
+                  @click="showModelMappingPaste = !showModelMappingPaste"
+                  class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+                >
+                  {{
+                    showModelMappingPaste
+                      ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                      : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                  }}
+                </button>
+              </div>
+
+              <div
+                v-if="showModelMappingPaste"
+                class="mb-3 rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+              >
+                <textarea
+                  v-model="modelMappingPasteInput"
+                  data-testid="model-mapping-paste-input"
+                  rows="4"
+                  class="input w-full"
+                  :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+                />
+                <div class="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    data-testid="model-mapping-paste-apply"
+                    @click="applyModelMappingPaste"
+                    class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                  >
+                    {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                  </button>
+                </div>
               </div>
 
             <!-- Model Mapping List -->
@@ -849,6 +887,42 @@
 
           <!-- Mapping Mode -->
           <div v-else class="space-y-3">
+            <div class="flex justify-end">
+              <button
+                type="button"
+                data-testid="model-mapping-paste-toggle"
+                @click="showModelMappingPaste = !showModelMappingPaste"
+                class="rounded-lg border border-purple-200 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/30"
+              >
+                {{
+                  showModelMappingPaste
+                    ? t('admin.accounts.hideBulkPasteMappings', '收起批量粘贴')
+                    : t('admin.accounts.bulkPasteMappings', '批量粘贴映射')
+                }}
+              </button>
+            </div>
+            <div
+              v-if="showModelMappingPaste"
+              class="rounded-lg border border-purple-200 p-3 dark:border-purple-800"
+            >
+              <textarea
+                v-model="modelMappingPasteInput"
+                data-testid="model-mapping-paste-input"
+                rows="4"
+                class="input w-full"
+                :placeholder="t('admin.accounts.bulkPasteMappingsPlaceholder', '每行一条映射，支持 -> / 逗号 / TAB，例如：\ngpt-5.2 -> gpt-5.2-2025-12-11\nclaude-3-5-sonnet,claude-sonnet-4')"
+              />
+              <div class="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  data-testid="model-mapping-paste-apply"
+                  @click="applyModelMappingPaste"
+                  class="rounded-lg bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                >
+                  {{ t('admin.accounts.applyBulkPasteMappings', '应用批量粘贴') }}
+                </button>
+              </div>
+            </div>
             <div v-for="(mapping, index) in modelMappings" :key="getModelMappingKey(mapping)" class="flex items-center gap-2">
               <input v-model="mapping.from" type="text" class="input flex-1" :placeholder="t('admin.accounts.fromModel')" />
               <span class="text-gray-400">→</span>
@@ -1932,6 +2006,7 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
 import QuotaLimitCard from '@/components/account/QuotaLimitCard.vue'
 import { applyInterceptWarmup } from '@/components/account/credentialsBuilder'
+import { decodeModelRestriction, parseMappingPaste } from '@/components/account/modelRestriction'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
@@ -2016,6 +2091,8 @@ const modelMappings = ref<ModelMapping[]>([])
 const modelFallbackChains = ref<ModelFallbackChain[]>([])
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
+const showModelMappingPaste = ref(false)
+const modelMappingPasteInput = ref('')
 const DEFAULT_POOL_MODE_RETRY_COUNT = 3
 const MAX_POOL_MODE_RETRY_COUNT = 10
 const poolModeEnabled = ref(false)
@@ -2217,6 +2294,15 @@ const normalizePoolModeRetryCount = (value: number) => {
   return normalized
 }
 
+const applyDecodedModelRestriction = (rawModelMapping?: Record<string, string>) => {
+  const decoded = decodeModelRestriction(rawModelMapping)
+  modelRestrictionMode.value = decoded.mode
+  allowedModels.value = decoded.allowedModels
+  modelMappings.value = decoded.modelMappings
+  showModelMappingPaste.value = false
+  modelMappingPasteInput.value = ''
+}
+
 const syncFormFromAccount = (newAccount: Account | null) => {
   if (!newAccount) {
     return
@@ -2355,31 +2441,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
           : 'https://api.anthropic.com'
     editBaseUrl.value = (credentials.base_url as string) || platformDefaultUrl
 
-    // Load model mappings and detect mode
-    const existingMappings = credentials.model_mapping as Record<string, string> | undefined
-    if (existingMappings && typeof existingMappings === 'object') {
-      const entries = Object.entries(existingMappings)
-
-      // Detect if this is whitelist mode (all from === to) or mapping mode
-      const isWhitelistMode = entries.length > 0 && entries.every(([from, to]) => from === to)
-
-      if (isWhitelistMode) {
-        // Whitelist mode: populate allowedModels
-        modelRestrictionMode.value = 'whitelist'
-        allowedModels.value = entries.map(([from]) => from)
-        modelMappings.value = []
-      } else {
-        // Mapping mode: populate modelMappings
-        modelRestrictionMode.value = 'mapping'
-        modelMappings.value = entries.map(([from, to]) => ({ from, to }))
-        allowedModels.value = []
-      }
-    } else {
-      // No mappings: default to whitelist mode with empty selection (allow all)
-      modelRestrictionMode.value = 'whitelist'
-      modelMappings.value = []
-      allowedModels.value = []
-    }
+    applyDecodedModelRestriction(credentials.model_mapping as Record<string, string> | undefined)
 
     loadModelFallbackChains(credentials)
 
@@ -2422,29 +2484,12 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     editQuotaDailyLimit.value = typeof bedrockExtra.quota_daily_limit === 'number' ? bedrockExtra.quota_daily_limit : null
     editQuotaWeeklyLimit.value = typeof bedrockExtra.quota_weekly_limit === 'number' ? bedrockExtra.quota_weekly_limit : null
 
-    // Load model mappings for bedrock
-    const existingMappings = bedrockCreds.model_mapping as Record<string, string> | undefined
-    if (existingMappings && typeof existingMappings === 'object') {
-      const entries = Object.entries(existingMappings)
-      const isWhitelistMode = entries.length > 0 && entries.every(([from, to]) => from === to)
-      if (isWhitelistMode) {
-        modelRestrictionMode.value = 'whitelist'
-        allowedModels.value = entries.map(([from]) => from)
-        modelMappings.value = []
-      } else {
-        modelRestrictionMode.value = 'mapping'
-        modelMappings.value = entries.map(([from, to]) => ({ from, to }))
-        allowedModels.value = []
-      }
-    } else {
-      modelRestrictionMode.value = 'whitelist'
-      modelMappings.value = []
-      allowedModels.value = []
-    }
+    applyDecodedModelRestriction(bedrockCreds.model_mapping as Record<string, string> | undefined)
     modelFallbackChains.value = []
   } else if (newAccount.type === 'upstream' && newAccount.credentials) {
     const credentials = newAccount.credentials as Record<string, unknown>
     editBaseUrl.value = (credentials.base_url as string) || ''
+    applyDecodedModelRestriction()
     modelFallbackChains.value = []
   } else {
     const platformDefaultUrl =
@@ -2458,29 +2503,10 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     // Load model mappings for OpenAI OAuth accounts
     if (newAccount.platform === 'openai' && newAccount.credentials) {
       const oauthCredentials = newAccount.credentials as Record<string, unknown>
-      const existingMappings = oauthCredentials.model_mapping as Record<string, string> | undefined
-      if (existingMappings && typeof existingMappings === 'object') {
-        const entries = Object.entries(existingMappings)
-        const isWhitelistMode = entries.length > 0 && entries.every(([from, to]) => from === to)
-        if (isWhitelistMode) {
-          modelRestrictionMode.value = 'whitelist'
-          allowedModels.value = entries.map(([from]) => from)
-          modelMappings.value = []
-        } else {
-          modelRestrictionMode.value = 'mapping'
-          modelMappings.value = entries.map(([from, to]) => ({ from, to }))
-          allowedModels.value = []
-        }
-      } else {
-        modelRestrictionMode.value = 'whitelist'
-        modelMappings.value = []
-        allowedModels.value = []
-      }
+      applyDecodedModelRestriction(oauthCredentials.model_mapping as Record<string, string> | undefined)
       loadModelFallbackChains(oauthCredentials)
     } else {
-      modelRestrictionMode.value = 'whitelist'
-      modelMappings.value = []
-      allowedModels.value = []
+      applyDecodedModelRestriction()
       modelFallbackChains.value = []
     }
     poolModeEnabled.value = false
@@ -2530,6 +2556,12 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
+}
+
+const applyModelMappingPaste = () => {
+  modelMappings.value = parseMappingPaste(modelMappingPasteInput.value)
+  modelMappingPasteInput.value = ''
+  showModelMappingPaste.value = false
 }
 
 const addAntigravityModelMapping = () => {

@@ -191,4 +191,34 @@ describe('EditAccountModal', () => {
       'gpt-5.2': ['gpt-4.1', 'gpt-4o-mini', 'gpt-4o']
     })
   })
+
+  it('在映射模式支持批量粘贴并回填提交 model_mapping', async () => {
+    const account = buildAccount()
+    updateAccountMock.mockReset()
+    checkMixedChannelRiskMock.mockReset()
+    checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })
+    updateAccountMock.mockResolvedValue(account)
+
+    const wrapper = mountModal(account)
+    const mappingTab = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('admin.accounts.modelMapping'))
+
+    expect(mappingTab).toBeTruthy()
+    await mappingTab!.trigger('click')
+
+    await wrapper.get('[data-testid="model-mapping-paste-toggle"]').trigger('click')
+    await wrapper
+      .get('[data-testid="model-mapping-paste-input"]')
+      .setValue('gpt-4.1 -> gpt-4.1-mini\ngpt-5.2,gpt-5.2-2025-12-11')
+    await wrapper.get('[data-testid="model-mapping-paste-apply"]').trigger('click')
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials?.model_mapping).toEqual({
+      'gpt-4.1': 'gpt-4.1-mini',
+      'gpt-5.2': 'gpt-5.2-2025-12-11'
+    })
+  })
 })
