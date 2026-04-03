@@ -45,6 +45,12 @@ type lookupUserAPIKeyItem struct {
 	CreatedAt        *time.Time `json:"created_at,omitempty"`
 	LastSuccessAt    *time.Time `json:"last_success_at,omitempty"`
 	SuccessCallCount int64      `json:"success_call_count"`
+
+	TotalInputTokens         int64 `json:"total_input_tokens"`
+	TotalOutputTokens        int64 `json:"total_output_tokens"`
+	TotalCacheCreationTokens int64 `json:"total_cache_creation_tokens"`
+	TotalCacheReadTokens     int64 `json:"total_cache_read_tokens"`
+	TotalTokens              int64 `json:"total_tokens"`
 }
 
 type lookupAPIKeyItem struct {
@@ -357,14 +363,22 @@ func (h *ToolsHandler) attachWorkbenchUserAPIKeys(c *gin.Context, item lookupAPI
 			}
 		}
 		item.SuccessCallCount += successCallCount
-		item.APIKeys = append(item.APIKeys, lookupUserAPIKeyItem{
+		keyItem := lookupUserAPIKeyItem{
 			ID:               userKeys[i].ID,
 			Key:              userKeys[i].Key,
 			Status:           userKeys[i].Status,
 			CreatedAt:        &userKeys[i].CreatedAt,
 			LastSuccessAt:    lastSuccessAt,
 			SuccessCallCount: successCallCount,
-		})
+		}
+		if stats != nil {
+			keyItem.TotalInputTokens = stats.TotalInputTokens
+			keyItem.TotalOutputTokens = stats.TotalOutputTokens
+			keyItem.TotalCacheCreationTokens = stats.TotalCacheCreationTokens
+			keyItem.TotalCacheReadTokens = stats.TotalCacheReadTokens
+			keyItem.TotalTokens = stats.TotalTokens
+		}
+		item.APIKeys = append(item.APIKeys, keyItem)
 	}
 
 	return item, true, nil

@@ -186,6 +186,30 @@
                             {{ apiKeyStatusLabel(userApiKey.status) }}
                           </p>
                         </div>
+                        <div class="rounded-2xl bg-slate-50 px-3 py-2 md:col-span-4">
+                          <p class="text-[11px] uppercase tracking-wide text-slate-400">Tokens 用量</p>
+                          <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <span>
+                              <span class="text-slate-400">in:</span>
+                              <span class="font-semibold text-blue-600">{{ formatNumber(userApiKey.total_input_tokens) }}</span>
+                            </span>
+                            <span>
+                              <span class="text-slate-400">out:</span>
+                              <span class="font-semibold text-emerald-600">{{ formatNumber(userApiKey.total_output_tokens) }}</span>
+                            </span>
+                            <span v-if="(userApiKey.total_cache_creation_tokens ?? 0) > 0">
+                              <span class="text-slate-400">cache-w:</span>
+                              <span class="font-semibold text-amber-600">{{ formatNumber(userApiKey.total_cache_creation_tokens) }}</span>
+                            </span>
+                            <span v-if="(userApiKey.total_cache_read_tokens ?? 0) > 0">
+                              <span class="text-slate-400">cache-r:</span>
+                              <span class="font-semibold text-purple-600">{{ formatNumber(userApiKey.total_cache_read_tokens) }}</span>
+                            </span>
+                            <span class="text-slate-400">
+                              total: <span class="font-semibold text-slate-900">{{ formatNumber(userApiKey.total_tokens) }}</span>
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -1016,6 +1040,11 @@ function apiKeyStatusClass(status?: string) {
   }
 }
 
+function formatNumber(value?: number | null) {
+  if (value == null || value === 0) return '0'
+  return value.toLocaleString('en-US')
+}
+
 function formatDateTime(value?: string | null) {
   if (!value) {
     return '-'
@@ -1056,7 +1085,7 @@ function formatLookupCard(item: WorkbenchLookupItem) {
     lines.push('该用户 API Key:')
     for (const userApiKey of item.api_keys) {
       lines.push(
-        `- ${userApiKey.key} | 生成时间: ${formatDateTime(userApiKey.created_at)} | 最后成功调用时间: ${formatDateTime(userApiKey.last_success_at)} | 成功调用次数: ${userApiKey.success_call_count}`,
+        `- ${userApiKey.key} | 生成时间: ${formatDateTime(userApiKey.created_at)} | 最后成功调用时间: ${formatDateTime(userApiKey.last_success_at)} | 成功调用次数: ${userApiKey.success_call_count} | Tokens: in=${userApiKey.total_input_tokens ?? 0} out=${userApiKey.total_output_tokens ?? 0} total=${userApiKey.total_tokens ?? 0}`,
       )
     }
   } else {

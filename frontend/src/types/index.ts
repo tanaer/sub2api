@@ -1138,6 +1138,11 @@ export interface WorkbenchLookupUserApiKey {
   created_at?: string | null
   last_success_at?: string | null
   success_call_count: number
+  total_input_tokens?: number
+  total_output_tokens?: number
+  total_cache_creation_tokens?: number
+  total_cache_read_tokens?: number
+  total_tokens?: number
 }
 
 export interface WorkbenchLookupItem {
