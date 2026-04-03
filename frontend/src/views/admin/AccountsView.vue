@@ -222,6 +222,14 @@
             <span v-if="value" :title="value" class="block max-w-xs truncate text-sm text-gray-600 dark:text-gray-300">{{ value }}</span>
             <span v-else class="text-sm text-gray-400 dark:text-dark-500">-</span>
           </template>
+          <template #cell-model_restriction="{ row }">
+            <span
+              :title="getModelRestrictionSummary(row)"
+              class="block max-w-xs truncate text-sm text-gray-600 dark:text-gray-300"
+            >
+              {{ getModelRestrictionSummary(row) }}
+            </span>
+          </template>
           <template #cell-platform_type="{ row }">
             <div class="flex flex-wrap items-center gap-1">
               <PlatformTypeBadge :platform="row.platform" :type="row.type" :plan-type="row.credentials?.plan_type" :privacy-mode="row.extra?.privacy_mode" />
@@ -400,6 +408,7 @@ import AccountThrottleRulesModal from '@/components/admin/AccountThrottleRulesMo
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import ProviderTimeoutModal from '@/components/admin/ProviderTimeoutModal.vue'
 import SLAMonitorModal from '@/components/admin/SLAMonitorModal.vue'
+import { summarizeModelRestriction } from '@/components/account/modelRestriction'
 import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import type { Account, AccountPlatform, AccountType, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel } from '@/types'
@@ -939,6 +948,16 @@ function getAntigravityTierClass(row: any): string {
   }
 }
 
+function getModelRestrictionSummary(row: Account): string {
+  return summarizeModelRestriction(row.credentials?.model_mapping as Record<string, string> | undefined, {
+    labels: {
+      allModels: t('admin.accounts.supportsAllModels'),
+      whitelist: t('admin.accounts.modelWhitelist'),
+      mapping: t('admin.accounts.modelMapping')
+    }
+  })
+}
+
 // All available columns
 const allColumns = computed(() => {
   const c = [
@@ -957,6 +976,7 @@ const allColumns = computed(() => {
   c.push(
     { key: 'usage', label: t('admin.accounts.columns.usageWindows'), sortable: false },
     { key: 'proxy', label: t('admin.accounts.columns.proxy'), sortable: false },
+    { key: 'model_restriction', label: t('admin.accounts.columns.modelRestriction', '模型限制'), sortable: false },
     { key: 'priority', label: t('admin.accounts.columns.priority'), sortable: true },
     { key: 'rate_multiplier', label: t('admin.accounts.columns.billingRateMultiplier'), sortable: true },
     { key: 'last_used_at', label: t('admin.accounts.columns.lastUsed'), sortable: true },
