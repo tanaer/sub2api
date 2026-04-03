@@ -5,13 +5,30 @@ export interface ModelMappingRow {
   to: string
 }
 
+export interface ModelRestrictionSummaryOptions {
+  labels?: {
+    allModels?: string
+    whitelist?: string
+    mapping?: string
+  }
+  formatMore?: (remaining: number) => string
+  mappingSeparator?: string
+  mappingArrow?: string
+}
+
+function isValidWildcardPattern(pattern: string): boolean {
+  const starIndex = pattern.indexOf('*')
+  if (starIndex === -1) return true
+  return starIndex === pattern.length - 1 && pattern.lastIndexOf('*') === starIndex
+}
+
 export function parseWhitelistPaste(input: string): string[] {
   const tokens = input.split(/[\s,]+/)
   const seen = new Set<string>()
   const result: string[] = []
   for (const token of tokens) {
     const trimmed = token.trim()
-    if (!trimmed || trimmed === '*') {
+    if (!trimmed || trimmed.includes('*')) {
       continue
     }
     if (!seen.has(trimmed)) {
@@ -51,6 +68,9 @@ export function parseMappingPaste(input: string): ModelMappingRow[] {
     if (!from || !to) {
       continue
     }
+    if (!isValidWildcardPattern(from) || to.includes('*')) {
+      continue
+    }
     if (mapping.has(from)) {
       const pos = order.indexOf(from)
       if (pos >= 0) {
@@ -80,7 +100,7 @@ export function decodeModelRestriction(mapping?: Record<string, string> | null):
   if (isWhitelist) {
     const allowedModels = entries
       .map(([from]) => from.trim())
-      .filter((model) => model.length > 0 && model !== '*')
+      .filter((model) => model.length > 0 && !model.includes('*'))
     return {
       mode: 'whitelist',
       allowedModels,
@@ -97,24 +117,35 @@ export function decodeModelRestriction(mapping?: Record<string, string> | null):
   }
 }
 
-export function summarizeModelRestriction(mapping?: Record<string, string> | null): string {
+export function summarizeModelRestriction(
+  mapping?: Record<string, string> | null,
+  options?: ModelRestrictionSummaryOptions
+): string {
+  const labels = {
+    allModels: options?.labels?.allModels ?? 'All models',
+    whitelist: options?.labels?.whitelist ?? 'Whitelist',
+    mapping: options?.labels?.mapping ?? 'Mapping'
+  }
+  const formatMore = options?.formatMore ?? ((remaining) => ` (+${remaining})`)
+  const mappingSeparator = options?.mappingSeparator ?? '; '
+  const mappingArrow = options?.mappingArrow ?? ' -> '
   const decoded = decodeModelRestriction(mapping)
   if (decoded.mode === 'whitelist') {
     const models = decoded.allowedModels.slice().sort((a, b) => a.localeCompare(b))
     if (models.length === 0) {
-      return '全部模型'
+      return labels.allModels
     }
     const visible = models.slice(0, 3)
     const remaining = models.length - visible.length
-    return `白名单: ${visible.join(', ')}${remaining > 0 ? ` (+${remaining})` : ''}`
+    return `${labels.whitelist}: ${visible.join(', ')}${remaining > 0 ? formatMore(remaining) : ''}`
   }
   const mappings = decoded.modelMappings
     .slice()
     .sort((a, b) => a.from.localeCompare(b.from))
   if (mappings.length === 0) {
-    return '全部模型'
+    return labels.allModels
   }
-  const visible = mappings.slice(0, 3).map((row) => `${row.from} -> ${row.to}`)
+  const visible = mappings.slice(0, 3).map((row) => `${row.from}${mappingArrow}${row.to}`)
   const remaining = mappings.length - visible.length
-  return `映射: ${visible.join('; ')}${remaining > 0 ? ` (+${remaining})` : ''}`
+  return `${labels.mapping}: ${visible.join(mappingSeparator)}${remaining > 0 ? formatMore(remaining) : ''}`
 }
