@@ -93,6 +93,19 @@ const gatewayForwardingCacheTTL = 60 * time.Second
 const gatewayForwardingErrorTTL = 5 * time.Second
 const gatewayForwardingDBTimeout = 5 * time.Second
 
+// cachedHealthBreakerConfig 缓存健康度熔断器配置（进程内缓存，60s TTL）
+type cachedHealthBreakerConfig struct {
+	config    *HealthCircuitBreakerConfig
+	expiresAt int64 // unix nano
+}
+
+var healthBreakerConfigCache atomic.Value // *cachedHealthBreakerConfig
+var healthBreakerSF singleflight.Group
+
+const healthBreakerCacheTTL = 60 * time.Second
+const healthBreakerErrorTTL = 5 * time.Second
+const healthBreakerDBTimeout = 5 * time.Second
+
 // DefaultSubscriptionGroupReader validates group references used by default subscriptions.
 type DefaultSubscriptionGroupReader interface {
 	GetByID(ctx context.Context, id int64) (*Group, error)
@@ -556,6 +569,15 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 		updates[SettingKeyGatewayFailoverStatusCodes] = string(fsJSON)
 	}
 
+	// Health circuit breaker configuration
+	if settings.HealthCircuitBreakerConfig != nil {
+		hcbJSON, jsonErr := json.Marshal(settings.HealthCircuitBreakerConfig)
+		if jsonErr != nil {
+			return fmt.Errorf("marshal health circuit breaker config: %w", jsonErr)
+		}
+		updates[SettingKeyHealthCircuitBreakerConfig] = string(hcbJSON)
+	}
+
 	err = s.settingRepo.SetMultiple(ctx, updates)
 	if err == nil {
 		// 先使 inflight singleflight 失效，再刷新缓存，缩小旧值覆盖新值的竞态窗口
@@ -590,6 +612,14 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 				codeMap:    fsCacheMap,
 				include5xx: fsCfg.Include5xx,
 				expiresAt:  time.Now().Add(failoverPolicyCacheTTL).UnixNano(),
+			})
+		}
+		// Health circuit breaker config cache invalidation
+		if settings.HealthCircuitBreakerConfig != nil {
+			healthBreakerSF.Forget("health_breaker")
+			healthBreakerConfigCache.Store(&cachedHealthBreakerConfig{
+				config:    settings.HealthCircuitBreakerConfig,
+				expiresAt: time.Now().Add(healthBreakerCacheTTL).UnixNano(),
 			})
 		}
 		if s.onUpdate != nil {
@@ -743,6 +773,56 @@ func (s *SettingService) GetGatewayForwardingSettings(ctx context.Context) (fing
 		return r.fp, r.mp
 	}
 	return true, false // fail-open defaults
+}
+
+// GetHealthBreakerConfig 获取健康度熔断器配置（带进程内缓存，60s TTL）
+func (s *SettingService) GetHealthBreakerConfig(ctx context.Context) *HealthCircuitBreakerConfig {
+	if cached, ok := healthBreakerConfigCache.Load().(*cachedHealthBreakerConfig); ok && cached != nil {
+		if time.Now().UnixNano() < cached.expiresAt {
+			return cached.config
+		}
+	}
+	val, _, _ := healthBreakerSF.Do("health_breaker", func() (any, error) {
+		if cached, ok := healthBreakerConfigCache.Load().(*cachedHealthBreakerConfig); ok && cached != nil {
+			if time.Now().UnixNano() < cached.expiresAt {
+				return cached.config, nil
+			}
+		}
+		dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), healthBreakerDBTimeout)
+		defer cancel()
+		value, err := s.settingRepo.GetValue(dbCtx, SettingKeyHealthCircuitBreakerConfig)
+		if err != nil || value == "" {
+			dflt := DefaultHealthCircuitBreakerConfig()
+			ttl := healthBreakerCacheTTL
+			if err != nil {
+				ttl = healthBreakerErrorTTL
+			}
+			healthBreakerConfigCache.Store(&cachedHealthBreakerConfig{
+				config:    dflt,
+				expiresAt: time.Now().Add(ttl).UnixNano(),
+			})
+			return dflt, nil
+		}
+		var cfg HealthCircuitBreakerConfig
+		if jsonErr := json.Unmarshal([]byte(value), &cfg); jsonErr != nil {
+			slog.Warn("failed to parse health breaker config", "error", jsonErr, "value", value)
+			dflt := DefaultHealthCircuitBreakerConfig()
+			healthBreakerConfigCache.Store(&cachedHealthBreakerConfig{
+				config:    dflt,
+				expiresAt: time.Now().Add(healthBreakerCacheTTL).UnixNano(),
+			})
+			return dflt, nil
+		}
+		healthBreakerConfigCache.Store(&cachedHealthBreakerConfig{
+			config:    &cfg,
+			expiresAt: time.Now().Add(healthBreakerCacheTTL).UnixNano(),
+		})
+		return &cfg, nil
+	})
+	if cfg, ok := val.(*HealthCircuitBreakerConfig); ok {
+		return cfg
+	}
+	return DefaultHealthCircuitBreakerConfig()
 }
 
 // IsEmailVerifyEnabled 检查是否开启邮件验证
@@ -1081,6 +1161,18 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	} else {
 		result.FailoverStatusCodes = defaultFailoverCodes.Codes
 		result.FailoverInclude5xx = defaultFailoverCodes.Include5xx
+	}
+
+	// Health circuit breaker configuration
+	if v, ok := settings[SettingKeyHealthCircuitBreakerConfig]; ok && v != "" {
+		var hcbCfg HealthCircuitBreakerConfig
+		if err := json.Unmarshal([]byte(v), &hcbCfg); err == nil {
+			result.HealthCircuitBreakerConfig = &hcbCfg
+		} else {
+			result.HealthCircuitBreakerConfig = DefaultHealthCircuitBreakerConfig()
+		}
+	} else {
+		result.HealthCircuitBreakerConfig = DefaultHealthCircuitBreakerConfig()
 	}
 
 	return result
@@ -1644,6 +1736,41 @@ func (s *SettingService) SetRectifierSettings(ctx context.Context, settings *Rec
 	}
 
 	return s.settingRepo.Set(ctx, SettingKeyRectifierSettings, string(data))
+}
+
+// GetModelIdentitySettings retrieves model identity masking configuration.
+func (s *SettingService) GetModelIdentitySettings(ctx context.Context) (*ModelIdentitySettings, error) {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyModelIdentitySettings)
+	if err != nil {
+		if errors.Is(err, ErrSettingNotFound) {
+			return DefaultModelIdentitySettings(), nil
+		}
+		return nil, fmt.Errorf("get model identity settings: %w", err)
+	}
+	if value == "" {
+		return DefaultModelIdentitySettings(), nil
+	}
+
+	var settings ModelIdentitySettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return DefaultModelIdentitySettings(), nil
+	}
+
+	return &settings, nil
+}
+
+// SetModelIdentitySettings stores model identity masking configuration.
+func (s *SettingService) SetModelIdentitySettings(ctx context.Context, settings *ModelIdentitySettings) error {
+	if settings == nil {
+		return fmt.Errorf("settings cannot be nil")
+	}
+
+	data, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("marshal model identity settings: %w", err)
+	}
+
+	return s.settingRepo.Set(ctx, SettingKeyModelIdentitySettings, string(data))
 }
 
 // IsSignatureRectifierEnabled 判断签名整流是否启用（总开关 && 签名子开关）
