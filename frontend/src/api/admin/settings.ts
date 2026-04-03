@@ -483,6 +483,41 @@ export async function updateRectifierSettings(
   return data
 }
 
+// ==================== Model Identity Settings ====================
+
+/**
+ * Model identity masking settings interface
+ */
+export interface ModelIdentitySettings {
+  local_response_enabled: boolean
+  instruction_injection_enabled: boolean
+  response_rewrite_enabled: boolean
+  hit_words: string[]
+  identity_patterns: string[]
+  reply_template: string
+}
+
+/**
+ * Get model identity settings
+ */
+export async function getModelIdentitySettings(): Promise<ModelIdentitySettings> {
+  const { data } = await apiClient.get<ModelIdentitySettings>('/admin/settings/model-identity')
+  return data
+}
+
+/**
+ * Update model identity settings
+ */
+export async function updateModelIdentitySettings(
+  settings: ModelIdentitySettings
+): Promise<ModelIdentitySettings> {
+  const { data } = await apiClient.put<ModelIdentitySettings>(
+    '/admin/settings/model-identity',
+    settings
+  )
+  return data
+}
+
 // ==================== Beta Policy Settings ====================
 
 /**
@@ -689,7 +724,9 @@ export const settingsAPI = {
   createSoraS3Profile,
   updateSoraS3Profile,
   deleteSoraS3Profile,
-  setActiveSoraS3Profile
+  setActiveSoraS3Profile,
+  getModelIdentitySettings,
+  updateModelIdentitySettings
 }
 
 export default settingsAPI
