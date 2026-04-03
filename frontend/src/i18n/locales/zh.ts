@@ -4428,6 +4428,11 @@ export default {
         fingerprintUnificationHint: '统一共享同一 OAuth 账号的用户的 X-Stainless-* 请求头。关闭后透传客户端原始请求头。',
         metadataPassthrough: 'Metadata 透传',
         metadataPassthroughHint: '透传客户端原始 metadata.user_id，不进行重写。可能提高上游缓存命中率。',
+        failoverStatusCodesTitle: '故障转移状态码',
+        failoverStatusCodesLabel: '状态码列表',
+        failoverCodePlaceholder: '状态码',
+        failoverInclude5xxLabel: '5xx 全量故障转移',
+        failoverInclude5xxHint: '开启后，所有 5xx 状态码（500-599）均触发故障转移，无需逐个添加。',
       },
       site: {
         title: '站点设置',

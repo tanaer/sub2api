@@ -92,6 +92,10 @@ export interface SystemSettings {
   // Gateway forwarding behavior
   enable_fingerprint_unification: boolean
   enable_metadata_passthrough: boolean
+
+  // Gateway failover status codes
+  failover_status_codes: number[]
+  failover_include_5xx: boolean
 }
 
 export interface UpdateSettingsRequest {
@@ -152,6 +156,8 @@ export interface UpdateSettingsRequest {
   allow_ungrouped_key_scheduling?: boolean
   enable_fingerprint_unification?: boolean
   enable_metadata_passthrough?: boolean
+  failover_status_codes?: number[]
+  failover_include_5xx?: boolean
 }
 
 /**

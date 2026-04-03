@@ -1274,6 +1274,67 @@
               </div>
               <Toggle v-model="form.enable_metadata_passthrough" />
             </div>
+
+            <!-- Failover Status Codes -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                {{ t('admin.settings.gatewayForwarding.failoverStatusCodesTitle') }}
+              </h4>
+
+              <!-- Status Code Tags -->
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ t('admin.settings.gatewayForwarding.failoverStatusCodesLabel') }}
+                </label>
+                <div class="flex flex-wrap gap-2 mb-2">
+                  <span
+                    v-for="code in form.failover_status_codes"
+                    :key="code"
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
+                    {{ code }}
+                    <button
+                      type="button"
+                      class="ml-1 text-blue-400 hover:text-blue-600"
+                      @click="removeFailoverCode(code)"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                </div>
+                <div class="flex gap-2">
+                  <input
+                    v-model="newFailoverCode"
+                    type="number"
+                    min="100"
+                    max="599"
+                    class="block w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    :placeholder="t('admin.settings.gatewayForwarding.failoverCodePlaceholder')"
+                    @keyup.enter="addFailoverCode"
+                  />
+                  <button
+                    type="button"
+                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500"
+                    @click="addFailoverCode"
+                  >
+                    {{ t('common.add') }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Include 5xx Toggle -->
+              <div class="flex items-center justify-between">
+                <div>
+                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ t('admin.settings.gatewayForwarding.failoverInclude5xxLabel') }}
+                  </label>
+                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t('admin.settings.gatewayForwarding.failoverInclude5xxHint') }}
+                  </p>
+                </div>
+                <Toggle v-model="form.failover_include_5xx" />
+              </div>
+            </div>
           </div>
         </div>
         </div><!-- /Tab: Gateway — Claude Code, Scheduling -->
@@ -2070,6 +2131,7 @@ const testingSmtp = ref(false)
 const sendingTestEmail = ref(false)
 const smtpPasswordManuallyEdited = ref(false)
 const testEmailAddress = ref('')
+const newFailoverCode = ref<number | ''>('')
 const registrationEmailSuffixWhitelistTags = ref<string[]>([])
 const registrationEmailSuffixWhitelistDraft = ref('')
 const supportedAiModelsDraft = ref('')
@@ -2081,6 +2143,22 @@ const adminApiKeyMasked = ref('')
 const adminApiKeyOperating = ref(false)
 const newAdminApiKey = ref('')
 const subscriptionGroups = ref<AdminGroup[]>([])
+
+function addFailoverCode() {
+  const code = Number(newFailoverCode.value)
+  if (code >= 100 && code <= 599 && !form.failover_status_codes.includes(code)) {
+    form.failover_status_codes.push(code)
+    form.failover_status_codes.sort((a: number, b: number) => a - b)
+  }
+  newFailoverCode.value = ''
+}
+
+function removeFailoverCode(code: number) {
+  const idx = form.failover_status_codes.indexOf(code)
+  if (idx !== -1) {
+    form.failover_status_codes.splice(idx, 1)
+  }
+}
 
 // Overload Cooldown (529) 状态
 const overloadCooldownLoading = ref(true)
@@ -2209,7 +2287,10 @@ const form = reactive<SettingsForm>({
   allow_ungrouped_key_scheduling: false,
   // Gateway forwarding behavior
   enable_fingerprint_unification: true,
-  enable_metadata_passthrough: false
+  enable_metadata_passthrough: false,
+  // Gateway failover status codes
+  failover_status_codes: [400, 401, 402, 403, 404, 429, 529] as number[],
+  failover_include_5xx: true,
 })
 
 const defaultSubscriptionGroupOptions = computed<DefaultSubscriptionGroupOption[]>(() =>
@@ -2544,7 +2625,9 @@ async function saveSettings() {
       max_claude_code_version: form.max_claude_code_version,
       allow_ungrouped_key_scheduling: form.allow_ungrouped_key_scheduling,
       enable_fingerprint_unification: form.enable_fingerprint_unification,
-      enable_metadata_passthrough: form.enable_metadata_passthrough
+      enable_metadata_passthrough: form.enable_metadata_passthrough,
+      failover_status_codes: form.failover_status_codes,
+      failover_include_5xx: form.failover_include_5xx,
     }
     const updated = await adminAPI.settings.updateSettings(payload)
     Object.assign(form, updated)

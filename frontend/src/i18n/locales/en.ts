@@ -4269,6 +4269,11 @@ export default {
         fingerprintUnificationHint: 'Unify X-Stainless-* headers across users sharing the same OAuth account. Disabling passes through each client\'s original headers.',
         metadataPassthrough: 'Metadata Passthrough',
         metadataPassthroughHint: 'Pass through client\'s original metadata.user_id without rewriting. May improve upstream cache hit rates.',
+        failoverStatusCodesTitle: 'Failover Status Codes',
+        failoverStatusCodesLabel: 'Status Codes',
+        failoverCodePlaceholder: 'Code',
+        failoverInclude5xxLabel: 'Failover on all 5xx',
+        failoverInclude5xxHint: 'When enabled, all 5xx status codes (500-599) trigger failover regardless of the explicit code list.',
       },
       site: {
         title: 'Site Settings',
