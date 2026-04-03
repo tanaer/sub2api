@@ -4545,7 +4545,14 @@ export default {
         supportedAiModelsPlaceholder: 'Claude\nGPT-4o\nGemini 2.5 Pro',
         supportedAiModelsHint: '每行一个模型名称，也支持用逗号分隔。首页会按这里的内容展示“已支持的 AI 模型”。',
         hideCcsImportButton: '隐藏 CCS 导入按钮',
-        hideCcsImportButtonHint: '启用后将在 API Keys 页面隐藏"导入 CCS"按钮'
+        hideCcsImportButtonHint: '启用后将在 API Keys 页面隐藏"导入 CCS"按钮',
+        customModelList: {
+          title: '自定义模型列表',
+          description: '配置 /v1/models API 返回的模型列表。设置后，将优先返回此列表而非动态计算。',
+          modelPlaceholder: '例如 claude-opus-4-6',
+          add: '添加模型',
+          hint: '留空则使用账号配置动态计算模型列表。',
+        }
       },
       purchase: {
         title: '充值/订阅页面',

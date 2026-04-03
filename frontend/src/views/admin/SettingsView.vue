@@ -1811,6 +1811,55 @@
               </p>
             </div>
 
+            <!-- Custom Model List -->
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t('admin.settings.site.customModelList.title') }}
+              </label>
+              <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.settings.site.customModelList.description') }}
+              </p>
+
+              <div class="space-y-2">
+                <div
+                  v-for="(_, index) in form.custom_model_list"
+                  :key="index"
+                  class="flex items-center gap-2"
+                >
+                  <input
+                    v-model="form.custom_model_list[index]"
+                    type="text"
+                    class="input flex-1 font-mono text-sm"
+                    :placeholder="t('admin.settings.site.customModelList.modelPlaceholder')"
+                  />
+                  <button
+                    type="button"
+                    class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                    @click="removeCustomModel(index)"
+                  >
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                @click="addCustomModel"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                {{ t('admin.settings.site.customModelList.add') }}
+              </button>
+
+              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.settings.site.customModelList.hint') }}
+              </p>
+            </div>
+
             <!-- Hide CCS Import Button -->
             <div
               class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -2386,6 +2435,14 @@ function removeFailoverCode(code: number) {
   }
 }
 
+function addCustomModel() {
+  form.custom_model_list.push('')
+}
+
+function removeCustomModel(index: number) {
+  form.custom_model_list.splice(index, 1)
+}
+
 // Overload Cooldown (529) 状态
 const overloadCooldownLoading = ref(true)
 const overloadCooldownSaving = ref(false)
@@ -2478,6 +2535,7 @@ const form = reactive<SettingsForm>({
   user_agreement_content: '',
   home_content: '',
   supported_ai_models: [] as string[],
+  custom_model_list: [] as string[],
   backend_mode_enabled: false,
   hide_ccs_import_button: false,
   purchase_subscription_enabled: false,
@@ -2838,6 +2896,7 @@ async function saveSettings() {
       user_agreement_content: form.user_agreement_content,
       home_content: form.home_content,
       supported_ai_models: normalizedSupportedAIModels,
+      custom_model_list: form.custom_model_list,
       backend_mode_enabled: form.backend_mode_enabled,
       hide_ccs_import_button: form.hide_ccs_import_button,
       purchase_subscription_enabled: form.purchase_subscription_enabled,

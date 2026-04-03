@@ -4384,7 +4384,14 @@ export default {
         supportedAiModelsPlaceholder: 'Claude\nGPT-4o\nGemini 2.5 Pro',
         supportedAiModelsHint: 'One model name per line. Comma-separated input is also supported. The home page will render these as the supported AI models list.',
         hideCcsImportButton: 'Hide CCS Import Button',
-        hideCcsImportButtonHint: 'When enabled, the "Import to CCS" button will be hidden on the API Keys page'
+        hideCcsImportButtonHint: 'When enabled, the "Import to CCS" button will be hidden on the API Keys page',
+        customModelList: {
+          title: 'Custom Model List',
+          description: 'Configure the model list returned by /v1/models API. When set, this list will be returned instead of dynamically calculated models.',
+          modelPlaceholder: 'e.g., claude-opus-4-6',
+          add: 'Add Model',
+          hint: 'Leave empty to use dynamically calculated models from account configurations.',
+        }
       },
       purchase: {
         title: 'Recharge / Subscription Page',
