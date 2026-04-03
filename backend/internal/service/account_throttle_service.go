@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/model"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/tidwall/gjson"
 )
 
 // AccountThrottleRepository 账户限流规则数据访问接口
@@ -164,6 +166,9 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID
 	var bodyLower string
 	var bodyLowerDone bool
 
+	// 提取响应体中的业务错误码（如讯飞 11200），用于 error_codes 匹配
+	bodyErrorCodes := extractBodyErrorCodes(responseBody)
+
 	for _, rule := range rules {
 		if !rule.Enabled {
 			continue
@@ -171,7 +176,7 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID
 		if !s.platformMatches(rule, lowerPlatform) {
 			continue
 		}
-		if !s.errorCodeMatches(rule, statusCode) {
+		if !s.errorCodeMatches(rule, statusCode, bodyErrorCodes) {
 			continue
 		}
 
@@ -254,8 +259,9 @@ func (s *AccountThrottleService) matchKeywords(rule *cachedThrottleRule, body []
 	return ""
 }
 
-// errorCodeMatches 检查HTTP状态码是否匹配（空列表=匹配所有）
-func (s *AccountThrottleService) errorCodeMatches(rule *cachedThrottleRule, statusCode int) bool {
+// errorCodeMatches 检查错误码是否匹配（空列表=匹配所有）
+// 同时检查 HTTP 状态码和响应体中的业务错误码
+func (s *AccountThrottleService) errorCodeMatches(rule *cachedThrottleRule, statusCode int, bodyErrorCodes []int) bool {
 	if len(rule.ErrorCodes) == 0 {
 		return true
 	}
@@ -263,8 +269,51 @@ func (s *AccountThrottleService) errorCodeMatches(rule *cachedThrottleRule, stat
 		if code == statusCode {
 			return true
 		}
+		for _, bodyCode := range bodyErrorCodes {
+			if code == bodyCode {
+				return true
+			}
+		}
 	}
 	return false
+}
+
+// extractBodyErrorCodes 从响应体 JSON 中提取业务错误码
+// 支持常见格式：{"code":11200}, {"error":{"code":1302}}, {"header":{"code":11200}}
+func extractBodyErrorCodes(body []byte) []int {
+	if len(body) == 0 {
+		return nil
+	}
+
+	var codes []int
+	seen := make(map[int]bool)
+
+	paths := []string{
+		"code",
+		"error.code",
+		"header.code",
+	}
+
+	for _, path := range paths {
+		result := gjson.GetBytes(body, path)
+		if !result.Exists() {
+			continue
+		}
+		if c, err := strconv.Atoi(strings.TrimSpace(result.Raw)); err == nil && c > 599 && !seen[c] {
+			// 只收集非标准 HTTP 状态码（>599），避免与 HTTP 状态码重复
+			codes = append(codes, c)
+			seen[c] = true
+		}
+		// 有些上游把 code 作为字符串返回
+		if s := strings.TrimSpace(result.String()); s != "" {
+			if c, err := strconv.Atoi(s); err == nil && c > 599 && !seen[c] {
+				codes = append(codes, c)
+				seen[c] = true
+			}
+		}
+	}
+
+	return codes
 }
 
 // platformMatches 检查平台是否匹配
