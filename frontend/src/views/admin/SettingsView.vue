@@ -2828,6 +2828,8 @@ async function saveSettings() {
         validity_days: Math.min(36500, Math.max(1, Math.floor(item.validity_days)))
       }))
 
+    const normalizedCustomModelList = form.custom_model_list.map((m: string) => m.trim()).filter(Boolean)
+
     const seenGroupIDs = new Set<number>()
     const duplicateDefaultSubscription = normalizedDefaultSubscriptions.find((item) => {
       if (seenGroupIDs.has(item.group_id)) {
@@ -2896,7 +2898,7 @@ async function saveSettings() {
       user_agreement_content: form.user_agreement_content,
       home_content: form.home_content,
       supported_ai_models: normalizedSupportedAIModels,
-      custom_model_list: form.custom_model_list,
+      custom_model_list: normalizedCustomModelList,
       backend_mode_enabled: form.backend_mode_enabled,
       hide_ccs_import_button: form.hide_ccs_import_button,
       purchase_subscription_enabled: form.purchase_subscription_enabled,
