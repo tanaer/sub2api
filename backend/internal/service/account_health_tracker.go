@@ -63,12 +63,18 @@ func (t *AccountHealthTracker) RecordFailure(accountID int64) {
 
 // HealthScore 返回账号健康分数（0-100）。
 // 100 = 完全健康或数据不足（不惩罚），0 = 窗口内全部失败。
-func (t *AccountHealthTracker) HealthScore(accountID int64) int {
+// minSamples 为 0 时使用默认值 healthMinSamples。
+func (t *AccountHealthTracker) HealthScore(accountID int64, minSamples ...int) int {
 	t.mu.RLock()
 	b, ok := t.buckets[accountID]
 	t.mu.RUnlock()
 	if !ok {
 		return 100
+	}
+
+	effectiveMinSamples := int32(healthMinSamples)
+	if len(minSamples) > 0 && minSamples[0] > 0 {
+		effectiveMinSamples = int32(minSamples[0])
 	}
 
 	now := currentMinute()
@@ -84,7 +90,7 @@ func (t *AccountHealthTracker) HealthScore(accountID int64) int {
 	}
 
 	total := totalSuccess + totalFailures
-	if total < healthMinSamples {
+	if total < effectiveMinSamples {
 		return 100 // 样本不足，视为健康
 	}
 

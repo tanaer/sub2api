@@ -1337,6 +1337,86 @@
             </div>
           </div>
         </div>
+
+        <!-- Health Circuit Breaker -->
+        <div class="card">
+          <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ t('admin.settings.healthBreaker.title') }}
+            </h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.settings.healthBreaker.description') }}
+            </p>
+          </div>
+          <div class="space-y-4 p-6">
+            <!-- Enabled toggle -->
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.healthBreaker.enabled') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.settings.healthBreaker.enabledHint') }}
+                </p>
+              </div>
+              <Toggle v-model="form.health_circuit_breaker_config.enabled" />
+            </div>
+
+            <div v-show="form.health_circuit_breaker_config.enabled" class="space-y-4 pt-2">
+              <!-- Threshold -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ t('admin.settings.healthBreaker.threshold') }}
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {{ t('admin.settings.healthBreaker.thresholdHint') }}
+                </p>
+                <input
+                  v-model.number="form.health_circuit_breaker_config.threshold"
+                  type="number"
+                  min="1"
+                  max="100"
+                  class="input w-32"
+                />
+              </div>
+
+              <!-- TTL Seconds -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ t('admin.settings.healthBreaker.ttlSeconds') }}
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {{ t('admin.settings.healthBreaker.ttlSecondsHint') }}
+                </p>
+                <input
+                  v-model.number="form.health_circuit_breaker_config.ttl_seconds"
+                  type="number"
+                  min="5"
+                  max="300"
+                  class="input w-32"
+                />
+              </div>
+
+              <!-- Min Samples -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ t('admin.settings.healthBreaker.minSamples') }}
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  {{ t('admin.settings.healthBreaker.minSamplesHint') }}
+                </p>
+                <input
+                  v-model.number="form.health_circuit_breaker_config.min_samples"
+                  type="number"
+                  min="1"
+                  max="50"
+                  class="input w-32"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         </div><!-- /Tab: Gateway — Claude Code, Scheduling -->
 
         <!-- Tab: General -->
@@ -2291,6 +2371,13 @@ const form = reactive<SettingsForm>({
   // Gateway failover status codes
   failover_status_codes: [400, 401, 402, 403, 404, 429, 529] as number[],
   failover_include_5xx: true,
+  // Health circuit breaker
+  health_circuit_breaker_config: {
+    enabled: true,
+    threshold: 50,
+    ttl_seconds: 30,
+    min_samples: 3,
+  },
 })
 
 const defaultSubscriptionGroupOptions = computed<DefaultSubscriptionGroupOption[]>(() =>
@@ -2628,6 +2715,7 @@ async function saveSettings() {
       enable_metadata_passthrough: form.enable_metadata_passthrough,
       failover_status_codes: form.failover_status_codes,
       failover_include_5xx: form.failover_include_5xx,
+      health_circuit_breaker_config: form.health_circuit_breaker_config,
     }
     const updated = await adminAPI.settings.updateSettings(payload)
     Object.assign(form, updated)

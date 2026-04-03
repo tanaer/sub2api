@@ -4275,6 +4275,18 @@ export default {
         failoverInclude5xxLabel: 'Failover on all 5xx',
         failoverInclude5xxHint: 'When enabled, all 5xx status codes (500-599) trigger failover regardless of the explicit code list.',
       },
+      healthBreaker: {
+        title: 'Health Circuit Breaker',
+        description: 'Short-term circuit breaker based on sliding-window health scores. Temporarily removes accounts with high failure rates from the scheduling pool.',
+        enabled: 'Enable Health Breaker',
+        enabledHint: 'When disabled, only permanent errors (401/402/403) trigger circuit breaking. Health-score based short-term breaking is skipped.',
+        threshold: 'Threshold',
+        thresholdHint: 'Trips the breaker when health score falls below this value (0-100, default 50). Higher values trigger more aggressively.',
+        ttlSeconds: 'TTL (seconds)',
+        ttlSecondsHint: 'How long the short-term breaker stays active before the account is automatically restored (default 30s).',
+        minSamples: 'Min Samples',
+        minSamplesHint: 'Minimum request samples in the sliding window before health score is calculated (default 3). Higher values reduce false positives.',
+      },
       site: {
         title: 'Site Settings',
         description: 'Customize site branding',

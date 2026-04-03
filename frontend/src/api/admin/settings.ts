@@ -96,6 +96,16 @@ export interface SystemSettings {
   // Gateway failover status codes
   failover_status_codes: number[]
   failover_include_5xx: boolean
+
+  // Health circuit breaker configuration
+  health_circuit_breaker_config: HealthCircuitBreakerConfig
+}
+
+export interface HealthCircuitBreakerConfig {
+  enabled: boolean
+  threshold: number
+  ttl_seconds: number
+  min_samples: number
 }
 
 export interface UpdateSettingsRequest {
@@ -158,6 +168,7 @@ export interface UpdateSettingsRequest {
   enable_metadata_passthrough?: boolean
   failover_status_codes?: number[]
   failover_include_5xx?: boolean
+  health_circuit_breaker_config?: HealthCircuitBreakerConfig
 }
 
 /**

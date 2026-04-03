@@ -143,6 +143,16 @@ func (s *RateLimitService) HealthTracker() *AccountHealthTracker {
 	return s.healthTracker
 }
 
+// getHealthBreakerConfig 获取健康度熔断器配置（优先从 SettingService 读取，fallback 到硬编码默认值）
+func (s *RateLimitService) getHealthBreakerConfig(ctx context.Context) *HealthCircuitBreakerConfig {
+	if s.settingService != nil {
+		if cfg := s.settingService.GetHealthBreakerConfig(ctx); cfg != nil {
+			return cfg
+		}
+	}
+	return DefaultHealthCircuitBreakerConfig()
+}
+
 // RecordSuccess 记录一次账号请求成功（供 ForwardResult 成功路径调用）。
 func (s *RateLimitService) RecordSuccess(accountID int64) {
 	if s == nil {
@@ -357,14 +367,19 @@ postProcess:
 	// 通过短期熔断防止故障账号被反复选中。
 	// 不与 shouldDisable 重复（shouldDisable 已触发正式 Trip）。
 	if !shouldDisable && s.circuitBreaker != nil && s.healthTracker != nil {
-		if score := s.healthTracker.HealthScore(account.ID); score <= upstreamHealthCircuitBreakerThreshold {
-			s.circuitBreaker.TripWithTTL(account.ID, upstreamHealthCircuitBreakerTTL)
-			slog.Info("account_health_circuit_breaker",
-				"account_id", account.ID,
-				"status_code", statusCode,
-				"health_score", score,
-				"ttl", upstreamHealthCircuitBreakerTTL,
-			)
+		hbCfg := s.getHealthBreakerConfig(ctx)
+		if hbCfg.Enabled {
+			if score := s.healthTracker.HealthScore(account.ID, hbCfg.MinSamples); score < hbCfg.Threshold {
+				ttl := time.Duration(hbCfg.TTLSeconds) * time.Second
+				s.circuitBreaker.TripWithTTL(account.ID, ttl)
+				slog.Info("account_health_circuit_breaker",
+					"account_id", account.ID,
+					"status_code", statusCode,
+					"health_score", score,
+					"threshold", hbCfg.Threshold,
+					"ttl", ttl,
+				)
+			}
 		}
 	}
 

@@ -4434,6 +4434,18 @@ export default {
         failoverInclude5xxLabel: '5xx 全量故障转移',
         failoverInclude5xxHint: '开启后，所有 5xx 状态码（500-599）均触发故障转移，无需逐个添加。',
       },
+      healthBreaker: {
+        title: '健康度熔断器',
+        description: '基于滑动窗口健康分数的短期熔断机制。当账号在时间窗口内失败率过高时，暂时将其从调度池中移除。',
+        enabled: '启用健康度熔断',
+        enabledHint: '关闭后不再基于健康分数触发短期熔断，仅保留 401/402/403 等永久性错误的熔断。',
+        threshold: '熔断阈值',
+        thresholdHint: '健康分数低于此值时触发短期熔断（0-100，默认 50）。值越高越容易触发熔断。',
+        ttlSeconds: '熔断时长（秒）',
+        ttlSecondsHint: '短期熔断持续时间，到期后账号自动恢复调度（默认 30 秒）。',
+        minSamples: '最小样本数',
+        minSamplesHint: '滑动窗口内至少需要这么多请求样本才会计算健康分数（默认 3）。值越大越不容易误触发。',
+      },
       site: {
         title: '站点设置',
         description: '自定义站点品牌',

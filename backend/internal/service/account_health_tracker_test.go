@@ -81,7 +81,7 @@ func TestSortAccountsWithHealthWeighting(t *testing.T) {
 		{ID: 3, Priority: 2, Name: "healthy-p2"},
 	}
 
-	sortAccountsWithHealthWeighting(accounts, false, ht.HealthScore)
+	sortAccountsWithHealthWeighting(accounts, false, func(id int64) int { return ht.HealthScore(id) })
 
 	require.Equal(t, int64(1), accounts[0].ID, "healthy p1 should be first")
 	require.Equal(t, int64(3), accounts[1].ID, "healthy p2 should be second")
