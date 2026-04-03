@@ -2761,6 +2761,7 @@ async function loadSettings() {
     const settings = await adminAPI.settings.getSettings()
     Object.assign(form, settings)
     form.backend_mode_enabled = settings.backend_mode_enabled
+    form.custom_model_list = Array.isArray(settings.custom_model_list) ? settings.custom_model_list : []
     form.default_subscriptions = Array.isArray(settings.default_subscriptions)
       ? settings.default_subscriptions
           .filter((item) => item.group_id > 0 && item.validity_days > 0)
@@ -2939,6 +2940,7 @@ async function saveSettings() {
     }
     const updated = await adminAPI.settings.updateSettings(payload)
     Object.assign(form, updated)
+    form.custom_model_list = Array.isArray(updated.custom_model_list) ? updated.custom_model_list : []
     registrationEmailSuffixWhitelistTags.value = normalizeRegistrationEmailSuffixDomains(
       updated.registration_email_suffix_whitelist
     )

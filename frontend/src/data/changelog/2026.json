@@ -1,4 +1,7 @@
 [
+  { "date": "2026-04-04", "type": "fix",        "content": "修复系统设置页自定义模型列表为空时添加模型和保存设置报错的问题" },
+  { "date": "2026-04-03", "type": "feature",    "content": "新增自定义模型列表功能（系统设置 - 通用设置），支持手动配置 /v1/models 返回的模型列表" },
+  { "date": "2026-04-03", "type": "feature",    "content": "账号管理新增按模型名称搜索功能，方便快速找到配置了特定模型的账号" },
   { "date": "2026-04-03", "type": "feature",    "content": "新增 POST /api/provider 接口，支持 CLI 通过 API Key 获取分组配置与模型映射" },
   { "date": "2026-04-03", "type": "feature",    "content": "后台右上角新增更新日志菜单" },
   { "date": "2026-04-03", "type": "improvement", "content": "新增并发账号文件维度管理" },
