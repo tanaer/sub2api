@@ -121,7 +121,10 @@
           @openErrorDetail="openError"
         />
 
-        <OpsErrorDetailModal v-model:show="showErrorModal" :error-id="selectedErrorId" :error-type="errorDetailsType" />
+        <OpsRequestTraceModal
+          v-model="showRequestTrace"
+          :request-key="selectedRequestTraceKey"
+        />
 
         <OpsRequestDetailsModal
           v-model="showRequestDetails"
@@ -130,6 +133,14 @@
           :platform="platform"
           :group-id="groupId"
           @openErrorDetail="openError"
+          @openRequestTrace="openRequestTrace"
+        />
+
+        <OpsErrorDetailModal
+          v-model:show="showErrorModal"
+          :error-id="selectedErrorId"
+          :error-type="errorDetailsType"
+          @openRequestTrace="openRequestTrace"
         />
       </template>
     </div>
@@ -167,6 +178,7 @@ import OpsAlertEventsCard from './components/OpsAlertEventsCard.vue'
 import OpsOpenAITokenStatsCard from './components/OpsOpenAITokenStatsCard.vue'
 import OpsSystemLogTable from './components/OpsSystemLogTable.vue'
 import OpsRequestDetailsModal, { type OpsRequestDetailsPreset } from './components/OpsRequestDetailsModal.vue'
+import OpsRequestTraceModal from './components/OpsRequestTraceModal.vue'
 import OpsSettingsDialog from './components/OpsSettingsDialog.vue'
 import OpsAlertRulesCard from './components/OpsAlertRulesCard.vue'
 
@@ -366,6 +378,8 @@ const loadingErrorDistribution = ref(false)
 
 const selectedErrorId = ref<number | null>(null)
 const showErrorModal = ref(false)
+const selectedRequestTraceKey = ref('')
+const showRequestTrace = ref(false)
 
 const showErrorDetails = ref(false)
 const errorDetailsType = ref<'request' | 'upstream'>('request')
@@ -451,6 +465,7 @@ function handleOpenRequestDetails(preset?: OpsRequestDetailsPreset) {
   // Ensure only one modal visible at a time.
   showErrorDetails.value = false
   showErrorModal.value = false
+  showRequestTrace.value = false
   showRequestDetails.value = true
 }
 
@@ -459,6 +474,7 @@ function openErrorDetails(kind: 'request' | 'upstream') {
   // Ensure only one modal visible at a time.
   showRequestDetails.value = false
   showErrorModal.value = false
+  showRequestTrace.value = false
   showErrorDetails.value = true
 }
 
@@ -509,7 +525,17 @@ function openError(id: number) {
   // Ensure only one modal visible at a time.
   showErrorDetails.value = false
   showRequestDetails.value = false
+  showRequestTrace.value = false
   showErrorModal.value = true
+}
+
+function openRequestTrace(requestId: string) {
+  selectedRequestTraceKey.value = String(requestId || '').trim()
+  if (!selectedRequestTraceKey.value) return
+  showErrorDetails.value = false
+  showRequestDetails.value = false
+  showErrorModal.value = false
+  showRequestTrace.value = true
 }
 
 function buildApiParams() {

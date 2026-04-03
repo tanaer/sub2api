@@ -142,6 +142,7 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	clientStream := gjson.GetBytes(body, "stream").Bool()
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, clientStream)
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", clientStream))
 	if !clientStream {
 		if h.streamMode == "error" {
@@ -224,6 +225,7 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 	var lastFailoverHeaders http.Header
 
 	for {
+		recordSelectionStarted(c, reqModel, failedAccountIDs)
 		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionHash, reqModel, failedAccountIDs, "")
 		if err != nil {
 			reqLog.Warn("sora.account_select_failed",
@@ -251,6 +253,7 @@ func (h *SoraGatewayHandler) ChatCompletions(c *gin.Context) {
 			h.handleFailoverExhausted(c, lastFailoverStatus, lastFailoverHeaders, lastFailoverBody, streamStarted)
 			return
 		}
+		recordSelectionResult(c, selection)
 		account := selection.Account
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 		setOpsSelectedAccountName(c, account.Name)

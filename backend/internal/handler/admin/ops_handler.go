@@ -74,6 +74,79 @@ func NewOpsHandler(opsService *service.OpsService) *OpsHandler {
 	return &OpsHandler{opsService: opsService}
 }
 
+// GetRequestTrace returns end-to-end request trace by request identifier.
+// GET /api/v1/admin/ops/request-trace?key=...&key_type=...
+func (h *OpsHandler) GetRequestTrace(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	key := strings.TrimSpace(c.Query("key"))
+	if key == "" {
+		response.BadRequest(c, "key is required")
+		return
+	}
+	keyType := normalizeRequestTraceQueryKeyType(c.Query("key_type"))
+	if keyType == "" {
+		response.BadRequest(c, "Invalid key_type")
+		return
+	}
+
+	result, err := h.opsService.GetRequestTrace(c.Request.Context(), &service.OpsRequestTraceQuery{
+		Key:     key,
+		KeyType: toServiceRequestTraceKeyType(keyType),
+	})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "invalid trace key_type") {
+			response.BadRequest(c, "Invalid key_type")
+			return
+		}
+		response.ErrorFrom(c, err)
+		return
+	}
+	if result == nil || (result.Trace == nil && !result.Ambiguous && len(result.Candidates) == 0) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": gin.H{
+				"code":    "trace_not_found",
+				"message": "request trace not found",
+			},
+		})
+		return
+	}
+	if result.Ambiguous {
+		candidates := make([]gin.H, 0, len(result.Candidates))
+		for _, candidate := range result.Candidates {
+			if candidate == nil {
+				continue
+			}
+			item := gin.H{
+				"client_request_id": candidate.ClientRequestID,
+				"created_at":        candidate.CreatedAt.UTC().Format(time.RFC3339Nano),
+				"status":            candidate.Status,
+			}
+			if candidate.FinalAccountID != nil {
+				item["final_account_id"] = *candidate.FinalAccountID
+			}
+			candidates = append(candidates, item)
+		}
+		c.JSON(http.StatusConflict, gin.H{
+			"error": gin.H{
+				"code":       "ambiguous_request_identifier",
+				"message":    "multiple traces matched the identifier",
+				"candidates": candidates,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, buildRequestTraceResponse(key, keyType, result.Trace))
+}
+
 // GetErrorLogs lists ops error logs.
 // GET /api/v1/admin/ops/errors
 func (h *OpsHandler) GetErrorLogs(c *gin.Context) {
@@ -948,4 +1021,275 @@ func parseOpsDuration(v string) (time.Duration, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func normalizeRequestTraceQueryKeyType(raw string) string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	switch value {
+	case "", "auto":
+		return "auto"
+	case "client", "client_request_id":
+		return "client_request_id"
+	case "local", "local_request_id":
+		return "local_request_id"
+	case "usage", "usage_request_id":
+		return "usage_request_id"
+	case "upstream", "upstream_request_id":
+		return "upstream_request_id"
+	default:
+		return ""
+	}
+}
+
+func toServiceRequestTraceKeyType(value string) string {
+	switch value {
+	case "client_request_id":
+		return service.OpsRequestTraceKeyTypeClient
+	case "local_request_id":
+		return service.OpsRequestTraceKeyTypeLocal
+	case "usage_request_id":
+		return service.OpsRequestTraceKeyTypeUsage
+	case "upstream_request_id":
+		return service.OpsRequestTraceKeyTypeUpstream
+	default:
+		return service.OpsRequestTraceKeyTypeAuto
+	}
+}
+
+func buildRequestTraceResponse(queryKey, queryKeyType string, trace *service.OpsRequestTrace) gin.H {
+	if trace == nil {
+		return gin.H{}
+	}
+	upstreamIDs := append([]string(nil), trace.UpstreamRequestIDs...)
+	publicQueryKeyType := normalizeRequestTraceQueryKeyType(queryKeyType)
+	if publicQueryKeyType == "" {
+		publicQueryKeyType = "auto"
+	}
+
+	requestPayload := gin.H{
+		"created_at":        trace.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"finished_at":       formatOptionalTraceTime(trace.FinishedAt),
+		"duration_ms":       traceDuration(trace.DurationMs),
+		"status":            trace.Status,
+		"platform":          trace.Platform,
+		"request_path":      trace.RequestPath,
+		"inbound_endpoint":  trace.InboundEndpoint,
+		"upstream_endpoint": trace.UpstreamEndpoint,
+		"stream":            extractRequestTraceStream(trace),
+	}
+	if trace.UserID != nil {
+		requestPayload["user_id"] = *trace.UserID
+	}
+	if trace.APIKeyID != nil {
+		requestPayload["api_key_id"] = *trace.APIKeyID
+	}
+	if trace.GroupID != nil {
+		requestPayload["group_id"] = *trace.GroupID
+	}
+
+	resultPayload := gin.H{
+		"final_status":         trace.Status,
+		"final_status_code":    traceFinalStatusCode(trace.FinalStatusCode),
+		"final_account_name":   resolveTraceFinalAccountName(trace),
+		"final_upstream_model": trace.FinalUpstreamModel,
+	}
+	if trace.FinalAccountID != nil {
+		resultPayload["final_account_id"] = *trace.FinalAccountID
+	}
+
+	var usagePayload any
+	if strings.TrimSpace(trace.UsageRequestID) != "" {
+		usagePayload = gin.H{
+			"usage_request_id": trace.UsageRequestID,
+		}
+	}
+
+	return gin.H{
+		"identity": gin.H{
+			"query_key":                      strings.TrimSpace(queryKey),
+			"query_key_type":                 publicQueryKeyType,
+			"matched_by":                     resolveRequestTraceMatchedBy(strings.TrimSpace(queryKey), trace),
+			"client_request_id":              trace.ClientRequestID,
+			"local_request_id":               trace.LocalRequestID,
+			"usage_request_id":               trace.UsageRequestID,
+			"upstream_request_ids":           upstreamIDs,
+			"upstream_request_ids_truncated": false,
+			"upstream_request_ids_total":     len(upstreamIDs),
+		},
+		"models": gin.H{
+			"original_requested_model":     trace.OriginalRequestedModel,
+			"group_resolved_model":         trace.GroupResolvedModel,
+			"account_support_lookup_model": trace.AccountSupportLookupModel,
+			"final_upstream_model":         trace.FinalUpstreamModel,
+		},
+		"request":          requestPayload,
+		"timeline":         buildTraceTimeline(trace.TraceEvents),
+		"usage":            usagePayload,
+		"result":           resultPayload,
+		"trace_incomplete": trace.TraceIncomplete,
+	}
+}
+
+func resolveRequestTraceMatchedBy(queryKey string, trace *service.OpsRequestTrace) string {
+	queryKey = strings.TrimSpace(queryKey)
+	switch {
+	case queryKey != "" && queryKey == strings.TrimSpace(trace.ClientRequestID):
+		return "client_request_id"
+	case queryKey != "" && queryKey == strings.TrimSpace(trace.LocalRequestID):
+		return "local_request_id"
+	case queryKey != "" && queryKey == strings.TrimSpace(trace.UsageRequestID):
+		return "usage_request_id"
+	default:
+		for _, upstreamID := range trace.UpstreamRequestIDs {
+			if queryKey != "" && queryKey == strings.TrimSpace(upstreamID) {
+				return "upstream_request_id"
+			}
+		}
+	}
+	return "client_request_id"
+}
+
+func buildTraceTimeline(events []*service.OpsRequestTraceEvent) []gin.H {
+	if len(events) == 0 {
+		return []gin.H{}
+	}
+	timeline := make([]gin.H, 0, len(events))
+	for _, event := range events {
+		if event == nil {
+			continue
+		}
+		data := make(map[string]any, len(event.Data))
+		phase := inferTraceEventPhase(event)
+		for key, value := range event.Data {
+			if strings.EqualFold(key, "phase") {
+				if text, ok := value.(string); ok && strings.TrimSpace(text) != "" {
+					phase = strings.TrimSpace(text)
+				}
+				continue
+			}
+			data[key] = value
+		}
+		timeline = append(timeline, gin.H{
+			"ts":      event.OccurredAt.UTC().Format(time.RFC3339Nano),
+			"type":    event.Type,
+			"phase":   phase,
+			"summary": summarizeTraceEvent(event),
+			"data":    data,
+		})
+	}
+	return timeline
+}
+
+func inferTraceEventPhase(event *service.OpsRequestTraceEvent) string {
+	if event == nil {
+		return ""
+	}
+	if phase, ok := event.Data["phase"].(string); ok && strings.TrimSpace(phase) != "" {
+		return strings.TrimSpace(phase)
+	}
+	switch strings.TrimSpace(event.Type) {
+	case "request_received":
+		return "ingress"
+	case "group_model_resolved":
+		return "routing"
+	case "selection_started", "selection_result", "selection_summary":
+		return "selection"
+	case "same_account_retry", "account_failover", "account_model_resolved":
+		return "account"
+	case "upstream_attempt":
+		return "upstream"
+	case "usage_recorded":
+		return "usage"
+	case "request_finished":
+		return "finish"
+	default:
+		return ""
+	}
+}
+
+func summarizeTraceEvent(event *service.OpsRequestTraceEvent) string {
+	if event == nil {
+		return ""
+	}
+	switch strings.TrimSpace(event.Type) {
+	case "group_model_resolved":
+		fromModel, _ := event.Data["from_model"].(string)
+		toModel, _ := event.Data["to_model"].(string)
+		if strings.TrimSpace(fromModel) != "" || strings.TrimSpace(toModel) != "" {
+			return strings.TrimSpace(fromModel) + " -> " + strings.TrimSpace(toModel)
+		}
+	case "selection_result":
+		if accountID, ok := event.Data["account_id"]; ok {
+			return fmt.Sprintf("selected account %v", accountID)
+		}
+	case "account_failover":
+		if accountID, ok := event.Data["account_id"]; ok {
+			return fmt.Sprintf("failover from account %v", accountID)
+		}
+	case "same_account_retry":
+		if retryCount, ok := event.Data["retry_count"]; ok {
+			return fmt.Sprintf("same account retry #%v", retryCount)
+		}
+	case "request_finished":
+		if status, ok := event.Data["status"].(string); ok {
+			return status
+		}
+	}
+	return strings.TrimSpace(event.Type)
+}
+
+func extractRequestTraceStream(trace *service.OpsRequestTrace) bool {
+	for _, event := range trace.TraceEvents {
+		if event == nil || strings.TrimSpace(event.Type) != "request_received" {
+			continue
+		}
+		if value, ok := event.Data["stream"].(bool); ok {
+			return value
+		}
+	}
+	return false
+}
+
+func resolveTraceFinalAccountName(trace *service.OpsRequestTrace) string {
+	if trace == nil || trace.FinalAccountID == nil {
+		return ""
+	}
+	for i := len(trace.TraceEvents) - 1; i >= 0; i-- {
+		event := trace.TraceEvents[i]
+		if event == nil {
+			continue
+		}
+		accountID, ok := event.Data["account_id"]
+		if !ok {
+			continue
+		}
+		if fmt.Sprintf("%v", accountID) != fmt.Sprintf("%d", *trace.FinalAccountID) {
+			continue
+		}
+		if accountName, ok := event.Data["account_name"].(string); ok {
+			return strings.TrimSpace(accountName)
+		}
+	}
+	return ""
+}
+
+func traceDuration(durationMs *int64) any {
+	if durationMs == nil {
+		return nil
+	}
+	return *durationMs
+}
+
+func traceFinalStatusCode(statusCode *int) any {
+	if statusCode == nil {
+		return nil
+	}
+	return *statusCode
+}
+
+func formatOptionalTraceTime(value *time.Time) any {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	return value.UTC().Format(time.RFC3339Nano)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 func (s *OpsService) GetRequestTrace(ctx context.Context, query *OpsRequestTraceQuery) (*OpsRequestTraceLookupResult, error) {
@@ -56,4 +57,63 @@ func (s *OpsService) GetRequestTrace(ctx context.Context, query *OpsRequestTrace
 	}
 
 	return &OpsRequestTraceLookupResult{}, nil
+}
+
+func (s *OpsService) EnqueueRequestTrace(ctx context.Context, trace *OpsRequestTrace) {
+	if trace == nil || !s.IsMonitoringEnabled(ctx) || s.opsRepo == nil {
+		return
+	}
+	writer := s.ensureRequestTraceWriter()
+	if writer == nil {
+		return
+	}
+	writer.Enqueue(trace)
+}
+
+func (s *OpsService) FinalizeAndEnqueueRequestTrace(ctx context.Context, trace *OpsRequestTrace) bool {
+	if trace == nil {
+		return false
+	}
+	clientRequestID := strings.TrimSpace(trace.ClientRequestID)
+	if clientRequestID == "" {
+		return false
+	}
+	if _, loaded := s.finalizedRequestTraces.LoadOrStore(clientRequestID, struct{}{}); loaded {
+		return false
+	}
+	time.AfterFunc(10*time.Minute, func() {
+		s.finalizedRequestTraces.Delete(clientRequestID)
+	})
+
+	if !hasOpsRequestTraceEvent(trace, "request_finished") {
+		trace.TraceIncomplete = true
+	}
+	if trace.CreatedAt.IsZero() {
+		trace.CreatedAt = time.Now().UTC()
+	}
+	s.EnqueueRequestTrace(ctx, trace)
+	return true
+}
+
+func (s *OpsService) ensureRequestTraceWriter() *OpsRequestTraceWriter {
+	if s == nil || s.opsRepo == nil {
+		return nil
+	}
+	s.requestTraceWriterOnce.Do(func() {
+		s.requestTraceWriter = NewOpsRequestTraceWriter(s.opsRepo, 1024)
+		s.requestTraceWriter.Start()
+	})
+	return s.requestTraceWriter
+}
+
+func hasOpsRequestTraceEvent(trace *OpsRequestTrace, eventType string) bool {
+	for _, event := range trace.TraceEvents {
+		if event == nil {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(event.Type), eventType) {
+			return true
+		}
+	}
+	return false
 }

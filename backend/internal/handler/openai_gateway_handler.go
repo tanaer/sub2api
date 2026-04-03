@@ -158,12 +158,16 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	reqStream := gjson.GetBytes(body, "stream").Bool()
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, reqStream)
 
 	// 模型别名解析
 	if apiKey.Group != nil {
 		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			originalModel := reqModel
 			reqLog.Info("openai.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
 			c.Set(gatewayUserOriginalModelKey, reqModel)
+			recordGroupResolved(c, originalModel, resolved, "group_alias")
 			reqModel = resolved
 			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
 				body = updated
@@ -176,7 +180,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "invalid stream field type")
 		return
 	}
-	reqStream := streamResult.Bool()
+	reqStream = streamResult.Bool()
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 	previousResponseID := strings.TrimSpace(gjson.GetBytes(body, "previous_response_id").String())
 	if previousResponseID != "" {
@@ -243,6 +247,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	for {
 		// Select account supporting the requested model
 		reqLog.Debug("openai.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
+		recordSelectionStarted(c, reqModel, failedAccountIDs)
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
 			apiKey.GroupID,
@@ -284,6 +289,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			zap.Int64("latency_ms", scheduleDecision.LatencyMs),
 			zap.Float64("load_skew", scheduleDecision.LoadSkew),
 		)
+		recordSelectionResult(c, selection)
 		account := selection.Account
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		reqLog.Debug("openai.account_selected", zap.Int64("account_id", account.ID), zap.String("account_name", account.Name))
@@ -568,12 +574,16 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	reqStream := gjson.GetBytes(body, "stream").Bool()
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, reqStream)
 
 	// 模型别名解析
 	if apiKey.Group != nil {
 		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			originalModel := reqModel
 			reqLog.Info("openai_messages.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
 			c.Set(gatewayUserOriginalModelKey, reqModel)
+			recordGroupResolved(c, originalModel, resolved, "group_alias")
 			reqModel = resolved
 			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
 				body = updated
@@ -582,7 +592,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	}
 
 	routingModel := service.NormalizeOpenAICompatRequestedModel(reqModel)
-	reqStream := gjson.GetBytes(body, "stream").Bool()
+	reqStream = gjson.GetBytes(body, "stream").Bool()
 
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 
@@ -642,6 +652,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		// 清除上一次迭代的降级模型标记，避免残留影响本次迭代
 		c.Set("openai_messages_fallback_model", "")
 		reqLog.Debug("openai_messages.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
+		recordSelectionStarted(c, routingModel, failedAccountIDs)
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
 			apiKey.GroupID,
@@ -696,6 +707,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 			h.anthropicStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available accounts", streamStarted)
 			return
 		}
+		recordSelectionResult(c, selection)
 		account := selection.Account
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		reqLog.Debug("openai_messages.account_selected", zap.Int64("account_id", account.ID), zap.String("account_name", account.Name))

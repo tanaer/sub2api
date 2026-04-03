@@ -223,6 +223,84 @@ export interface OpsRequestDetailsParams {
 
 export type OpsRequestDetailsResponse = PaginatedResponse<OpsRequestDetail>
 
+export type OpsRequestTraceQueryKeyType =
+  | 'auto'
+  | 'client_request_id'
+  | 'local_request_id'
+  | 'usage_request_id'
+  | 'upstream_request_id'
+
+export interface OpsRequestTraceIdentity {
+  query_key: string
+  query_key_type: OpsRequestTraceQueryKeyType
+  matched_by: OpsRequestTraceQueryKeyType
+  client_request_id?: string
+  local_request_id?: string
+  usage_request_id?: string
+  upstream_request_ids: string[]
+  upstream_request_ids_truncated: boolean
+  upstream_request_ids_total: number
+}
+
+export interface OpsRequestTraceModels {
+  original_requested_model?: string
+  group_resolved_model?: string
+  account_support_lookup_model?: string
+  final_upstream_model?: string
+}
+
+export interface OpsRequestTraceRequest {
+  created_at?: string
+  finished_at?: string | null
+  duration_ms?: number | null
+  status?: string
+  platform?: string
+  request_path?: string
+  inbound_endpoint?: string
+  upstream_endpoint?: string
+  stream?: boolean
+  user_id?: number | null
+  api_key_id?: number | null
+  group_id?: number | null
+}
+
+export interface OpsRequestTraceTimelineItem {
+  ts: string
+  type: string
+  phase?: string
+  summary?: string
+  data?: Record<string, unknown>
+}
+
+export interface OpsRequestTraceUsage {
+  usage_request_id?: string
+}
+
+export interface OpsRequestTraceResult {
+  final_status?: string
+  final_status_code?: number | null
+  final_account_id?: number | null
+  final_account_name?: string
+  final_upstream_model?: string
+}
+
+export interface OpsRequestTraceResponse {
+  identity: OpsRequestTraceIdentity
+  models: OpsRequestTraceModels
+  request: OpsRequestTraceRequest
+  timeline: OpsRequestTraceTimelineItem[]
+  usage?: OpsRequestTraceUsage | null
+  result: OpsRequestTraceResult
+  trace_incomplete: boolean
+}
+
+export interface OpsRequestTraceCandidate {
+  client_request_id: string
+  created_at: string
+  status?: string
+  final_account_id?: number | null
+}
+
 export interface OpsLatencyHistogramBucket {
   range: string
   count: number
@@ -1240,6 +1318,19 @@ export async function listRequestDetails(params: OpsRequestDetailsParams): Promi
   return data
 }
 
+export async function getRequestTrace(
+  key: string,
+  keyType: OpsRequestTraceQueryKeyType = 'auto'
+): Promise<OpsRequestTraceResponse> {
+  const { data } = await apiClient.get<OpsRequestTraceResponse>('/admin/ops/request-trace', {
+    params: {
+      key,
+      key_type: keyType,
+    },
+  })
+  return data
+}
+
 // Alert rules
 export async function listAlertRules(): Promise<AlertRule[]> {
   const { data } = await apiClient.get<AlertRule[]>('/admin/ops/alert-rules')
@@ -1407,6 +1498,7 @@ export const opsAPI = {
   listRequestErrorUpstreamErrors,
 
   listRequestDetails,
+  getRequestTrace,
   listAlertRules,
   createAlertRule,
   updateAlertRule,

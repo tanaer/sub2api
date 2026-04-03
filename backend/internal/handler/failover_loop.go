@@ -79,6 +79,13 @@ func (s *FailoverState) HandleFailoverError(
 	// 同账号重试：对 RetryableOnSameAccount 的临时性错误，先在同一账号上重试
 	if failoverErr.RetryableOnSameAccount && s.SameAccountRetryCount[accountID] < maxSameAccountRetries {
 		s.SameAccountRetryCount[accountID]++
+		appendRequestTraceEvent(ctx, "same_account_retry", "account", map[string]any{
+			"account_id":   accountID,
+			"retry_count":  s.SameAccountRetryCount[accountID],
+			"retry_max":    maxSameAccountRetries,
+			"status_code":  failoverErr.StatusCode,
+			"same_account": true,
+		})
 		logger.FromContext(ctx).Warn("gateway.failover_same_account_retry",
 			zap.Int64("account_id", accountID),
 			zap.Int("upstream_status", failoverErr.StatusCode),
@@ -106,6 +113,12 @@ func (s *FailoverState) HandleFailoverError(
 
 	// 递增切换计数
 	s.SwitchCount++
+	appendRequestTraceEvent(ctx, "account_failover", "account", map[string]any{
+		"account_id":   accountID,
+		"status_code":  failoverErr.StatusCode,
+		"switch_count": s.SwitchCount,
+		"max_switches": s.MaxSwitches,
+	})
 	logger.FromContext(ctx).Warn("gateway.failover_switch_account",
 		zap.Int64("account_id", accountID),
 		zap.Int("upstream_status", failoverErr.StatusCode),

@@ -168,13 +168,16 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	reqStream := parsedReq.Stream
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 	c.Set(gatewayRequestedModelContextKey, reqModel)
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, reqStream)
 
 	// 模型别名解析：将用户请求的模型名映射到实际上游模型名
 	// 必须在并发检查和 ops 上下文记录之前完成，确保 ops 日志中始终使用解析后的模型名
 	if apiKey.Group != nil {
 		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			originalModel := reqModel
 			reqLog.Info("gateway.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
 			c.Set(gatewayUserOriginalModelKey, reqModel)
+			recordGroupResolved(c, originalModel, resolved, "group_alias")
 			reqModel = resolved
 			parsedReq.Model = resolved
 			if updated, err := sjson.SetBytes(parsedReq.Body, "model", resolved); err == nil {
@@ -320,6 +323,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		}
 
 		for {
+			recordSelectionStarted(c, reqModel, fs.FailedAccountIDs)
 			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, "") // Gemini 不使用会话限制
 			if err != nil {
 				if len(fs.FailedAccountIDs) == 0 {
@@ -343,6 +347,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					return
 				}
 			}
+			recordSelectionResult(c, selection)
 			account := selection.Account
 			setOpsSelectedAccount(c, account.ID, account.Platform)
 			setOpsSelectedAccountName(c, account.Name)
@@ -563,6 +568,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 
 		for {
 			// 选择支持该模型的账号
+			recordSelectionStarted(c, reqModel, fs.FailedAccountIDs)
 			selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), currentAPIKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, parsedReq.MetadataUserID)
 			if err != nil {
 				if len(fs.FailedAccountIDs) == 0 {
@@ -586,6 +592,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					return
 				}
 			}
+			recordSelectionResult(c, selection)
 			account := selection.Account
 			setOpsSelectedAccount(c, account.ID, account.Platform)
 			setOpsSelectedAccountName(c, account.Name)

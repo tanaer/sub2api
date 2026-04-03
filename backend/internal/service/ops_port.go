@@ -31,6 +31,7 @@ type OpsRepository interface {
 
 	GetProviderLatencyStats(ctx context.Context, hours int) ([]*ProviderLatencyStats, error)
 	GetSLAReport(ctx context.Context, minutes int) (*SLAReport, error)
+	GetSLAReportPaginated(ctx context.Context, minutes int, page, pageSize int) (*SLAReport, error)
 	GetDashboardOverview(ctx context.Context, filter *OpsDashboardFilter) (*OpsDashboardOverview, error)
 	GetThroughputTrend(ctx context.Context, filter *OpsDashboardFilter, bucketSeconds int) (*OpsThroughputTrendResponse, error)
 	GetLatencyHistogram(ctx context.Context, filter *OpsDashboardFilter) (*OpsLatencyHistogramResponse, error)

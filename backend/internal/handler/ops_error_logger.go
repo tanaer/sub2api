@@ -486,6 +486,9 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 		if !ops.IsMonitoringEnabled(c.Request.Context()) {
 			return
 		}
+		if trace := buildFinalRequestTrace(c); trace != nil {
+			ops.FinalizeAndEnqueueRequestTrace(c.Request.Context(), trace)
+		}
 
 		status := c.Writer.Status()
 		if status < 400 {

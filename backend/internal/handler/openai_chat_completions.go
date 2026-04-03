@@ -86,12 +86,15 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 	reqModel := modelResult.String()
 	reqStream := gjson.GetBytes(body, "stream").Bool()
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, reqStream)
 
 	// 模型别名解析
 	if apiKey.Group != nil {
 		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			originalModel := reqModel
 			reqLog.Info("openai_chat_completions.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
 			c.Set(gatewayUserOriginalModelKey, reqModel)
+			recordGroupResolved(c, originalModel, resolved, "group_alias")
 			reqModel = resolved
 			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
 				body = updated
@@ -140,6 +143,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 	for {
 		c.Set("openai_chat_completions_fallback_model", "")
 		reqLog.Debug("openai_chat_completions.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
+		recordSelectionStarted(c, reqModel, failedAccountIDs)
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
 			apiKey.GroupID,
@@ -199,6 +203,7 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 			h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available accounts", streamStarted)
 			return
 		}
+		recordSelectionResult(c, selection)
 		account := selection.Account
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		reqLog.Debug("openai_chat_completions.account_selected", zap.Int64("account_id", account.ID), zap.String("account_name", account.Name))

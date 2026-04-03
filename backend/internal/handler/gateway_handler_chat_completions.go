@@ -76,12 +76,15 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	}
 	reqModel := modelResult.String()
 	reqStream := gjson.GetBytes(body, "stream").Bool()
+	startRequestTraceFromGin(c, c.Request.URL.Path, reqModel, reqStream)
 
 	// 模型别名解析：将用户请求的模型名映射到实际上游模型名
 	if apiKey.Group != nil {
 		if resolved := apiKey.Group.ResolveModelAlias(reqModel); resolved != reqModel {
+			originalModel := reqModel
 			reqLog.Info("gateway.cc.model_alias_resolved", zap.String("original_model", reqModel), zap.String("resolved_model", resolved))
 			c.Set(gatewayUserOriginalModelKey, reqModel)
+			recordGroupResolved(c, originalModel, resolved, "group_alias")
 			reqModel = resolved
 			if updated, err := sjson.SetBytes(body, "model", resolved); err == nil {
 				body = updated
@@ -168,6 +171,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 	fs := NewFailoverState(h.maxAccountSwitches, false)
 
 	for {
+		recordSelectionStarted(c, reqModel, fs.FailedAccountIDs)
 		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionHash, reqModel, fs.FailedAccountIDs, "")
 		if err != nil {
 			if len(fs.FailedAccountIDs) == 0 {
@@ -189,6 +193,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 				return
 			}
 		}
+		recordSelectionResult(c, selection)
 		account := selection.Account
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 		setOpsSelectedAccountName(c, account.Name)

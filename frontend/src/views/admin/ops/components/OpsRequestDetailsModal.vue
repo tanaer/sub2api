@@ -29,6 +29,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'openErrorDetail', errorId: number): void
+  (e: 'openRequestTrace', requestId: string): void
 }>()
 
 const { t } = useI18n()
@@ -144,6 +145,13 @@ function openErrorDetail(errorId: number | null | undefined) {
   if (!errorId) return
   close()
   emit('openErrorDetail', errorId)
+}
+
+function openRequestTrace(requestId: string | null | undefined) {
+  const value = String(requestId || '').trim()
+  if (!value) return
+  close()
+  emit('openRequestTrace', value)
 }
 
 const kindBadgeClass = (kind: string) => {
@@ -281,14 +289,23 @@ const kindBadgeClass = (kind: string) => {
                     <span v-else class="text-xs text-gray-400">-</span>
                   </td>
                   <td class="whitespace-nowrap px-4 py-3 text-right">
-                    <button
-                      v-if="row.kind === 'error' && row.error_id"
-                      class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
-                      @click="openErrorDetail(row.error_id)"
-                    >
-                      {{ t('admin.ops.requestDetails.viewError') }}
-                    </button>
-                    <span v-else class="text-xs text-gray-400">-</span>
+                    <div class="flex justify-end gap-2">
+                      <button
+                        v-if="row.request_id"
+                        class="rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-300 dark:hover:bg-primary-900/30"
+                        @click="openRequestTrace(row.request_id)"
+                      >
+                        {{ t('admin.ops.requestDetails.viewTrace') }}
+                      </button>
+                      <button
+                        v-if="row.kind === 'error' && row.error_id"
+                        class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
+                        @click="openErrorDetail(row.error_id)"
+                      >
+                        {{ t('admin.ops.requestDetails.viewError') }}
+                      </button>
+                      <span v-if="!row.request_id && !(row.kind === 'error' && row.error_id)" class="text-xs text-gray-400">-</span>
+                    </div>
                   </td>
                 </tr>
               </tbody>

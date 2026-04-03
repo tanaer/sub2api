@@ -129,6 +129,10 @@ func (m *opsRepoMock) GetSLAReport(ctx context.Context, minutes int) (*SLAReport
 	return &SLAReport{}, nil
 }
 
+func (m *opsRepoMock) GetSLAReportPaginated(ctx context.Context, minutes int, page, pageSize int) (*SLAReport, error) {
+	return &SLAReport{}, nil
+}
+
 func (m *opsRepoMock) GetLatencyHistogram(ctx context.Context, filter *OpsDashboardFilter) (*OpsLatencyHistogramResponse, error) {
 	return &OpsLatencyHistogramResponse{}, nil
 }

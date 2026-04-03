@@ -69,6 +69,10 @@ func (s *userGroupRateRepoStubForAuthQuota) IncrementRequestQuotaUsed(context.Co
 	return false, nil
 }
 
+func (s *userGroupRateRepoStubForAuthQuota) CreateRequestQuotaGrant(context.Context, *service.UserGroupRequestQuotaGrant) error {
+	return nil
+}
+
 func TestAPIKeyAuth_AllowsUserGroupRequestQuotaWithoutBalance(t *testing.T) {
 	user := &service.User{
 		ID:          21,

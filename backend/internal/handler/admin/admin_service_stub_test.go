@@ -135,6 +135,10 @@ func (s *stubAdminService) UpdateUserBalance(ctx context.Context, userID int64, 
 	return &user, nil
 }
 
+func (s *stubAdminService) BatchUpdateUsers(ctx context.Context, ids []int64, input *service.UpdateUserInput) (updated int, errors []string, err error) {
+	return len(ids), nil, nil
+}
+
 func (s *stubAdminService) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int) ([]service.APIKey, int64, error) {
 	return s.apiKeys, int64(len(s.apiKeys)), nil
 }

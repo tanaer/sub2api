@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -54,6 +55,10 @@ type OpsService struct {
 	geminiCompatService       *GeminiMessagesCompatService
 	antigravityGatewayService *AntigravityGatewayService
 	systemLogSink             *OpsSystemLogSink
+
+	requestTraceWriter     *OpsRequestTraceWriter
+	requestTraceWriterOnce sync.Once
+	finalizedRequestTraces sync.Map
 }
 
 func NewOpsService(
@@ -128,7 +133,13 @@ func (s *OpsService) GetProviderLatencyStats(ctx context.Context, hours int) ([]
 // GetSLAReport returns a comprehensive SLA monitoring report.
 // minutes specifies the lookback window in minutes.
 func (s *OpsService) GetSLAReport(ctx context.Context, minutes int) (*SLAReport, error) {
-	report, err := s.opsRepo.GetSLAReport(ctx, minutes)
+	return s.opsRepo.GetSLAReportPaginated(ctx, minutes, 1, 0)
+}
+
+// GetSLAReportPaginated returns a paginated SLA monitoring report.
+// page starts at 1; pageSize of 0 means use default limits per section.
+func (s *OpsService) GetSLAReportPaginated(ctx context.Context, minutes, page, pageSize int) (*SLAReport, error) {
+	report, err := s.opsRepo.GetSLAReportPaginated(ctx, minutes, page, pageSize)
 	if err != nil {
 		return nil, err
 	}

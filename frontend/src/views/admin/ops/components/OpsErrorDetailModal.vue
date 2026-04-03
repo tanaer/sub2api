@@ -19,6 +19,14 @@
           <div class="mt-1 break-all font-mono text-sm font-medium text-gray-900 dark:text-white">
             {{ requestId || '—' }}
           </div>
+          <button
+            v-if="requestId"
+            type="button"
+            class="mt-3 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-700 hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-300 dark:hover:bg-primary-900/30"
+            @click="handleOpenRequestTrace"
+          >
+            {{ t('admin.ops.errorDetail.traceRequest') }}
+          </button>
         </div>
 
         <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-900">
@@ -205,6 +213,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:show', value: boolean): void
+  (e: 'openRequestTrace', requestId: string): void
 }
 
 const props = defineProps<Props>()
@@ -305,6 +314,13 @@ async function fetchCorrelatedUpstreamErrors(requestErrorId: number) {
 
 function close() {
   emit('update:show', false)
+}
+
+function handleOpenRequestTrace() {
+  const value = String(requestId.value || '').trim()
+  if (!value) return
+  close()
+  emit('openRequestTrace', value)
 }
 
 function prettyJSON(raw?: string): string {

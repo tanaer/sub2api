@@ -93,4 +93,47 @@ describe('OpsRequestDetailsModal', () => {
       exclude_phases: ['auth'],
     }))
   })
+
+  it('点击查看链路会透传 request_id', async () => {
+    mockListRequestDetails.mockResolvedValue({
+      items: [
+        {
+          kind: 'success',
+          created_at: '2026-04-04T12:00:00Z',
+          request_id: 'req-trace-1',
+          platform: 'openai',
+          model: 'gpt-4.1',
+        },
+      ],
+      total: 1,
+      page: 1,
+      page_size: 10,
+    })
+
+    const wrapper = mount(OpsRequestDetailsModal, {
+      props: {
+        modelValue: false,
+        timeRange: '1h',
+        preset: {
+          title: 'Requests',
+        } as any,
+      },
+      global: {
+        stubs: {
+          BaseDialog: BaseDialogStub,
+          Pagination: PaginationStub,
+        },
+      },
+    })
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    const traceButton = wrapper.findAll('button').find((node) => node.text() === 'admin.ops.requestDetails.viewTrace')
+    expect(traceButton).toBeTruthy()
+
+    await traceButton!.trigger('click')
+
+    expect(wrapper.emitted('openRequestTrace')).toEqual([['req-trace-1']])
+  })
 })
