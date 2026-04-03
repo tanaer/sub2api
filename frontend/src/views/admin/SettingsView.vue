@@ -1338,6 +1338,151 @@
           </div>
         </div>
 
+        <!-- Model Identity Masking Card -->
+        <div class="card">
+          <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ t('admin.settings.modelIdentity.title') }}
+            </h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.settings.modelIdentity.description') }}
+            </p>
+          </div>
+          <div class="space-y-5 p-6">
+            <!-- Local Response Toggle -->
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.modelIdentity.localResponseEnabled') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.settings.modelIdentity.localResponseEnabledHint') }}
+                </p>
+              </div>
+              <Toggle v-model="modelIdentitySettings.local_response_enabled" />
+            </div>
+
+            <!-- Instruction Injection Toggle -->
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.modelIdentity.instructionInjectionEnabled') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.settings.modelIdentity.instructionInjectionEnabledHint') }}
+                </p>
+              </div>
+              <Toggle v-model="modelIdentitySettings.instruction_injection_enabled" />
+            </div>
+
+            <!-- Response Rewrite Toggle -->
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.modelIdentity.responseRewriteEnabled') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.settings.modelIdentity.responseRewriteEnabledHint') }}
+                </p>
+              </div>
+              <Toggle v-model="modelIdentitySettings.response_rewrite_enabled" />
+            </div>
+
+            <!-- Hit Words -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                {{ t('admin.settings.modelIdentity.hitWordsTitle') }}
+              </h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {{ t('admin.settings.modelIdentity.hitWordsHint') }}
+              </p>
+              <div class="flex flex-wrap gap-2 mb-2">
+                <span
+                  v-for="word in modelIdentitySettings.hit_words"
+                  :key="word"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                >
+                  {{ word }}
+                  <button
+                    type="button"
+                    class="ml-1 text-blue-400 hover:text-blue-600"
+                    @click="removeHitWord(word)"
+                  >
+                    &times;
+                  </button>
+                </span>
+              </div>
+              <div class="flex gap-2">
+                <input
+                  v-model="newHitWord"
+                  type="text"
+                  class="block w-48 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:border-dark-600 dark:bg-dark-700 dark:text-white"
+                  :placeholder="t('admin.settings.modelIdentity.hitWordsPlaceholder')"
+                  @keyup.enter="addHitWord"
+                />
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
+                  @click="addHitWord"
+                >
+                  {{ t('common.add') }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Identity Patterns -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                {{ t('admin.settings.modelIdentity.identityPatternsTitle') }}
+              </h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {{ t('admin.settings.modelIdentity.identityPatternsHint') }}
+              </p>
+              <textarea
+                v-model="identityPatternsDraft"
+                rows="6"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:border-dark-600 dark:bg-dark-700 dark:text-white font-mono"
+                :placeholder="t('admin.settings.modelIdentity.identityPatternsPlaceholder')"
+              />
+            </div>
+
+            <!-- Reply Template -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                {{ t('admin.settings.modelIdentity.replyTemplateTitle') }}
+              </h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {{ t('admin.settings.modelIdentity.replyTemplateHint') }}
+              </p>
+              <textarea
+                v-model="modelIdentitySettings.reply_template"
+                rows="3"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:border-dark-600 dark:bg-dark-700 dark:text-white"
+                :placeholder="t('admin.settings.modelIdentity.replyTemplatePlaceholder')"
+              />
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-4 flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
+                @click="resetModelIdentityDefaults"
+              >
+                {{ t('admin.settings.modelIdentity.resetDefaults') }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                :disabled="modelIdentityLoading"
+                @click="saveModelIdentitySettings"
+              >
+                {{ t('common.save') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Health Circuit Breaker -->
         <div class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
@@ -2167,6 +2312,7 @@ import type {
   UpdateSettingsRequest,
   DefaultSubscriptionSetting
 } from '@/api/admin/settings'
+import { getModelIdentitySettings, updateModelIdentitySettings, type ModelIdentitySettings } from '@/api/admin/settings'
 import type { AdminGroup } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -2281,6 +2427,19 @@ const betaPolicyForm = reactive({
     error_message?: string
   }>
 })
+
+// Model Identity Settings
+const modelIdentitySettings = ref<ModelIdentitySettings>({
+  local_response_enabled: true,
+  instruction_injection_enabled: true,
+  response_rewrite_enabled: true,
+  hit_words: [],
+  identity_patterns: [],
+  reply_template: '',
+})
+const modelIdentityLoading = ref(false)
+const newHitWord = ref('')
+const identityPatternsDraft = ref('')
 
 interface DefaultSubscriptionGroupOption {
   value: number
@@ -3016,6 +3175,89 @@ async function saveBetaPolicySettings() {
   }
 }
 
+async function loadModelIdentitySettings() {
+  try {
+    const settings = await getModelIdentitySettings()
+    modelIdentitySettings.value = settings
+    identityPatternsDraft.value = settings.identity_patterns.join('\n')
+  } catch (e) {
+    console.error('Failed to load model identity settings', e)
+  }
+}
+
+async function saveModelIdentitySettings() {
+  modelIdentityLoading.value = true
+  try {
+    const patterns = identityPatternsDraft.value
+      .split('\n')
+      .map((x: string) => x.trim())
+      .filter((x: string) => x.length > 0)
+
+    const updated = await updateModelIdentitySettings({
+      ...modelIdentitySettings.value,
+      identity_patterns: patterns,
+    })
+    modelIdentitySettings.value = updated
+    identityPatternsDraft.value = updated.identity_patterns.join('\n')
+    appStore.showSuccess(t('admin.settings.settingsSaved'))
+  } catch (e: any) {
+    appStore.showError(e?.response?.data?.message || t('common.unknownError'))
+  } finally {
+    modelIdentityLoading.value = false
+  }
+}
+
+function addHitWord() {
+  const word = newHitWord.value.trim()
+  if (word && !modelIdentitySettings.value.hit_words.includes(word)) {
+    modelIdentitySettings.value.hit_words.push(word)
+  }
+  newHitWord.value = ''
+}
+
+function removeHitWord(word: string) {
+  const idx = modelIdentitySettings.value.hit_words.indexOf(word)
+  if (idx >= 0) {
+    modelIdentitySettings.value.hit_words.splice(idx, 1)
+  }
+}
+
+async function resetModelIdentityDefaults() {
+  if (!confirm(t('admin.settings.modelIdentity.resetDefaultsConfirm'))) return
+  modelIdentityLoading.value = true
+  try {
+    const defaults: ModelIdentitySettings = {
+      local_response_enabled: true,
+      instruction_injection_enabled: true,
+      response_rewrite_enabled: true,
+      hit_words: [
+        'kimi', 'moonshot', 'minimax', 'abab', 'qwen', '阿里',
+        'doubao', 'deepseek', 'glm', 'chatglm', '智谱',
+        'ernie', '文心', 'hunyuan', '混元', 'grok',
+        '阶跃星辰', 'yi-lightning', '零一万物',
+        '小米', 'mimo',
+      ],
+      identity_patterns: [
+        '我是(一个)?(由)?(.{1,20})(训练|开发|创建|推出)的(.{1,20})(语言模型|大模型|大语言模型|AI助手|AI模型)',
+        '作为(一个|一款)?(.{1,20})(模型|AI助手|语言模型|大语言模型)',
+        '我(是|叫)\\s*(kimi|moonshot|deepseek|qwen|glm|chatglm|doubao|grok|ernie|hunyuan|mimo)',
+        'I am .{0,30}(model|assistant) (developed|trained|created|built) by',
+        "I'm .{0,30}(model|assistant) (developed|trained|created|built) by",
+        'as (a |an )?.{0,20}(model|AI assistant) (by|from)',
+      ],
+      reply_template: '我是一个由{company}训练的{model}大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！',
+    }
+    const updated = await updateModelIdentitySettings(defaults)
+    modelIdentitySettings.value = updated
+    identityPatternsDraft.value = updated.identity_patterns.join('\n')
+    appStore.showSuccess(t('admin.settings.settingsSaved'))
+  } catch (e: any) {
+    appStore.showError(e?.response?.data?.message || t('common.unknownError'))
+  } finally {
+    modelIdentityLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadSettings()
   loadSubscriptionGroups()
@@ -3024,6 +3266,7 @@ onMounted(() => {
   loadStreamTimeoutSettings()
   loadRectifierSettings()
   loadBetaPolicySettings()
+  loadModelIdentitySettings()
 })
 </script>
 
