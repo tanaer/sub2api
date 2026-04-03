@@ -1,4 +1,5 @@
 [
+  { "date": "2026-04-03", "type": "feature",    "content": "新增 POST /api/provider 接口，支持 CLI 通过 API Key 获取分组配置与模型映射" },
   { "date": "2026-04-03", "type": "feature",    "content": "后台右上角新增更新日志菜单" },
   { "date": "2026-04-03", "type": "improvement", "content": "新增并发账号文件维度管理" },
   { "date": "2026-04-03", "type": "improvement", "content": "新增 Redis 健康检查功能" },
