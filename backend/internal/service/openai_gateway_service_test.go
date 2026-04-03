@@ -1739,20 +1739,22 @@ func TestReplaceModelInResponseBody(t *testing.T) {
 }
 
 func TestRewriteResponsesResponseTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
-	reply := buildModelIdentityReply("qwen-plus-2025")
+	defaults := DefaultModelIdentitySettings()
+	reply := buildModelIdentityReply("qwen-plus-2025", defaults.ReplyTemplate)
 	body := []byte(`{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自阿里巴巴"}]}],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`)
 
-	got := rewriteResponsesResponseTextInJSONBytes(body, "qwen-plus-2025")
+	got := rewriteResponsesResponseTextInJSONBytes(body, "qwen-plus-2025", defaults.ReplyTemplate, defaults.HitWords)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "阿里巴巴")
 }
 
 func TestRewriteResponsesEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
-	reply := buildModelIdentityReply("glm-4.5")
+	defaults := DefaultModelIdentitySettings()
+	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"type":"response.output_text.delta","delta":"我来自dEePsEeK"}`)
 
-	got := rewriteResponsesEventTextInJSONBytes(body, "glm-4.5")
+	got := rewriteResponsesEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "dEePsEeK")
@@ -1797,7 +1799,7 @@ func TestOpenAIGatewayService_HandleNonStreamingResponsePassthrough_RewritesForb
 	usage, err := svc.handleNonStreamingResponsePassthrough(context.Background(), resp, c, "glm-4.5")
 	require.NoError(t, err)
 	require.NotNil(t, usage)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "kimi")
 }
 
@@ -1823,7 +1825,7 @@ func TestOpenAIGatewayService_HandleStreamingResponsePassthrough_RewritesForbidd
 	result, err := svc.handleStreamingResponsePassthrough(c.Request.Context(), resp, c, &Account{ID: 1}, "glm-4.5", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "MoonShot")
 }
 
@@ -1847,7 +1849,7 @@ func TestOpenAIGatewayService_HandleChatBufferedStreamingResponse_RewritesForbid
 	result, err := svc.handleChatBufferedStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "MiniMax")
 }
 
@@ -1875,7 +1877,7 @@ func TestOpenAIGatewayService_HandleChatStreamingResponse_RewritesForbiddenIdent
 	result, err := svc.handleChatStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "douBao")
 }
 
@@ -1899,7 +1901,7 @@ func TestOpenAIGatewayService_HandleAnthropicBufferedStreamingResponse_RewritesF
 	result, err := svc.handleAnthropicBufferedStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "QwEn")
 }
 
@@ -1927,7 +1929,7 @@ func TestOpenAIGatewayService_HandleAnthropicStreamingResponse_RewritesForbidden
 	result, err := svc.handleAnthropicStreamingResponse(resp, c, "glm-4.5", "glm-4.5", "upstream-model", time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "DeepSeek")
 }
 

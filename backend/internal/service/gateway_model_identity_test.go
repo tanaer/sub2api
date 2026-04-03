@@ -15,10 +15,12 @@ import (
 )
 
 func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
+	defaults := DefaultModelIdentitySettings()
+
 	t.Run("nil system injects identity block", func(t *testing.T) {
 		body := []byte(`{"model":"glm-5.1","messages":[{"role":"user","content":"你是谁？"}]}`)
 
-		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你是谁？",
@@ -42,7 +44,7 @@ func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
 	t.Run("string system appends identity block", func(t *testing.T) {
 		body := []byte(`{"model":"glm-5.1","system":"你是一个代码助手","messages":[{"role":"user","content":"你是谁？"}]}`)
 
-		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你是谁？",
@@ -69,7 +71,7 @@ func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
 	t.Run("non identity question keeps body unchanged", func(t *testing.T) {
 		body := []byte(`{"model":"glm-5.1","messages":[{"role":"user","content":"帮我写个接口"}]}`)
 
-		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "帮我写个接口",
@@ -82,7 +84,7 @@ func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
 	t.Run("developer question also injects identity block", func(t *testing.T) {
 		body := []byte(`{"model":"glm-5.1","messages":[{"role":"user","content":"你的开发者是谁？背后的公司是哪家？"}]}`)
 
-		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+		result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你的开发者是谁？背后的公司是哪家？",
@@ -104,9 +106,10 @@ func TestInjectAnthropicModelIdentityInstruction(t *testing.T) {
 }
 
 func TestInjectAnthropicModelIdentityInstruction_PreservesFieldOrder(t *testing.T) {
+	defaults := DefaultModelIdentitySettings()
 	body := []byte(`{"alpha":1,"system":[{"id":"block-1","type":"text","text":"Custom"}],"messages":[{"role":"user","content":"你是谁？"}],"omega":2}`)
 
-	result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", []any{
+	result := injectAnthropicModelIdentityInstruction(body, "glm-5.1", defaults.ReplyTemplate, []any{
 		map[string]any{
 			"role":    "user",
 			"content": "你是谁？",

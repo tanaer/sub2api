@@ -1759,7 +1759,10 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 	// Fetch model identity settings once for all layers.
-	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var identitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		identitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if identitySettings == nil {
 		identitySettings = DefaultModelIdentitySettings()
 	}
@@ -2952,7 +2955,10 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	var ptReplyTemplate string
 	var ptHitWords []string
 	{
-		ptSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		var ptSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			ptSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		}
 		if ptSettings == nil {
 			ptSettings = DefaultModelIdentitySettings()
 		}
@@ -3079,7 +3085,10 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 		usage = s.parseSSEUsageFromBody(string(body))
 	}
 	{
-		nsrSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		var nsrSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			nsrSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		}
 		if nsrSettings == nil {
 			nsrSettings = DefaultModelIdentitySettings()
 		}
@@ -3638,7 +3647,10 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 
 	// Layer 3: conditional streaming identity guard
 	var identityGuardStream *streamingIdentityGuard
-	streamIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var streamIdentitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		streamIdentitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if streamIdentitySettings == nil {
 		streamIdentitySettings = DefaultModelIdentitySettings()
 	}
@@ -3996,7 +4008,10 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
 	{
-		nsSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		var nsSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			nsSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		}
 		if nsSettings == nil {
 			nsSettings = DefaultModelIdentitySettings()
 		}
@@ -4036,7 +4051,10 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 			body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 		}
 		{
-			ns2Settings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+			var ns2Settings *ModelIdentitySettings
+			if s.settingService != nil {
+				ns2Settings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+			}
 			if ns2Settings == nil {
 				ns2Settings = DefaultModelIdentitySettings()
 			}
@@ -4058,7 +4076,10 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 			bodyText = s.replaceModelInSSEBody(bodyText, mappedModel, originalModel)
 		}
 		{
-			nsSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+			var nsSettings *ModelIdentitySettings
+			if s.settingService != nil {
+				nsSettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+			}
 			if nsSettings == nil {
 				nsSettings = DefaultModelIdentitySettings()
 			}

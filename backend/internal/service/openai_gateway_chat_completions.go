@@ -43,7 +43,10 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	clientStream := chatReq.Stream
 	includeUsage := chatReq.StreamOptions != nil && chatReq.StreamOptions.IncludeUsage
 	// Fetch model identity settings once for all layers.
-	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var identitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		identitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if identitySettings == nil {
 		identitySettings = DefaultModelIdentitySettings()
 	}
@@ -311,7 +314,10 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 	}
 
 	{
-		bufSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+		var bufSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			bufSettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+		}
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
 		}
@@ -374,7 +380,10 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 
 	// Layer 3: conditional streaming identity guard
 	var identityGuardCC *streamingIdentityGuard
-	ccIdentitySettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+	var ccIdentitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		ccIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+	}
 	if ccIdentitySettings == nil {
 		ccIdentitySettings = DefaultModelIdentitySettings()
 	}

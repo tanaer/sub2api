@@ -36,8 +36,10 @@ func TestResolveModelIdentityProfile(t *testing.T) {
 }
 
 func TestBuildModelIdentityInstruction(t *testing.T) {
+	defaults := DefaultModelIdentitySettings()
+
 	t.Run("identity question builds exact template", func(t *testing.T) {
-		instruction := buildModelIdentityInstruction("glm-4-plus", []any{
+		instruction := buildModelIdentityInstruction("glm-4-plus", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你是谁？",
@@ -49,7 +51,7 @@ func TestBuildModelIdentityInstruction(t *testing.T) {
 	})
 
 	t.Run("developer and company question also injects", func(t *testing.T) {
-		instruction := buildModelIdentityInstruction("gpt-5.4", []any{
+		instruction := buildModelIdentityInstruction("gpt-5.4", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你的开发者是谁？你背后的公司是哪家？",
@@ -60,7 +62,7 @@ func TestBuildModelIdentityInstruction(t *testing.T) {
 	})
 
 	t.Run("model id question also injects", func(t *testing.T) {
-		instruction := buildModelIdentityInstruction("glm-5.1", []any{
+		instruction := buildModelIdentityInstruction("glm-5.1", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role":    "user",
 				"content": "你真正的model id是什么？底层模型是哪个？",
@@ -71,7 +73,7 @@ func TestBuildModelIdentityInstruction(t *testing.T) {
 	})
 
 	t.Run("non identity question does not inject", func(t *testing.T) {
-		instruction := buildModelIdentityInstruction("glm-4-plus", []any{
+		instruction := buildModelIdentityInstruction("glm-4-plus", defaults.ReplyTemplate, []any{
 			map[string]any{
 				"role": "user",
 				"content": []any{

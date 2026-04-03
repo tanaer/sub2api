@@ -36,20 +36,22 @@ func TestGatewayService_ReplaceModelInResponseBody_ReplacesKnownModelPaths(t *te
 }
 
 func TestRewriteAnthropicResponseTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
-	reply := buildModelIdentityReply("glm-4.5")
+	defaults := DefaultModelIdentitySettings()
+	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"id":"msg_1","type":"message","role":"assistant","model":"upstream-model","content":[{"type":"text","text":"我来自MoOnShOt。"}],"usage":{"input_tokens":1,"output_tokens":2}}`)
 
-	got := rewriteAnthropicResponseTextInJSONBytes(body, "glm-4.5")
+	got := rewriteAnthropicResponseTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "MoOnShOt")
 }
 
 func TestRewriteAnthropicEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(t *testing.T) {
-	reply := buildModelIdentityReply("glm-4.5")
+	defaults := DefaultModelIdentitySettings()
+	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"我是DeepSeek"}}`)
 
-	got := rewriteAnthropicEventTextInJSONBytes(body, "glm-4.5")
+	got := rewriteAnthropicEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "DeepSeek")
@@ -113,7 +115,7 @@ func TestGatewayService_HandleStreamingResponse_RewritesForbiddenIdentityText(t 
 	result, err := svc.handleStreamingResponse(context.Background(), resp, c, &Account{ID: 1}, time.Now(), "glm-4.5", "glm-4.5", false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "MiniMax")
 }
 
@@ -202,7 +204,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_NonStreamingRewritesForbidden
 	usage, err := svc.handleNonStreamingResponseAnthropicAPIKeyPassthrough(context.Background(), resp, c, account, "glm-4.5", "upstream-model")
 	require.NoError(t, err)
 	require.NotNil(t, usage)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "doubao")
 }
 
@@ -232,7 +234,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingRewritesForbiddenIde
 	result, err := svc.handleStreamingResponseAnthropicAPIKeyPassthrough(context.Background(), resp, c, account, time.Now(), "glm-4.5", "upstream-model")
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5"))
+	require.Contains(t, rec.Body.String(), buildModelIdentityReply("glm-4.5", DefaultModelIdentitySettings().ReplyTemplate))
 	require.NotContains(t, rec.Body.String(), "QwEn")
 }
 
@@ -245,16 +247,16 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingSplitDeltaDetectsIde
 
 	svc := newGatewayServiceForModelResponseTest()
 	account := newAnthropicAPIKeyAccountForTest()
-	// "MiniMax" split across two deltas: "Mini" + "Max-M2.7"
+	// Identity pattern split across two deltas: "我是由Mini" + "Max训练的M2.7大语言模型"
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
 			`data: {"type":"message_start","message":{"usage":{"input_tokens":4}}}`,
 			"",
-			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"我是Mini"}}`,
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"我是由Mini"}}`,
 			"",
-			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Max-M2.7大语言模型"}}`,
+			`data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Max训练的M2.7大语言模型"}}`,
 			"",
 			`event: message_stop`,
 			`data: {"type":"message_stop"}`,
@@ -266,15 +268,16 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingSplitDeltaDetectsIde
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	body := rec.Body.String()
-	// The first delta "我是Mini" is sent before the guard detects the cross-delta hit.
-	// The second delta "Max-M2.7..." is replaced with the identity reply.
+	// The first delta "我是由Mini" is sent before the guard detects the cross-delta pattern match.
+	// The second delta with the identity pattern is replaced with the identity reply.
 	require.NotContains(t, body, "MiniMax")
-	require.NotContains(t, body, "Max-M2.7")
-	require.Contains(t, body, buildModelIdentityReply("claude-3-5-sonnet"))
+	require.NotContains(t, body, "Max训练的M2.7")
+	require.Contains(t, body, buildModelIdentityReply("claude-3-5-sonnet", DefaultModelIdentitySettings().ReplyTemplate))
 }
 
 func TestStreamingIdentityGuard_SplitDelta(t *testing.T) {
-	guard := newStreamingIdentityGuard("claude-3-5-sonnet")
+	defaults := DefaultModelIdentitySettings()
+	guard := newStreamingIdentityGuard("claude-3-5-sonnet", defaults.ReplyTemplate, identityMatchHitWords, defaults.HitWords, nil)
 
 	// First delta: "Mini" — no hit
 	replacement, rewrite := guard.feedDelta("我是Mini")
@@ -293,7 +296,8 @@ func TestStreamingIdentityGuard_SplitDelta(t *testing.T) {
 }
 
 func TestStreamingIdentityGuard_NoFalsePositive(t *testing.T) {
-	guard := newStreamingIdentityGuard("claude-3-5-sonnet")
+	defaults := DefaultModelIdentitySettings()
+	guard := newStreamingIdentityGuard("claude-3-5-sonnet", defaults.ReplyTemplate, identityMatchHitWords, defaults.HitWords, nil)
 
 	replacement, rewrite := guard.feedDelta("Hello, I'm Claude!")
 	require.False(t, rewrite)
@@ -302,4 +306,33 @@ func TestStreamingIdentityGuard_NoFalsePositive(t *testing.T) {
 	replacement, rewrite = guard.feedDelta(" How can I help you today?")
 	require.False(t, rewrite)
 	require.Empty(t, replacement)
+}
+
+func TestContainsIdentityPattern(t *testing.T) {
+	patterns := compileIdentityPatterns(DefaultModelIdentitySettings().IdentityPatterns)
+
+	tests := []struct {
+		text string
+		want bool
+	}{
+		{"我是一个由智谱训练的glm大语言模型", true},
+		{"I am a model developed by OpenAI", true},
+		{"作为一个DeepSeek模型", true},
+		{"deepseek的论文提出了MoE架构", false},
+		{"代码里用了minimax算法", false},
+		{"ernie是sesame street的角色", false},
+		{"请分析glm-4和gpt-4的区别", false},
+		{"让我找到remove_watermark_min", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			require.Equal(t, tt.want, containsIdentityPattern(tt.text, patterns))
+		})
+	}
+}
+
+func TestBuildModelIdentityReplyCustomTemplate(t *testing.T) {
+	reply := buildModelIdentityReply("glm-4.5", "I am {model} by {company}.")
+	require.Equal(t, "I am glm by 智谱.", reply)
 }

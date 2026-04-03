@@ -4315,7 +4315,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 	}
 
 	// Fetch model identity settings once for all layers.
-	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var identitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		identitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if identitySettings == nil {
 		identitySettings = DefaultModelIdentitySettings()
 	}
@@ -4410,7 +4413,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 			fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, c.Request.Header)
 			if err == nil && fp != nil {
 				// metadata 透传开启时跳过 metadata 注入
-				_, mimicMPT := s.settingService.GetGatewayForwardingSettings(ctx)
+				var mimicMPT bool
+				if s.settingService != nil {
+					_, mimicMPT = s.settingService.GetGatewayForwardingSettings(ctx)
+				}
 				if !mimicMPT {
 					if metadataUserID := s.buildOAuthMetadataUserID(parsed, account, fp); metadataUserID != "" {
 						normalizeOpts.injectMetadata = true
@@ -4774,7 +4780,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				}
 				// 不是签名错误（或整流器已关闭），继续检查 budget 约束
 				errMsg := extractUpstreamErrorMessage(respBody)
-				if isThinkingBudgetConstraintError(errMsg) && s.settingService.IsBudgetRectifierEnabled(ctx) {
+				if isThinkingBudgetConstraintError(errMsg) && s.settingService != nil && s.settingService.IsBudgetRectifierEnabled(ctx) {
 					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 						Platform:           account.Platform,
 						AccountID:          account.ID,
@@ -5481,7 +5487,10 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 
 	// Layer 3: conditional streaming identity guard
 	var identityGuard *streamingIdentityGuard
-	ptIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var ptIdentitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		ptIdentitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if ptIdentitySettings == nil {
 		ptIdentitySettings = DefaultModelIdentitySettings()
 	}
@@ -5800,7 +5809,10 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
 	{
-		nsSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		var nsSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			nsSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		}
 		if nsSettings == nil {
 			nsSettings = DefaultModelIdentitySettings()
 		}
@@ -6791,7 +6803,7 @@ func (s *GatewayService) shouldRectifySignatureError(ctx context.Context, accoun
 		return matchSignaturePatterns(respBody, settings.APIKeySignaturePatterns)
 	}
 	// OAuth/SetupToken/Upstream/Bedrock 等：保持原有行为（内置模式 + 原开关）
-	return s.isThinkingBlockSignatureError(respBody) && s.settingService.IsSignatureRectifierEnabled(ctx)
+	return s.isThinkingBlockSignatureError(respBody) && s.settingService != nil && s.settingService.IsSignatureRectifierEnabled(ctx)
 }
 
 // isSignatureErrorPattern 仅做模式匹配，不检查开关。
@@ -7397,7 +7409,10 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 
 	// Layer 3: conditional streaming identity guard
 	var identityGuardMain *streamingIdentityGuard
-	mainIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var mainIdentitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		mainIdentitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if mainIdentitySettings == nil {
 		mainIdentitySettings = DefaultModelIdentitySettings()
 	}
@@ -7935,7 +7950,10 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
 	{
-		nsrSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		var nsrSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			nsrSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		}
 		if nsrSettings == nil {
 			nsrSettings = DefaultModelIdentitySettings()
 		}

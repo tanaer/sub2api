@@ -44,7 +44,10 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	normalizedModel := anthropicReq.Model
 	clientStream := anthropicReq.Stream // client's original stream preference
 	// Fetch model identity settings once for all layers.
-	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	var identitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		identitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+	}
 	if identitySettings == nil {
 		identitySettings = DefaultModelIdentitySettings()
 	}
@@ -320,7 +323,10 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 	}
 
 	{
-		bufSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+		var bufSettings *ModelIdentitySettings
+		if s.settingService != nil {
+			bufSettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+		}
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
 		}
@@ -383,7 +389,10 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 
 	// Layer 3: conditional streaming identity guard
 	var identityGuardMsg *streamingIdentityGuard
-	msgIdentitySettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+	var msgIdentitySettings *ModelIdentitySettings
+	if s.settingService != nil {
+		msgIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+	}
 	if msgIdentitySettings == nil {
 		msgIdentitySettings = DefaultModelIdentitySettings()
 	}
