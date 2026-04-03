@@ -153,8 +153,8 @@
                 </span>
               </td>
               <td class="py-1.5 px-2">
-                <div class="flex flex-wrap gap-1">
-                  <span v-for="(step, j) in parseUpstreamErrors(row.upstream_errors)" :key="j"
+                <div class="flex flex-wrap items-center gap-1">
+                  <span v-for="step in parseUpstreamErrors(row.upstream_errors)" :key="step.at_unix_ms || step.account_id"
                     class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
                     :class="step.kind === 'success' || step.upstream_status_code === 200
                       ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
@@ -163,6 +163,11 @@
                         : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'">
                     {{ step.account_name || `#${step.account_id}` }}
                     <span class="font-mono">&rarr;{{ step.kind === 'success' ? '✓' : (step.upstream_status_code || 'err') }}</span>
+                    <span v-if="step._duration_ms != null" class="ml-0.5 opacity-70 font-mono">{{ formatMs(step._duration_ms) }}</span>
+                  </span>
+                  <span v-if="failoverTotalMs(row.upstream_errors) > 0"
+                    class="ml-1 text-xs text-gray-400 dark:text-gray-500 font-mono whitespace-nowrap">
+                    &Sigma;{{ formatMs(failoverTotalMs(row.upstream_errors)) }}
                   </span>
                 </div>
               </td>
@@ -326,9 +331,31 @@ function formatTime(ts: string) {
 
 function parseUpstreamErrors(raw: string): any[] {
   try {
-    return JSON.parse(raw) || []
+    const steps = JSON.parse(raw) || []
+    // Compute per-step duration from at_unix_ms deltas
+    for (let i = 0; i < steps.length; i++) {
+      if (i > 0 && steps[i].at_unix_ms && steps[i - 1].at_unix_ms) {
+        steps[i]._duration_ms = steps[i].at_unix_ms - steps[i - 1].at_unix_ms
+      } else if (i === 0) {
+        steps[i]._duration_ms = null // first step has no delta
+      }
+    }
+    return steps
   } catch {
     return []
+  }
+}
+
+function failoverTotalMs(raw: string): number {
+  try {
+    const steps = JSON.parse(raw) || []
+    if (steps.length < 2) return 0
+    const first = steps[0]?.at_unix_ms
+    const last = steps[steps.length - 1]?.at_unix_ms
+    if (first && last && last > first) return last - first
+    return 0
+  } catch {
+    return 0
   }
 }
 </script>
