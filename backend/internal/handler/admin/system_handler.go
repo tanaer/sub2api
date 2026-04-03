@@ -9,6 +9,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/sysutil"
+	"github.com/Wei-Shaw/sub2api/internal/repository"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -36,6 +37,53 @@ func (h *SystemHandler) GetVersion(c *gin.Context) {
 	response.Success(c, gin.H{
 		"version": info.CurrentVersion,
 	})
+}
+
+// GetRedisHealthStatus returns Redis availability and degradation info.
+// GET /api/v1/admin/system/redis
+func (h *SystemHandler) GetRedisHealthStatus(c *gin.Context) {
+	health := repository.GetRedisHealth()
+	if health == nil {
+		response.Success(c, gin.H{
+			"available":       false,
+			"initialized":      false,
+			"degraded_mode":    true,
+			"message":          "Redis health monitor not initialized — concurrency checks unavailable",
+			"down_duration":    "0s",
+		})
+		return
+	}
+
+	degraded := !health.Available()
+	status := "healthy"
+	if degraded {
+		status = "degraded"
+	}
+
+	resp := gin.H{
+		"available":       health.Available(),
+		"initialized":      true,
+		"status":           status,
+		"degraded_mode":    degraded,
+		"down_since":       nil,
+		"down_duration":    "0s",
+	}
+
+	if degraded {
+		ds := health.DownSince()
+		if !ds.IsZero() {
+			resp["down_since"] = ds.Format(time.RFC3339)
+			resp["down_duration"] = health.DownDuration().Round(time.Second).String()
+		}
+		if err := health.LastError(); err != "" {
+			resp["last_error"] = err
+		}
+		resp["message"] = "Redis unavailable — concurrency control disabled (fail-open mode). Requests are being allowed without slot tracking."
+	} else {
+		resp["message"] = "Redis is healthy — concurrency control is active"
+	}
+
+	response.Success(c, resp)
 }
 
 // CheckUpdates checks for available updates

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"os"
 	"strconv"
 	"sync/atomic"
@@ -11,6 +12,11 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
+
+// ErrRedisUnavailable is a sentinel error indicating Redis is down.
+// When this error is returned alongside acquired=true, it means the
+// concurrency check was skipped (fail-open degradation mode).
+var ErrRedisUnavailable = errors.New("redis unavailable (degraded mode: concurrency checks skipped)")
 
 // ConcurrencyCache 定义并发控制的缓存接口
 // 使用有序集合存储槽位，按时间戳清理过期条目
@@ -96,6 +102,7 @@ func NewConcurrencyService(cache ConcurrencyCache) *ConcurrencyService {
 // AcquireResult represents the result of acquiring a concurrency slot
 type AcquireResult struct {
 	Acquired    bool
+	Degraded    bool   // true when Redis is unavailable and concurrency check was skipped (fail-open)
 	ReleaseFunc func() // Must be called when done (typically via defer)
 }
 
@@ -139,6 +146,15 @@ func (s *ConcurrencyService) AcquireAccountSlot(ctx context.Context, accountID i
 	requestID := generateRequestID()
 
 	acquired, err := s.cache.AcquireAccountSlot(ctx, accountID, maxConcurrency, requestID)
+
+	// Redis unavailable — fail-open: allow request through without concurrency control
+	if errors.Is(err, ErrRedisUnavailable) {
+		return &AcquireResult{
+			Acquired:    true,
+			Degraded:    true,
+			ReleaseFunc: func() {}, // no-op, no slot to release
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +194,15 @@ func (s *ConcurrencyService) AcquireUserSlot(ctx context.Context, userID int64, 
 	requestID := generateRequestID()
 
 	acquired, err := s.cache.AcquireUserSlot(ctx, userID, maxConcurrency, requestID)
+
+	// Redis unavailable — fail-open: allow request through without concurrency control
+	if errors.Is(err, ErrRedisUnavailable) {
+		return &AcquireResult{
+			Acquired:    true,
+			Degraded:    true,
+			ReleaseFunc: func() {}, // no-op, no slot to release
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}

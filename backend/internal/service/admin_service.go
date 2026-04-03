@@ -27,6 +27,7 @@ type AdminService interface {
 	UpdateUser(ctx context.Context, id int64, input *UpdateUserInput) (*User, error)
 	DeleteUser(ctx context.Context, id int64) error
 	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error)
+	BatchUpdateUsers(ctx context.Context, ids []int64, input *UpdateUserInput) (updated int, errors []string, err error)
 	GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int) ([]APIKey, int64, error)
 	GetUserUsageStats(ctx context.Context, userID int64, period string) (any, error)
 	// GetUserBalanceHistory returns paginated balance/concurrency change records for a user.
@@ -749,6 +750,24 @@ func (s *adminServiceImpl) UpdateUser(ctx context.Context, id int64, input *Upda
 	}
 
 	return user, nil
+}
+
+// BatchUpdateUsers updates multiple users with the same field values.
+// Fields that are nil/empty in input are skipped (not updated).
+// Returns the count of successfully updated users and any per-user error messages.
+func (s *adminServiceImpl) BatchUpdateUsers(ctx context.Context, ids []int64, input *UpdateUserInput) (updated int, errors []string, err error) {
+	if len(ids) == 0 {
+		return 0, nil, nil
+	}
+	for _, id := range ids {
+		_, updateErr := s.UpdateUser(ctx, id, input)
+		if updateErr != nil {
+			errors = append(errors, fmt.Sprintf("user %d: %v", id, updateErr))
+		} else {
+			updated++
+		}
+	}
+	return updated, errors, nil
 }
 
 func (s *adminServiceImpl) DeleteUser(ctx context.Context, id int64) error {

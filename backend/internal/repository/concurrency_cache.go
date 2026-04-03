@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -194,23 +195,40 @@ type concurrencyCache struct {
 	rdb                 *redis.Client
 	slotTTLSeconds      int // 槽位过期时间（秒）
 	waitQueueTTLSeconds int // 等待队列过期时间（秒）
+	health              *RedisHealth
+	fileCache           *FileConcurrencyCache // Redis 不可用时的 fallback
 }
 
-// NewConcurrencyCache 创建并发控制缓存
-// slotTTLMinutes: 槽位过期时间（分钟），0 或负数使用默认值 15 分钟
-// waitQueueTTLSeconds: 等待队列过期时间（秒），0 或负数使用 slot TTL
-func NewConcurrencyCache(rdb *redis.Client, slotTTLMinutes int, waitQueueTTLSeconds int) service.ConcurrencyCache {
+// NewConcurrencyCacheWithHealth creates a concurrency cache with Redis health awareness.
+// When Redis is unavailable, slot operations fall back to file-based locking.
+// fileCacheTTLMinutes controls the file slot expiry (should match slotTTLMinutes).
+func NewConcurrencyCacheWithHealth(rdb *redis.Client, slotTTLMinutes int, waitQueueTTLSeconds int, health *RedisHealth, fileCacheTTLMinutes int) service.ConcurrencyCache {
 	if slotTTLMinutes <= 0 {
 		slotTTLMinutes = defaultSlotTTLMinutes
 	}
 	if waitQueueTTLSeconds <= 0 {
 		waitQueueTTLSeconds = slotTTLMinutes * 60
 	}
+	if fileCacheTTLMinutes <= 0 {
+		fileCacheTTLMinutes = slotTTLMinutes
+	}
+	fc, err := NewFileConcurrencyCache(fileCacheTTLMinutes)
+	if err != nil {
+		// File system fallback unavailable — log and continue without it
+		log.Printf("WARNING: file concurrency cache unavailable: %v", err)
+	}
 	return &concurrencyCache{
 		rdb:                 rdb,
 		slotTTLSeconds:      slotTTLMinutes * 60,
 		waitQueueTTLSeconds: waitQueueTTLSeconds,
+		health:              health,
+		fileCache:           fc,
 	}
+}
+
+// redisUnavailable returns true when the health monitor reports Redis as down.
+func (c *concurrencyCache) redisUnavailable() bool {
+	return c.health != nil && !c.health.Available()
 }
 
 // Helper functions for key generation
@@ -233,16 +251,31 @@ func accountWaitKey(accountID int64) string {
 // Account slot operations
 
 func (c *concurrencyCache) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+	if c.redisUnavailable() {
+		if c.fileCache != nil {
+			return c.fileCache.AcquireAccountSlot(ctx, accountID, maxConcurrency, requestID)
+		}
+		return true, service.ErrRedisUnavailable
+	}
 	key := accountSlotKey(accountID)
 	// 时间戳在 Lua 脚本内使用 Redis TIME 命令获取，确保多实例时钟一致
 	result, err := acquireScript.Run(ctx, c.rdb, []string{key}, maxConcurrency, c.slotTTLSeconds, requestID).Int()
 	if err != nil {
-		return false, err
+		if c.fileCache != nil {
+			return c.fileCache.AcquireAccountSlot(ctx, accountID, maxConcurrency, requestID)
+		}
+		return true, service.ErrRedisUnavailable
 	}
 	return result == 1, nil
 }
 
 func (c *concurrencyCache) ReleaseAccountSlot(ctx context.Context, accountID int64, requestID string) error {
+	if c.redisUnavailable() {
+		if c.fileCache != nil {
+			return c.fileCache.ReleaseAccountSlot(ctx, accountID, requestID)
+		}
+		return nil
+	}
 	key := accountSlotKey(accountID)
 	return c.rdb.ZRem(ctx, key, requestID).Err()
 }
@@ -297,16 +330,31 @@ func (c *concurrencyCache) GetAccountConcurrencyBatch(ctx context.Context, accou
 // User slot operations
 
 func (c *concurrencyCache) AcquireUserSlot(ctx context.Context, userID int64, maxConcurrency int, requestID string) (bool, error) {
+	if c.redisUnavailable() {
+		if c.fileCache != nil {
+			return c.fileCache.AcquireUserSlot(ctx, userID, maxConcurrency, requestID)
+		}
+		return true, service.ErrRedisUnavailable
+	}
 	key := userSlotKey(userID)
 	// 时间戳在 Lua 脚本内使用 Redis TIME 命令获取，确保多实例时钟一致
 	result, err := acquireScript.Run(ctx, c.rdb, []string{key}, maxConcurrency, c.slotTTLSeconds, requestID).Int()
 	if err != nil {
-		return false, err
+		if c.fileCache != nil {
+			return c.fileCache.AcquireUserSlot(ctx, userID, maxConcurrency, requestID)
+		}
+		return true, service.ErrRedisUnavailable
 	}
 	return result == 1, nil
 }
 
 func (c *concurrencyCache) ReleaseUserSlot(ctx context.Context, userID int64, requestID string) error {
+	if c.redisUnavailable() {
+		if c.fileCache != nil {
+			return c.fileCache.ReleaseUserSlot(ctx, userID, requestID)
+		}
+		return nil
+	}
 	key := userSlotKey(userID)
 	return c.rdb.ZRem(ctx, key, requestID).Err()
 }
@@ -324,15 +372,21 @@ func (c *concurrencyCache) GetUserConcurrency(ctx context.Context, userID int64)
 // Wait queue operations
 
 func (c *concurrencyCache) IncrementWaitCount(ctx context.Context, userID int64, maxWait int) (bool, error) {
+	if c.redisUnavailable() {
+		return true, nil
+	}
 	key := waitQueueKey(userID)
 	result, err := incrementWaitScript.Run(ctx, c.rdb, []string{key}, maxWait, c.waitQueueTTLSeconds).Int()
 	if err != nil {
-		return false, err
+		return true, nil // fail-open on Redis error
 	}
 	return result == 1, nil
 }
 
 func (c *concurrencyCache) DecrementWaitCount(ctx context.Context, userID int64) error {
+	if c.redisUnavailable() {
+		return nil
+	}
 	key := waitQueueKey(userID)
 	_, err := decrementWaitScript.Run(ctx, c.rdb, []string{key}).Result()
 	return err
@@ -341,15 +395,21 @@ func (c *concurrencyCache) DecrementWaitCount(ctx context.Context, userID int64)
 // Account wait queue operations
 
 func (c *concurrencyCache) IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error) {
+	if c.redisUnavailable() {
+		return true, nil
+	}
 	key := accountWaitKey(accountID)
 	result, err := incrementAccountWaitScript.Run(ctx, c.rdb, []string{key}, maxWait, c.waitQueueTTLSeconds).Int()
 	if err != nil {
-		return false, err
+		return true, nil // fail-open on Redis error
 	}
 	return result == 1, nil
 }
 
 func (c *concurrencyCache) DecrementAccountWaitCount(ctx context.Context, accountID int64) error {
+	if c.redisUnavailable() {
+		return nil
+	}
 	key := accountWaitKey(accountID)
 	_, err := decrementWaitScript.Run(ctx, c.rdb, []string{key}).Result()
 	return err

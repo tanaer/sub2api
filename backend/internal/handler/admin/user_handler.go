@@ -237,6 +237,48 @@ func (h *UserHandler) Update(c *gin.Context) {
 	response.Success(c, dto.UserFromServiceAdmin(user))
 }
 
+// BatchUpdate handles batch updating multiple users
+// PUT /api/v1/admin/users/batch
+func (h *UserHandler) BatchUpdate(c *gin.Context) {
+	var req struct {
+		IDs    []int64          `json:"ids" binding:"required,min=1"`
+		Fields UpdateUserRequest `json:"fields" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	if len(req.IDs) > 500 {
+		response.BadRequest(c, "Maximum 500 users per batch operation")
+		return
+	}
+
+	updated, perErrors, err := h.adminService.BatchUpdateUsers(c.Request.Context(), req.IDs, &service.UpdateUserInput{
+		Email:                 req.Fields.Email,
+		Password:              req.Fields.Password,
+		Username:              req.Fields.Username,
+		Notes:                 req.Fields.Notes,
+		Balance:               req.Fields.Balance,
+		Concurrency:           req.Fields.Concurrency,
+		Status:                req.Fields.Status,
+		AllowedGroups:         req.Fields.AllowedGroups,
+		GroupRates:            req.Fields.GroupRates,
+		GroupRequestQuotas:    req.Fields.GroupRequestQuotas,
+		SoraStorageQuotaBytes: req.Fields.SoraStorageQuotaBytes,
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"updated":      updated,
+		"total":        len(req.IDs),
+		"errors":       perErrors,
+	})
+}
+
 // Delete handles deleting a user
 // DELETE /api/v1/admin/users/:id
 func (h *UserHandler) Delete(c *gin.Context) {
