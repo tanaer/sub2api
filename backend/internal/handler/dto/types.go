@@ -125,7 +125,8 @@ type AdminGroup struct {
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
 
 	// 模型别名映射（支持通配符）
-	ModelAliases map[string]string `json:"model_aliases"`
+	ModelAliases  map[string]string `json:"model_aliases"`
+	FallbackModel string            `json:"fallback_model"`
 
 	// MCP XML 协议注入（仅 antigravity 平台使用）
 	MCPXMLInject bool `json:"mcp_xml_inject"`

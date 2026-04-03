@@ -1055,6 +1055,15 @@
             <Icon name="plus" size="sm" />
             {{ t('admin.groups.modelAliases.addRule') }}
           </button>
+
+          <!-- 兜底模型 -->
+          <div class="mt-3">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.groups.modelAliases.fallbackModel') }}
+            </label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">{{ t('admin.groups.modelAliases.fallbackModelHint') }}</p>
+            <input v-model="createForm.fallback_model" type="text" class="input text-sm" :placeholder="t('admin.groups.modelAliases.fallbackModelPlaceholder')" />
+          </div>
         </div>
 
       </form>
@@ -1898,6 +1907,15 @@
             <Icon name="plus" size="sm" />
             {{ t('admin.groups.modelAliases.addRule') }}
           </button>
+
+          <!-- 兜底模型 -->
+          <div class="mt-3">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.groups.modelAliases.fallbackModel') }}
+            </label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">{{ t('admin.groups.modelAliases.fallbackModelHint') }}</p>
+            <input v-model="editForm.fallback_model" type="text" class="input text-sm" :placeholder="t('admin.groups.modelAliases.fallbackModelPlaceholder')" />
+          </div>
         </div>
 
       </form>
@@ -2290,6 +2308,8 @@ const createForm = reactive({
   supported_model_scopes: ['claude', 'gemini_text', 'gemini_image'] as string[],
   // MCP XML 协议注入开关（仅 antigravity 平台）
   mcp_xml_inject: true,
+  // 模型别名兜底模型
+  fallback_model: '',
   // 从分组复制账号
   copy_accounts_from_group_ids: [] as number[]
 })
@@ -2569,6 +2589,8 @@ const editForm = reactive({
   supported_model_scopes: ['claude', 'gemini_text', 'gemini_image'] as string[],
   // MCP XML 协议注入开关（仅 antigravity 平台）
   mcp_xml_inject: true,
+  // 模型别名兜底模型
+  fallback_model: '',
   // 从分组复制账号
   copy_accounts_from_group_ids: [] as number[]
 })
@@ -2809,6 +2831,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.model_routing_enabled = group.model_routing_enabled || false
   editForm.supported_model_scopes = group.supported_model_scopes || ['claude', 'gemini_text', 'gemini_image']
   editForm.mcp_xml_inject = group.mcp_xml_inject ?? true
+  editForm.fallback_model = (group as any).fallback_model || ''
   editForm.copy_accounts_from_group_ids = [] // 复制账号字段每次编辑时重置为空
   // 加载模型路由规则（异步加载账号名称）
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(group.model_routing)

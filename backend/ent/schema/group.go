@@ -149,6 +149,12 @@ func (Group) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
 			Comment("模型别名映射：请求模型模式 -> 目标模型名"),
 
+		// 模型别名兜底模型（当请求模型未匹配到任何别名规则时使用）
+		field.String("fallback_model").
+			MaxLen(100).
+			Default("").
+			Comment("模型别名兜底模型：未匹配到任何别名规则时映射到此模型"),
+
 		// MCP XML 协议注入开关 (added by migration 042)
 		field.Bool("mcp_xml_inject").
 			Default(true).

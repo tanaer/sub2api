@@ -163,8 +163,9 @@ type CreateGroupInput struct {
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled bool // 是否启用模型路由
 	// 模型别名映射（支持通配符）
-	ModelAliases map[string]string
-	MCPXMLInject *bool
+	ModelAliases  map[string]string
+	FallbackModel string // 模型别名兜底模型
+	MCPXMLInject  *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string
 	// Sora 存储配额
@@ -208,8 +209,9 @@ type UpdateGroupInput struct {
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled *bool // 是否启用模型路由
 	// 模型别名映射（支持通配符）
-	ModelAliases map[string]string
-	MCPXMLInject *bool
+	ModelAliases  map[string]string
+	FallbackModel *string // 模型别名兜底模型
+	MCPXMLInject  *bool
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string
 	// Sora 存储配额
@@ -995,6 +997,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
 		ModelRouting:                    input.ModelRouting,
 		ModelAliases:                    input.ModelAliases,
+		FallbackModel:                  input.FallbackModel,
 		MCPXMLInject:                    mcpXMLInject,
 		SupportedModelScopes:            input.SupportedModelScopes,
 		SoraStorageQuotaBytes:           input.SoraStorageQuotaBytes,
@@ -1231,6 +1234,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	// 模型别名映射
 	if input.ModelAliases != nil {
 		group.ModelAliases = input.ModelAliases
+	}
+	if input.FallbackModel != nil {
+		group.FallbackModel = *input.FallbackModel
 	}
 	if input.MCPXMLInject != nil {
 		group.MCPXMLInject = *input.MCPXMLInject

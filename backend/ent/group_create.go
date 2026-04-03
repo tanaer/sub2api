@@ -424,6 +424,20 @@ func (_c *GroupCreate) SetModelAliases(v map[string]string) *GroupCreate {
 	return _c
 }
 
+// SetFallbackModel sets the "fallback_model" field.
+func (_c *GroupCreate) SetFallbackModel(v string) *GroupCreate {
+	_c.mutation.SetFallbackModel(v)
+	return _c
+}
+
+// SetNillableFallbackModel sets the "fallback_model" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableFallbackModel(v *string) *GroupCreate {
+	if v != nil {
+		_c.SetFallbackModel(*v)
+	}
+	return _c
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_c *GroupCreate) SetMcpXMLInject(v bool) *GroupCreate {
 	_c.mutation.SetMcpXMLInject(v)
@@ -691,6 +705,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultModelRoutingEnabled
 		_c.mutation.SetModelRoutingEnabled(v)
 	}
+	if _, ok := _c.mutation.FallbackModel(); !ok {
+		v := group.DefaultFallbackModel
+		_c.mutation.SetFallbackModel(v)
+	}
 	if _, ok := _c.mutation.McpXMLInject(); !ok {
 		v := group.DefaultMcpXMLInject
 		_c.mutation.SetMcpXMLInject(v)
@@ -779,6 +797,14 @@ func (_c *GroupCreate) check() error {
 	}
 	if _, ok := _c.mutation.ModelRoutingEnabled(); !ok {
 		return &ValidationError{Name: "model_routing_enabled", err: errors.New(`ent: missing required field "Group.model_routing_enabled"`)}
+	}
+	if _, ok := _c.mutation.FallbackModel(); !ok {
+		return &ValidationError{Name: "fallback_model", err: errors.New(`ent: missing required field "Group.fallback_model"`)}
+	}
+	if v, ok := _c.mutation.FallbackModel(); ok {
+		if err := group.FallbackModelValidator(v); err != nil {
+			return &ValidationError{Name: "fallback_model", err: fmt.Errorf(`ent: validator failed for field "Group.fallback_model": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.McpXMLInject(); !ok {
 		return &ValidationError{Name: "mcp_xml_inject", err: errors.New(`ent: missing required field "Group.mcp_xml_inject"`)}
@@ -952,6 +978,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModelAliases(); ok {
 		_spec.SetField(group.FieldModelAliases, field.TypeJSON, value)
 		_node.ModelAliases = value
+	}
+	if value, ok := _c.mutation.FallbackModel(); ok {
+		_spec.SetField(group.FieldFallbackModel, field.TypeString, value)
+		_node.FallbackModel = value
 	}
 	if value, ok := _c.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)
@@ -1680,6 +1710,18 @@ func (u *GroupUpsert) UpdateModelAliases() *GroupUpsert {
 // ClearModelAliases clears the value of the "model_aliases" field.
 func (u *GroupUpsert) ClearModelAliases() *GroupUpsert {
 	u.SetNull(group.FieldModelAliases)
+	return u
+}
+
+// SetFallbackModel sets the "fallback_model" field.
+func (u *GroupUpsert) SetFallbackModel(v string) *GroupUpsert {
+	u.Set(group.FieldFallbackModel, v)
+	return u
+}
+
+// UpdateFallbackModel sets the "fallback_model" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateFallbackModel() *GroupUpsert {
+	u.SetExcluded(group.FieldFallbackModel)
 	return u
 }
 
@@ -2452,6 +2494,20 @@ func (u *GroupUpsertOne) UpdateModelAliases() *GroupUpsertOne {
 func (u *GroupUpsertOne) ClearModelAliases() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearModelAliases()
+	})
+}
+
+// SetFallbackModel sets the "fallback_model" field.
+func (u *GroupUpsertOne) SetFallbackModel(v string) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetFallbackModel(v)
+	})
+}
+
+// UpdateFallbackModel sets the "fallback_model" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateFallbackModel() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateFallbackModel()
 	})
 }
 
@@ -3405,6 +3461,20 @@ func (u *GroupUpsertBulk) UpdateModelAliases() *GroupUpsertBulk {
 func (u *GroupUpsertBulk) ClearModelAliases() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.ClearModelAliases()
+	})
+}
+
+// SetFallbackModel sets the "fallback_model" field.
+func (u *GroupUpsertBulk) SetFallbackModel(v string) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetFallbackModel(v)
+	})
+}
+
+// UpdateFallbackModel sets the "fallback_model" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateFallbackModel() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateFallbackModel()
 	})
 }
 

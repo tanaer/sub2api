@@ -75,6 +75,8 @@ const (
 	FieldModelRoutingEnabled = "model_routing_enabled"
 	// FieldModelAliases holds the string denoting the model_aliases field in the database.
 	FieldModelAliases = "model_aliases"
+	// FieldFallbackModel holds the string denoting the fallback_model field in the database.
+	FieldFallbackModel = "fallback_model"
 	// FieldMcpXMLInject holds the string denoting the mcp_xml_inject field in the database.
 	FieldMcpXMLInject = "mcp_xml_inject"
 	// FieldSupportedModelScopes holds the string denoting the supported_model_scopes field in the database.
@@ -194,6 +196,7 @@ var Columns = []string{
 	FieldModelRouting,
 	FieldModelRoutingEnabled,
 	FieldModelAliases,
+	FieldFallbackModel,
 	FieldMcpXMLInject,
 	FieldSupportedModelScopes,
 	FieldSortOrder,
@@ -262,6 +265,10 @@ var (
 	DefaultClaudeCodeOnly bool
 	// DefaultModelRoutingEnabled holds the default value on creation for the "model_routing_enabled" field.
 	DefaultModelRoutingEnabled bool
+	// DefaultFallbackModel holds the default value on creation for the "fallback_model" field.
+	DefaultFallbackModel string
+	// FallbackModelValidator is a validator for the "fallback_model" field. It is called by the builders before save.
+	FallbackModelValidator func(string) error
 	// DefaultMcpXMLInject holds the default value on creation for the "mcp_xml_inject" field.
 	DefaultMcpXMLInject bool
 	// DefaultSupportedModelScopes holds the default value on creation for the "supported_model_scopes" field.
@@ -426,6 +433,11 @@ func ByFallbackGroupIDOnInvalidRequest(opts ...sql.OrderTermOption) OrderOption 
 // ByModelRoutingEnabled orders the results by the model_routing_enabled field.
 func ByModelRoutingEnabled(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelRoutingEnabled, opts...).ToFunc()
+}
+
+// ByFallbackModel orders the results by the fallback_model field.
+func ByFallbackModel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFallbackModel, opts...).ToFunc()
 }
 
 // ByMcpXMLInject orders the results by the mcp_xml_inject field.

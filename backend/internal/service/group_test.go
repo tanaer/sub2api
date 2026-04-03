@@ -93,10 +93,11 @@ func TestGroup_GetImagePrice_PartialConfig(t *testing.T) {
 
 func TestGroup_ResolveModelAlias(t *testing.T) {
 	tests := []struct {
-		name      string
-		aliases   map[string]string
-		input     string
-		expected  string
+		name          string
+		aliases       map[string]string
+		fallbackModel string
+		input         string
+		expected      string
 	}{
 		{
 			name:     "nil aliases returns original",
@@ -164,11 +165,47 @@ func TestGroup_ResolveModelAlias(t *testing.T) {
 			input:    "claude-haiku-4-5-20251001",
 			expected: "glm-4-flash-v2",
 		},
+		// 兜底模型测试
+		{
+			name:          "fallback model when no aliases and no match",
+			aliases:       nil,
+			fallbackModel: "claude-sonnet-4-6-20250514",
+			input:         "some-wrong-model",
+			expected:      "claude-sonnet-4-6-20250514",
+		},
+		{
+			name:          "fallback model when aliases exist but no match",
+			aliases:       map[string]string{"claude-opus-*": "glm-4-plus"},
+			fallbackModel: "claude-sonnet-4-6-20250514",
+			input:         "gpt-5.4",
+			expected:      "claude-sonnet-4-6-20250514",
+		},
+		{
+			name:          "alias match takes priority over fallback",
+			aliases:       map[string]string{"claude-opus-*": "glm-4-plus"},
+			fallbackModel: "claude-sonnet-4-6-20250514",
+			input:         "claude-opus-4-6",
+			expected:      "glm-4-plus",
+		},
+		{
+			name:          "empty fallback model returns original",
+			aliases:       map[string]string{"claude-opus-*": "glm-4-plus"},
+			fallbackModel: "",
+			input:         "gpt-5.4",
+			expected:      "gpt-5.4",
+		},
+		{
+			name:          "fallback with empty aliases map",
+			aliases:       map[string]string{},
+			fallbackModel: "default-model",
+			input:         "unknown-model",
+			expected:      "default-model",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := &Group{ModelAliases: tt.aliases}
+			g := &Group{ModelAliases: tt.aliases, FallbackModel: tt.fallbackModel}
 			result := g.ResolveModelAlias(tt.input)
 			require.Equal(t, tt.expected, result)
 		})

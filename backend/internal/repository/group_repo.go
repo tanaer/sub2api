@@ -77,6 +77,9 @@ func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) er
 		builder = builder.SetModelAliases(groupIn.ModelAliases)
 	}
 
+	// 设置兜底模型
+	builder = builder.SetFallbackModel(groupIn.FallbackModel)
+
 	// 设置支持的模型系列（始终设置，空数组表示不限制）
 	builder = builder.SetSupportedModelScopes(groupIn.SupportedModelScopes)
 
@@ -203,6 +206,9 @@ func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) er
 	} else {
 		builder = builder.ClearModelAliases()
 	}
+
+	// 兜底模型（始终设置，空字符串表示不启用兜底）
+	builder = builder.SetFallbackModel(groupIn.FallbackModel)
 
 	// 处理 SupportedModelScopes（始终设置，空数组表示不限制）
 	builder = builder.SetSupportedModelScopes(groupIn.SupportedModelScopes)

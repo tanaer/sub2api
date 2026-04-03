@@ -630,6 +630,20 @@ func (_u *GroupUpdate) ClearModelAliases() *GroupUpdate {
 	return _u
 }
 
+// SetFallbackModel sets the "fallback_model" field.
+func (_u *GroupUpdate) SetFallbackModel(v string) *GroupUpdate {
+	_u.mutation.SetFallbackModel(v)
+	return _u
+}
+
+// SetNillableFallbackModel sets the "fallback_model" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableFallbackModel(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetFallbackModel(*v)
+	}
+	return _u
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_u *GroupUpdate) SetMcpXMLInject(v bool) *GroupUpdate {
 	_u.mutation.SetMcpXMLInject(v)
@@ -1018,6 +1032,11 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.FallbackModel(); ok {
+		if err := group.FallbackModelValidator(v); err != nil {
+			return &ValidationError{Name: "fallback_model", err: fmt.Errorf(`ent: validator failed for field "Group.fallback_model": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
@@ -1223,6 +1242,9 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ModelAliasesCleared() {
 		_spec.ClearField(group.FieldModelAliases, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.FallbackModel(); ok {
+		_spec.SetField(group.FieldFallbackModel, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)
@@ -2162,6 +2184,20 @@ func (_u *GroupUpdateOne) ClearModelAliases() *GroupUpdateOne {
 	return _u
 }
 
+// SetFallbackModel sets the "fallback_model" field.
+func (_u *GroupUpdateOne) SetFallbackModel(v string) *GroupUpdateOne {
+	_u.mutation.SetFallbackModel(v)
+	return _u
+}
+
+// SetNillableFallbackModel sets the "fallback_model" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableFallbackModel(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetFallbackModel(*v)
+	}
+	return _u
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (_u *GroupUpdateOne) SetMcpXMLInject(v bool) *GroupUpdateOne {
 	_u.mutation.SetMcpXMLInject(v)
@@ -2563,6 +2599,11 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "subscription_type", err: fmt.Errorf(`ent: validator failed for field "Group.subscription_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.FallbackModel(); ok {
+		if err := group.FallbackModelValidator(v); err != nil {
+			return &ValidationError{Name: "fallback_model", err: fmt.Errorf(`ent: validator failed for field "Group.fallback_model": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
@@ -2785,6 +2826,9 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if _u.mutation.ModelAliasesCleared() {
 		_spec.ClearField(group.FieldModelAliases, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.FallbackModel(); ok {
+		_spec.SetField(group.FieldFallbackModel, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.McpXMLInject(); ok {
 		_spec.SetField(group.FieldMcpXMLInject, field.TypeBool, value)

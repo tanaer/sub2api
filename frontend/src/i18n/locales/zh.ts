@@ -1813,6 +1813,9 @@ export default {
         targetPlaceholder: 'GLM-4.7',
         removeRule: '删除规则',
         hint: '示例：claude-opus-* → GLM-4.7 表示所有 claude-opus 开头的模型映射到 GLM-4.7',
+        fallbackModel: '兜底模型',
+        fallbackModelHint: '当请求的模型名未匹配到任何别名规则时，自动映射到此模型。留空则不启用兜底。',
+        fallbackModelPlaceholder: '例如：claude-sonnet-4-6-20250514',
       },
       modelRouting: {
         title: '模型路由配置',

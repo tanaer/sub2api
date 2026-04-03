@@ -195,6 +195,11 @@ func ModelRoutingEnabled(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldModelRoutingEnabled, v))
 }
 
+// FallbackModel applies equality check predicate on the "fallback_model" field. It's identical to FallbackModelEQ.
+func FallbackModel(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldFallbackModel, v))
+}
+
 // McpXMLInject applies equality check predicate on the "mcp_xml_inject" field. It's identical to McpXMLInjectEQ.
 func McpXMLInject(v bool) predicate.Group {
 	return predicate.Group(sql.FieldEQ(FieldMcpXMLInject, v))
@@ -1608,6 +1613,71 @@ func ModelAliasesIsNil() predicate.Group {
 // ModelAliasesNotNil applies the NotNil predicate on the "model_aliases" field.
 func ModelAliasesNotNil() predicate.Group {
 	return predicate.Group(sql.FieldNotNull(FieldModelAliases))
+}
+
+// FallbackModelEQ applies the EQ predicate on the "fallback_model" field.
+func FallbackModelEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldEQ(FieldFallbackModel, v))
+}
+
+// FallbackModelNEQ applies the NEQ predicate on the "fallback_model" field.
+func FallbackModelNEQ(v string) predicate.Group {
+	return predicate.Group(sql.FieldNEQ(FieldFallbackModel, v))
+}
+
+// FallbackModelIn applies the In predicate on the "fallback_model" field.
+func FallbackModelIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldIn(FieldFallbackModel, vs...))
+}
+
+// FallbackModelNotIn applies the NotIn predicate on the "fallback_model" field.
+func FallbackModelNotIn(vs ...string) predicate.Group {
+	return predicate.Group(sql.FieldNotIn(FieldFallbackModel, vs...))
+}
+
+// FallbackModelGT applies the GT predicate on the "fallback_model" field.
+func FallbackModelGT(v string) predicate.Group {
+	return predicate.Group(sql.FieldGT(FieldFallbackModel, v))
+}
+
+// FallbackModelGTE applies the GTE predicate on the "fallback_model" field.
+func FallbackModelGTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldGTE(FieldFallbackModel, v))
+}
+
+// FallbackModelLT applies the LT predicate on the "fallback_model" field.
+func FallbackModelLT(v string) predicate.Group {
+	return predicate.Group(sql.FieldLT(FieldFallbackModel, v))
+}
+
+// FallbackModelLTE applies the LTE predicate on the "fallback_model" field.
+func FallbackModelLTE(v string) predicate.Group {
+	return predicate.Group(sql.FieldLTE(FieldFallbackModel, v))
+}
+
+// FallbackModelContains applies the Contains predicate on the "fallback_model" field.
+func FallbackModelContains(v string) predicate.Group {
+	return predicate.Group(sql.FieldContains(FieldFallbackModel, v))
+}
+
+// FallbackModelHasPrefix applies the HasPrefix predicate on the "fallback_model" field.
+func FallbackModelHasPrefix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasPrefix(FieldFallbackModel, v))
+}
+
+// FallbackModelHasSuffix applies the HasSuffix predicate on the "fallback_model" field.
+func FallbackModelHasSuffix(v string) predicate.Group {
+	return predicate.Group(sql.FieldHasSuffix(FieldFallbackModel, v))
+}
+
+// FallbackModelEqualFold applies the EqualFold predicate on the "fallback_model" field.
+func FallbackModelEqualFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldEqualFold(FieldFallbackModel, v))
+}
+
+// FallbackModelContainsFold applies the ContainsFold predicate on the "fallback_model" field.
+func FallbackModelContainsFold(v string) predicate.Group {
+	return predicate.Group(sql.FieldContainsFold(FieldFallbackModel, v))
 }
 
 // McpXMLInjectEQ applies the EQ predicate on the "mcp_xml_inject" field.

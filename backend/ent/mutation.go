@@ -9933,6 +9933,7 @@ type GroupMutation struct {
 	model_routing                           *map[string][]int64
 	model_routing_enabled                   *bool
 	model_aliases                           *map[string]string
+	fallback_model                          *string
 	mcp_xml_inject                          *bool
 	supported_model_scopes                  *[]string
 	appendsupported_model_scopes            []string
@@ -11690,6 +11691,42 @@ func (m *GroupMutation) ResetModelAliases() {
 	delete(m.clearedFields, group.FieldModelAliases)
 }
 
+// SetFallbackModel sets the "fallback_model" field.
+func (m *GroupMutation) SetFallbackModel(s string) {
+	m.fallback_model = &s
+}
+
+// FallbackModel returns the value of the "fallback_model" field in the mutation.
+func (m *GroupMutation) FallbackModel() (r string, exists bool) {
+	v := m.fallback_model
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFallbackModel returns the old "fallback_model" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldFallbackModel(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFallbackModel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFallbackModel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFallbackModel: %w", err)
+	}
+	return oldValue.FallbackModel, nil
+}
+
+// ResetFallbackModel resets all changes to the "fallback_model" field.
+func (m *GroupMutation) ResetFallbackModel() {
+	m.fallback_model = nil
+}
+
 // SetMcpXMLInject sets the "mcp_xml_inject" field.
 func (m *GroupMutation) SetMcpXMLInject(b bool) {
 	m.mcp_xml_inject = &b
@@ -12335,7 +12372,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 37)
+	fields := make([]string, 0, 38)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -12426,6 +12463,9 @@ func (m *GroupMutation) Fields() []string {
 	if m.model_aliases != nil {
 		fields = append(fields, group.FieldModelAliases)
 	}
+	if m.fallback_model != nil {
+		fields = append(fields, group.FieldFallbackModel)
+	}
 	if m.mcp_xml_inject != nil {
 		fields = append(fields, group.FieldMcpXMLInject)
 	}
@@ -12515,6 +12555,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelRoutingEnabled()
 	case group.FieldModelAliases:
 		return m.ModelAliases()
+	case group.FieldFallbackModel:
+		return m.FallbackModel()
 	case group.FieldMcpXMLInject:
 		return m.McpXMLInject()
 	case group.FieldSupportedModelScopes:
@@ -12598,6 +12640,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldModelRoutingEnabled(ctx)
 	case group.FieldModelAliases:
 		return m.OldModelAliases(ctx)
+	case group.FieldFallbackModel:
+		return m.OldFallbackModel(ctx)
 	case group.FieldMcpXMLInject:
 		return m.OldMcpXMLInject(ctx)
 	case group.FieldSupportedModelScopes:
@@ -12830,6 +12874,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelAliases(v)
+		return nil
+	case group.FieldFallbackModel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFallbackModel(v)
 		return nil
 	case group.FieldMcpXMLInject:
 		v, ok := value.(bool)
@@ -13324,6 +13375,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldModelAliases:
 		m.ResetModelAliases()
+		return nil
+	case group.FieldFallbackModel:
+		m.ResetFallbackModel()
 		return nil
 	case group.FieldMcpXMLInject:
 		m.ResetMcpXMLInject()

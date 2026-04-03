@@ -78,6 +78,8 @@ type Group struct {
 	ModelRoutingEnabled bool `json:"model_routing_enabled,omitempty"`
 	// 模型别名映射：请求模型模式 -> 目标模型名
 	ModelAliases map[string]string `json:"model_aliases,omitempty"`
+	// 模型别名兜底模型：未匹配到任何别名规则时映射到此模型
+	FallbackModel string `json:"fallback_model,omitempty"`
 	// 是否注入 MCP XML 调用协议提示词（仅 antigravity 平台）
 	McpXMLInject bool `json:"mcp_xml_inject,omitempty"`
 	// 支持的模型系列：claude, gemini_text, gemini_image
@@ -206,7 +208,7 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldDefaultValidityDays, group.FieldSoraStorageQuotaBytes, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder:
 			values[i] = new(sql.NullInt64)
-		case group.FieldName, group.FieldDescription, group.FieldUseKeyInstructions, group.FieldConfigTemplates, group.FieldStatus, group.FieldPlatform, group.FieldSubscriptionType, group.FieldDefaultMappedModel:
+		case group.FieldName, group.FieldDescription, group.FieldUseKeyInstructions, group.FieldConfigTemplates, group.FieldStatus, group.FieldPlatform, group.FieldSubscriptionType, group.FieldFallbackModel, group.FieldDefaultMappedModel:
 			values[i] = new(sql.NullString)
 		case group.FieldCreatedAt, group.FieldUpdatedAt, group.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -430,6 +432,12 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &_m.ModelAliases); err != nil {
 					return fmt.Errorf("unmarshal field model_aliases: %w", err)
 				}
+			}
+		case group.FieldFallbackModel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field fallback_model", values[i])
+			} else if value.Valid {
+				_m.FallbackModel = value.String
 			}
 		case group.FieldMcpXMLInject:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -672,6 +680,9 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_aliases=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ModelAliases))
+	builder.WriteString(", ")
+	builder.WriteString("fallback_model=")
+	builder.WriteString(_m.FallbackModel)
 	builder.WriteString(", ")
 	builder.WriteString("mcp_xml_inject=")
 	builder.WriteString(fmt.Sprintf("%v", _m.McpXMLInject))

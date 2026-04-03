@@ -53,6 +53,9 @@ type Group struct {
 	// key: 请求模型模式（如 "claude-opus-*"），value: 目标模型名（如 "glm-4-plus"）
 	ModelAliases map[string]string
 
+	// 模型别名兜底模型：未匹配到任何别名规则时使用
+	FallbackModel string
+
 	// MCP XML 协议注入开关（仅 antigravity 平台使用）
 	MCPXMLInject bool
 
@@ -149,28 +152,35 @@ func IsGroupContextValid(group *Group) bool {
 
 // ResolveModelAlias 根据模型别名映射将请求模型转换为目标模型。
 // 匹配规则：精确匹配优先，通配符匹配次之（最长前缀优先）。
-// 如果没有匹配规则，返回原始模型名。
+// 如果没有匹配规则且配置了兜底模型，返回兜底模型；否则返回原始模型名。
 func (g *Group) ResolveModelAlias(requestedModel string) string {
-	if len(g.ModelAliases) == 0 || requestedModel == "" {
+	if requestedModel == "" {
 		return requestedModel
 	}
 
-	// 1. 精确匹配优先
-	if target, ok := g.ModelAliases[requestedModel]; ok {
-		return target
-	}
+	if len(g.ModelAliases) > 0 {
+		// 1. 精确匹配优先
+		if target, ok := g.ModelAliases[requestedModel]; ok {
+			return target
+		}
 
-	// 2. 通配符匹配（最长前缀优先）
-	bestPattern := ""
-	bestTarget := ""
-	for pattern, target := range g.ModelAliases {
-		if matchModelPattern(pattern, requestedModel) && len(pattern) > len(bestPattern) {
-			bestPattern = pattern
-			bestTarget = target
+		// 2. 通配符匹配（最长前缀优先）
+		bestPattern := ""
+		bestTarget := ""
+		for pattern, target := range g.ModelAliases {
+			if matchModelPattern(pattern, requestedModel) && len(pattern) > len(bestPattern) {
+				bestPattern = pattern
+				bestTarget = target
+			}
+		}
+		if bestTarget != "" {
+			return bestTarget
 		}
 	}
-	if bestTarget != "" {
-		return bestTarget
+
+	// 3. 兜底模型：别名规则未匹配时使用
+	if g.FallbackModel != "" {
+		return g.FallbackModel
 	}
 
 	return requestedModel

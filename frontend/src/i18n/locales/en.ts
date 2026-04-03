@@ -1726,6 +1726,9 @@ export default {
         targetPlaceholder: 'GLM-4.7',
         removeRule: 'Remove Rule',
         hint: 'Example: claude-opus-* → GLM-4.7 means all models starting with claude-opus will be mapped to GLM-4.7',
+        fallbackModel: 'Fallback Model',
+        fallbackModelHint: 'When the requested model name does not match any alias rule, automatically map to this model. Leave empty to disable.',
+        fallbackModelPlaceholder: 'e.g. claude-sonnet-4-6-20250514',
       },
       modelRouting: {
         title: 'Model Routing',
