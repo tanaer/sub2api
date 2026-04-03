@@ -42,8 +42,18 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	originalModel := chatReq.Model
 	clientStream := chatReq.Stream
 	includeUsage := chatReq.StreamOptions != nil && chatReq.StreamOptions.IncludeUsage
-	if reply := buildModelIdentityReplyForChatMessages(originalModel, chatReq.Messages); reply != "" {
-		return writeLocalChatCompletionsIdentityResponse(c, originalModel, reply, clientStream, includeUsage, startTime)
+	// Fetch model identity settings once for all layers.
+	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if identitySettings == nil {
+		identitySettings = DefaultModelIdentitySettings()
+	}
+	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromChatMessages(chatReq.Messages))
+
+	// Layer 1: local response for identity questions
+	if identitySettings.LocalResponseEnabled && isIdentityQ {
+		if reply := buildModelIdentityReply(originalModel, identitySettings.ReplyTemplate); reply != "" {
+			return writeLocalChatCompletionsIdentityResponse(c, originalModel, reply, clientStream, includeUsage, startTime)
+		}
 	}
 
 	// 2. Resolve model mapping early so compat prompt_cache_key injection can
@@ -64,7 +74,9 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	if err != nil {
 		return nil, fmt.Errorf("convert chat completions to responses: %w", err)
 	}
-	injectModelIdentityInstructionIntoResponsesRequest(responsesReq, originalModel)
+	if identitySettings.InstructionInjectionEnabled {
+		injectModelIdentityInstructionIntoResponsesRequest(responsesReq, originalModel, identitySettings.ReplyTemplate)
+	}
 	responsesReq.Model = upstreamModel
 
 	logFields := []zap.Field{
@@ -298,7 +310,13 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 		return nil, fmt.Errorf("upstream stream ended without terminal event")
 	}
 
-	rewriteResponsesResponseText(finalResponse, originalModel)
+	{
+		bufSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+		if bufSettings == nil {
+			bufSettings = DefaultModelIdentitySettings()
+		}
+		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufSettings.HitWords)
+	}
 	chatResp := apicompat.ResponsesToChatCompletions(finalResponse, originalModel)
 
 	if s.responseHeaderFilter != nil {
@@ -354,7 +372,16 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 	}
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 
-	identityGuardCC := newStreamingIdentityGuard(originalModel)
+	// Layer 3: conditional streaming identity guard
+	var identityGuardCC *streamingIdentityGuard
+	ccIdentitySettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+	if ccIdentitySettings == nil {
+		ccIdentitySettings = DefaultModelIdentitySettings()
+	}
+	if ccIdentitySettings.ResponseRewriteEnabled {
+		compiledPatterns := compileIdentityPatterns(ccIdentitySettings.IdentityPatterns)
+		identityGuardCC = newStreamingIdentityGuard(originalModel, ccIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	}
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
 			RequestID:     requestID,
@@ -383,7 +410,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 			)
 			return false
 		}
-		rewriteResponsesStreamEventText(&event, originalModel)
+		rewriteResponsesStreamEventText(&event, originalModel, ccIdentitySettings.ReplyTemplate, ccIdentitySettings.HitWords)
 		rewriteResponsesStreamEventWithGuard(&event, identityGuardCC)
 
 		// Extract usage from completion events

@@ -1758,8 +1758,18 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			promptCacheKey = strings.TrimSpace(v)
 		}
 	}
-	if reply := buildModelIdentityReplyForInput(originalModel, reqBody["input"]); reply != "" {
-		return writeLocalOpenAIResponsesIdentityResponse(c, originalModel, reply, reqStream, startTime)
+	// Fetch model identity settings once for all layers.
+	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if identitySettings == nil {
+		identitySettings = DefaultModelIdentitySettings()
+	}
+	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromResponsesInput(reqBody["input"]))
+
+	// Layer 1: local response for identity questions
+	if identitySettings.LocalResponseEnabled && isIdentityQ {
+		if reply := buildModelIdentityReply(originalModel, identitySettings.ReplyTemplate); reply != "" {
+			return writeLocalOpenAIResponsesIdentityResponse(c, originalModel, reply, reqStream, startTime)
+		}
 	}
 
 	isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator")) || (s.cfg != nil && s.cfg.Gateway.ForceCodexCLI)
@@ -1926,7 +1936,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
-	if injectModelIdentityInstruction(reqBody, originalModel) {
+	if identitySettings.InstructionInjectionEnabled && injectModelIdentityInstruction(reqBody, originalModel, identitySettings.ReplyTemplate) {
 		bodyModified = true
 		disablePatch()
 	}
@@ -2937,7 +2947,22 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	sawDone := false
 	sawTerminalEvent := false
 	upstreamRequestID := strings.TrimSpace(resp.Header.Get("x-request-id"))
-	identityGuardPT := newStreamingIdentityGuard(requestedModel)
+	// Layer 3: conditional streaming identity guard
+	var identityGuardPT *streamingIdentityGuard
+	var ptReplyTemplate string
+	var ptHitWords []string
+	{
+		ptSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		if ptSettings == nil {
+			ptSettings = DefaultModelIdentitySettings()
+		}
+		ptReplyTemplate = ptSettings.ReplyTemplate
+		ptHitWords = ptSettings.HitWords
+		if ptSettings.ResponseRewriteEnabled {
+			compiledPatterns := compileIdentityPatterns(ptSettings.IdentityPatterns)
+			identityGuardPT = newStreamingIdentityGuard(requestedModel, ptSettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+		}
+	}
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -2951,7 +2976,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 	for scanner.Scan() {
 		line := scanner.Text()
 		if data, ok := extractOpenAISSEDataLine(line); ok {
-			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel)
+			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel, ptReplyTemplate, ptHitWords)
 			if !bytes.Equal(rewrittenData, []byte(data)) {
 				data = string(rewrittenData)
 				line = "data: " + data
@@ -3053,10 +3078,16 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 		// 兜底：尝试从 SSE 文本中解析 usage
 		usage = s.parseSSEUsageFromBody(string(body))
 	}
-	if isEventStreamResponse(resp.Header) || bytes.Contains(body, []byte("data:")) {
-		body = []byte(rewriteResponsesTextInSSEBody(string(body), requestedModel))
-	} else {
-		body = rewriteResponsesResponseTextInJSONBytes(body, requestedModel)
+	{
+		nsrSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		if nsrSettings == nil {
+			nsrSettings = DefaultModelIdentitySettings()
+		}
+		if isEventStreamResponse(resp.Header) || bytes.Contains(body, []byte("data:")) {
+			body = []byte(rewriteResponsesTextInSSEBody(string(body), requestedModel, nsrSettings.ReplyTemplate, nsrSettings.HitWords))
+		} else {
+			body = rewriteResponsesResponseTextInJSONBytes(body, requestedModel, nsrSettings.ReplyTemplate, nsrSettings.HitWords)
+		}
 	}
 
 	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
@@ -3604,7 +3635,17 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 	}
 
 	needModelReplace := originalModel != mappedModel
-	identityGuardStream := newStreamingIdentityGuard(originalModel)
+
+	// Layer 3: conditional streaming identity guard
+	var identityGuardStream *streamingIdentityGuard
+	streamIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if streamIdentitySettings == nil {
+		streamIdentitySettings = DefaultModelIdentitySettings()
+	}
+	if streamIdentitySettings.ResponseRewriteEnabled {
+		compiledPatterns := compileIdentityPatterns(streamIdentitySettings.IdentityPatterns)
+		identityGuardStream = newStreamingIdentityGuard(originalModel, streamIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	}
 	resultWithUsage := func() *openaiStreamingResult {
 		return &openaiStreamingResult{usage: usage, firstTokenMs: firstTokenMs}
 	}
@@ -3657,7 +3698,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 				line = s.replaceModelInSSELine(line, mappedModel, originalModel)
 				data = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 			}
-			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), originalModel)
+			rewrittenData := rewriteResponsesEventTextInJSONBytes([]byte(data), originalModel, streamIdentitySettings.ReplyTemplate, streamIdentitySettings.HitWords)
 			if !bytes.Equal(rewrittenData, []byte(data)) {
 				data = string(rewrittenData)
 				line = "data: " + data
@@ -3954,7 +3995,13 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 	if originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
-	body = rewriteResponsesResponseTextInJSONBytes(body, originalModel)
+	{
+		nsSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		if nsSettings == nil {
+			nsSettings = DefaultModelIdentitySettings()
+		}
+		body = rewriteResponsesResponseTextInJSONBytes(body, originalModel, nsSettings.ReplyTemplate, nsSettings.HitWords)
+	}
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 
@@ -3988,7 +4035,13 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 		if originalModel != mappedModel {
 			body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 		}
-		body = rewriteResponsesResponseTextInJSONBytes(body, originalModel)
+		{
+			ns2Settings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+			if ns2Settings == nil {
+				ns2Settings = DefaultModelIdentitySettings()
+			}
+			body = rewriteResponsesResponseTextInJSONBytes(body, originalModel, ns2Settings.ReplyTemplate, ns2Settings.HitWords)
+		}
 		// Correct tool calls in final response
 		body = s.correctToolCallsInResponseBody(body)
 	} else {
@@ -4004,7 +4057,13 @@ func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.
 		if originalModel != mappedModel {
 			bodyText = s.replaceModelInSSEBody(bodyText, mappedModel, originalModel)
 		}
-		bodyText = rewriteResponsesTextInSSEBody(bodyText, originalModel)
+		{
+			nsSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+			if nsSettings == nil {
+				nsSettings = DefaultModelIdentitySettings()
+			}
+			bodyText = rewriteResponsesTextInSSEBody(bodyText, originalModel, nsSettings.ReplyTemplate, nsSettings.HitWords)
+		}
 		body = []byte(bodyText)
 	}
 

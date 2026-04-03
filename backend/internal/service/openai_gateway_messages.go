@@ -43,8 +43,18 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	applyOpenAICompatModelNormalization(&anthropicReq)
 	normalizedModel := anthropicReq.Model
 	clientStream := anthropicReq.Stream // client's original stream preference
-	if reply := buildModelIdentityReplyForAnthropicMessages(originalModel, anthropicReq.Messages); reply != "" {
-		return writeLocalOpenAIAnthropicIdentityResponse(c, originalModel, reply, clientStream, startTime)
+	// Fetch model identity settings once for all layers.
+	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if identitySettings == nil {
+		identitySettings = DefaultModelIdentitySettings()
+	}
+	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromAnthropicMessages(anthropicReq.Messages))
+
+	// Layer 1: local response for identity questions
+	if identitySettings.LocalResponseEnabled && isIdentityQ {
+		if reply := buildModelIdentityReply(originalModel, identitySettings.ReplyTemplate); reply != "" {
+			return writeLocalOpenAIAnthropicIdentityResponse(c, originalModel, reply, clientStream, startTime)
+		}
 	}
 
 	// 2. Convert Anthropic → Responses
@@ -52,7 +62,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	if err != nil {
 		return nil, fmt.Errorf("convert anthropic to responses: %w", err)
 	}
-	injectModelIdentityInstructionIntoResponsesRequest(responsesReq, originalModel)
+	if identitySettings.InstructionInjectionEnabled {
+		injectModelIdentityInstructionIntoResponsesRequest(responsesReq, originalModel, identitySettings.ReplyTemplate)
+	}
 
 	// Upstream always uses streaming (upstream may not support sync mode).
 	// The client's original preference determines the response format.
@@ -307,7 +319,13 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 		return nil, fmt.Errorf("upstream stream ended without terminal event")
 	}
 
-	rewriteResponsesResponseText(finalResponse, originalModel)
+	{
+		bufSettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+		if bufSettings == nil {
+			bufSettings = DefaultModelIdentitySettings()
+		}
+		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufSettings.HitWords)
+	}
 	anthropicResp := apicompat.ResponsesToAnthropic(finalResponse, originalModel)
 
 	if s.responseHeaderFilter != nil {
@@ -363,7 +381,16 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	}
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 
-	identityGuardMsg := newStreamingIdentityGuard(originalModel)
+	// Layer 3: conditional streaming identity guard
+	var identityGuardMsg *streamingIdentityGuard
+	msgIdentitySettings, _ := s.settingService.GetModelIdentitySettings(c.Request.Context())
+	if msgIdentitySettings == nil {
+		msgIdentitySettings = DefaultModelIdentitySettings()
+	}
+	if msgIdentitySettings.ResponseRewriteEnabled {
+		compiledPatterns := compileIdentityPatterns(msgIdentitySettings.IdentityPatterns)
+		identityGuardMsg = newStreamingIdentityGuard(originalModel, msgIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	}
 	// resultWithUsage builds the final result snapshot.
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
@@ -395,7 +422,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			)
 			return false
 		}
-		rewriteResponsesStreamEventText(&event, originalModel)
+		rewriteResponsesStreamEventText(&event, originalModel, msgIdentitySettings.ReplyTemplate, msgIdentitySettings.HitWords)
 		rewriteResponsesStreamEventWithGuard(&event, identityGuardMsg)
 
 		// Extract usage from completion events

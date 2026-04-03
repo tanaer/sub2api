@@ -4120,8 +4120,8 @@ func injectClaudeCodePrompt(body []byte, system any) []byte {
 
 // injectAnthropicModelIdentityInstruction 在 Anthropic system 中追加身份回答约束。
 // 仅当最后一条用户消息是身份/模型/公司类问题时生效，并保持原有字段顺序不变。
-func injectAnthropicModelIdentityInstruction(body []byte, requestedModel string, input any) []byte {
-	instruction := buildModelIdentityInstruction(requestedModel, input)
+func injectAnthropicModelIdentityInstruction(body []byte, requestedModel, replyTemplate string, input any) []byte {
+	instruction := buildModelIdentityInstruction(requestedModel, replyTemplate, input)
 	if instruction == "" {
 		return body
 	}
@@ -4314,8 +4314,18 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		return nil, fmt.Errorf("parse request: empty request")
 	}
 
-	if reply := buildModelIdentityReplyForInput(parsed.Model, parsed.Messages); reply != "" {
-		return writeLocalAnthropicIdentityResponse(c, parsed.Model, reply, parsed.Stream, startTime)
+	// Fetch model identity settings once for all layers.
+	identitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if identitySettings == nil {
+		identitySettings = DefaultModelIdentitySettings()
+	}
+	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromResponsesInput(parsed.Messages))
+
+	// Layer 1: local response for identity questions
+	if identitySettings.LocalResponseEnabled && isIdentityQ {
+		if reply := buildModelIdentityReply(parsed.Model, identitySettings.ReplyTemplate); reply != "" {
+			return writeLocalAnthropicIdentityResponse(c, parsed.Model, reply, parsed.Stream, startTime)
+		}
 	}
 
 	if account != nil && account.IsAnthropicAPIKeyPassthroughEnabled() {
@@ -4329,7 +4339,9 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 			}
 		}
 		// Inject model identity system instruction for passthrough path
-		passthroughBody = injectAnthropicModelIdentityInstruction(passthroughBody, parsed.Model, parsed.Messages)
+		if identitySettings.InstructionInjectionEnabled {
+			passthroughBody = injectAnthropicModelIdentityInstruction(passthroughBody, parsed.Model, identitySettings.ReplyTemplate, parsed.Messages)
+		}
 		return s.forwardAnthropicAPIKeyPassthroughWithInput(ctx, c, account, anthropicPassthroughForwardInput{
 			Body:          passthroughBody,
 			RequestModel:  passthroughModel,
@@ -4411,7 +4423,9 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		body, reqModel = normalizeClaudeOAuthRequestBody(body, reqModel, normalizeOpts)
 	}
 
-	body = injectAnthropicModelIdentityInstruction(body, originalModel, parsed.Messages)
+	if identitySettings.InstructionInjectionEnabled {
+		body = injectAnthropicModelIdentityInstruction(body, originalModel, identitySettings.ReplyTemplate, parsed.Messages)
+	}
 
 	// 强制执行 cache_control 块数量限制（最多 4 个）
 	body = enforceCacheControlLimit(body)
@@ -5464,7 +5478,17 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	clientDisconnected := false
 	sawTerminalEvent := false
 	needModelReplace := strings.TrimSpace(originalModel) != "" && originalModel != mappedModel
-	identityGuard := newStreamingIdentityGuard(originalModel)
+
+	// Layer 3: conditional streaming identity guard
+	var identityGuard *streamingIdentityGuard
+	ptIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if ptIdentitySettings == nil {
+		ptIdentitySettings = DefaultModelIdentitySettings()
+	}
+	if ptIdentitySettings.ResponseRewriteEnabled {
+		compiledPatterns := compileIdentityPatterns(ptIdentitySettings.IdentityPatterns)
+		identityGuard = newStreamingIdentityGuard(originalModel, ptIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	}
 
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := defaultMaxLineSize
@@ -5561,7 +5585,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 					}
 				}
 				if trimmed != "" && trimmed != "[DONE]" {
-					rewritten := rewriteAnthropicEventTextInJSONBytes([]byte(trimmed), originalModel)
+					rewritten := rewriteAnthropicEventTextInJSONBytes([]byte(trimmed), originalModel, ptIdentitySettings.ReplyTemplate, ptIdentitySettings.HitWords)
 					if string(rewritten) != trimmed {
 						line = "data: " + string(rewritten)
 						data = string(rewritten)
@@ -5775,7 +5799,13 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 	if strings.TrimSpace(originalModel) != "" && originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
-	body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel)
+	{
+		nsSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		if nsSettings == nil {
+			nsSettings = DefaultModelIdentitySettings()
+		}
+		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsSettings.ReplyTemplate, nsSettings.HitWords)
+	}
 
 	writeAnthropicPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
@@ -7364,7 +7394,17 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	}
 
 	needModelReplace := originalModel != mappedModel
-	identityGuardMain := newStreamingIdentityGuard(originalModel)
+
+	// Layer 3: conditional streaming identity guard
+	var identityGuardMain *streamingIdentityGuard
+	mainIdentitySettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+	if mainIdentitySettings == nil {
+		mainIdentitySettings = DefaultModelIdentitySettings()
+	}
+	if mainIdentitySettings.ResponseRewriteEnabled {
+		compiledPatterns := compileIdentityPatterns(mainIdentitySettings.IdentityPatterns)
+		identityGuardMain = newStreamingIdentityGuard(originalModel, mainIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	}
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
 	sawTerminalEvent := false
 
@@ -7463,7 +7503,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			sawTerminalEvent = true
 		}
 		if !eventChanged {
-			rewrittenData := rewriteAnthropicEventTextInJSONBytes([]byte(dataLine), originalModel)
+			rewrittenData := rewriteAnthropicEventTextInJSONBytes([]byte(dataLine), originalModel, mainIdentitySettings.ReplyTemplate, mainIdentitySettings.HitWords)
 			if string(rewrittenData) != dataLine {
 				dataLine = string(rewrittenData)
 			}
@@ -7490,7 +7530,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			block += "data: " + dataLine + "\n\n"
 			return []string{block}, dataLine, usagePatch, nil
 		}
-		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel)
+		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel, mainIdentitySettings.ReplyTemplate, mainIdentitySettings.HitWords)
 		newData = rewriteAnthropicEventWithGuard(newData, identityGuardMain)
 
 		block := ""
@@ -7894,7 +7934,13 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 	if originalModel != mappedModel {
 		body = s.replaceModelInResponseBody(body, mappedModel, originalModel)
 	}
-	body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel)
+	{
+		nsrSettings, _ := s.settingService.GetModelIdentitySettings(ctx)
+		if nsrSettings == nil {
+			nsrSettings = DefaultModelIdentitySettings()
+		}
+		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsrSettings.ReplyTemplate, nsrSettings.HitWords)
+	}
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 
