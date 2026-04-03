@@ -38,6 +38,9 @@
           <span class="hidden sm:inline">{{ t('nav.docs') }}</span>
         </a>
 
+        <!-- Changelog -->
+        <ChangelogPanel />
+
         <!-- Language Switcher -->
         <LocaleSwitcher />
 
@@ -217,6 +220,7 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
+import ChangelogPanel from '@/components/admin/ChangelogPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const router = useRouter()

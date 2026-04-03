@@ -1,0 +1,12 @@
+[
+  { "date": "2026-04-03", "type": "feature",    "content": "后台右上角新增更新日志菜单" },
+  { "date": "2026-04-03", "type": "improvement", "content": "新增并发账号文件维度管理" },
+  { "date": "2026-04-03", "type": "improvement", "content": "新增 Redis 健康检查功能" },
+  { "date": "2026-04-03", "type": "feature",    "content": "用户管理新增批量编辑功能" },
+  { "date": "2026-04-03", "type": "fix",        "content": "修复身份识别配置保存问题" },
+  { "date": "2026-04-03", "type": "fix",        "content": "修复故障转移状态码输入问题" },
+  { "date": "2026-04-02", "type": "feature",    "content": "新增模型身份可配置功能" },
+  { "date": "2026-04-02", "type": "improvement", "content": "优化 GLM 故障转移用户体验" },
+  { "date": "2026-04-01", "type": "perf",       "content": "新增设置缓存和正则预编译" },
+  { "date": "2026-04-01", "type": "fix",        "content": "修复两层身份识别检测逻辑" }
+]

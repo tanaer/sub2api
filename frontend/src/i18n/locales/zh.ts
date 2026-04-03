@@ -3334,6 +3334,19 @@ export default {
       failedToDelete: '删除兑换码失败'
     },
 
+    // Changelog
+    changelog: {
+      title: '更新日志',
+      empty: '暂无更新记录',
+      types: {
+        feature: '新功能',
+        fix: '修复',
+        improvement: '优化',
+        perf: '性能',
+        docs: '文档'
+      }
+    },
+
     // Announcements
     announcements: {
       title: '公告管理',

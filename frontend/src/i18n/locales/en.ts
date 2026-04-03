@@ -3179,6 +3179,19 @@ export default {
       }
     },
 
+    // Changelog
+    changelog: {
+      title: 'Changelog',
+      empty: 'No updates yet',
+      types: {
+        feature: 'Feature',
+        fix: 'Fix',
+        improvement: 'Improvement',
+        perf: 'Performance',
+        docs: 'Docs'
+      }
+    },
+
     // Announcements
     announcements: {
       title: 'Announcements',
