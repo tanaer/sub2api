@@ -2875,7 +2875,7 @@ func (s *GeminiMessagesCompatService) handleGeminiUpstreamError(ctx context.Cont
 	if !account.ShouldHandleErrorCode(statusCode) {
 		return
 	}
-	if s.rateLimitService != nil && (statusCode == 401 || statusCode == 403 || statusCode == 529) {
+	if s.rateLimitService != nil && (statusCode == 400 || statusCode == 401 || statusCode == 403 || statusCode == 529) {
 		s.rateLimitService.HandleUpstreamError(ctx, account, statusCode, headers, body)
 		return
 	}
