@@ -14,6 +14,7 @@ import (
 
 type settingUpdateRepoStub struct {
 	updates map[string]string
+	values  map[string]string
 }
 
 func (s *settingUpdateRepoStub) Get(ctx context.Context, key string) (*Setting, error) {
@@ -21,7 +22,10 @@ func (s *settingUpdateRepoStub) Get(ctx context.Context, key string) (*Setting, 
 }
 
 func (s *settingUpdateRepoStub) GetValue(ctx context.Context, key string) (string, error) {
-	panic("unexpected GetValue call")
+	if v, ok := s.values[key]; ok {
+		return v, nil
+	}
+	return "", nil
 }
 
 func (s *settingUpdateRepoStub) Set(ctx context.Context, key, value string) error {
@@ -240,4 +244,44 @@ func TestSettingService_UpdateSettings_CustomModelList_Empty(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, `[]`, repo.updates[SettingKeyCustomModelList])
+}
+
+// GetCustomModelList read-side tests
+
+func TestGetCustomModelList_ReturnsNilWhenKeyNotFound(t *testing.T) {
+	repo := &settingUpdateRepoStub{values: map[string]string{}}
+	svc := NewSettingService(repo, &config.Config{})
+
+	got := svc.GetCustomModelList(context.Background())
+	require.Nil(t, got)
+}
+
+func TestGetCustomModelList_ReturnsNilWhenEmptyString(t *testing.T) {
+	repo := &settingUpdateRepoStub{values: map[string]string{
+		SettingKeyCustomModelList: "",
+	}}
+	svc := NewSettingService(repo, &config.Config{})
+
+	got := svc.GetCustomModelList(context.Background())
+	require.Nil(t, got)
+}
+
+func TestGetCustomModelList_ReturnsNilWhenEmptyArray(t *testing.T) {
+	repo := &settingUpdateRepoStub{values: map[string]string{
+		SettingKeyCustomModelList: "[]",
+	}}
+	svc := NewSettingService(repo, &config.Config{})
+
+	got := svc.GetCustomModelList(context.Background())
+	require.Nil(t, got)
+}
+
+func TestGetCustomModelList_ReturnsModelsWhenValidArray(t *testing.T) {
+	repo := &settingUpdateRepoStub{values: map[string]string{
+		SettingKeyCustomModelList: `["model-a","model-b"]`,
+	}}
+	svc := NewSettingService(repo, &config.Config{})
+
+	got := svc.GetCustomModelList(context.Background())
+	require.Equal(t, []string{"model-a", "model-b"}, got)
 }
