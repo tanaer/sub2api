@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -105,6 +106,20 @@ var healthBreakerSF singleflight.Group
 const healthBreakerCacheTTL = 60 * time.Second
 const healthBreakerErrorTTL = 5 * time.Second
 const healthBreakerDBTimeout = 5 * time.Second
+
+// cachedModelIdentitySettings caches model identity config with pre-compiled patterns.
+type cachedModelIdentitySettings struct {
+	settings         *ModelIdentitySettings
+	compiledPatterns []*regexp.Regexp
+	expiresAt        int64 // unix nano
+}
+
+var modelIdentityCache atomic.Value // *cachedModelIdentitySettings
+var modelIdentitySF singleflight.Group
+
+const modelIdentityCacheTTL = 60 * time.Second
+const modelIdentityErrorTTL = 5 * time.Second
+const modelIdentityDBTimeout = 5 * time.Second
 
 // DefaultSubscriptionGroupReader validates group references used by default subscriptions.
 type DefaultSubscriptionGroupReader interface {
@@ -1739,24 +1754,72 @@ func (s *SettingService) SetRectifierSettings(ctx context.Context, settings *Rec
 }
 
 // GetModelIdentitySettings retrieves model identity masking configuration.
+// Uses in-process atomic.Value cache with 60s TTL, zero-lock hot path.
 func (s *SettingService) GetModelIdentitySettings(ctx context.Context) (*ModelIdentitySettings, error) {
-	value, err := s.settingRepo.GetValue(ctx, SettingKeyModelIdentitySettings)
-	if err != nil {
-		if errors.Is(err, ErrSettingNotFound) {
-			return DefaultModelIdentitySettings(), nil
+	if cached, ok := modelIdentityCache.Load().(*cachedModelIdentitySettings); ok && cached != nil {
+		if time.Now().UnixNano() < cached.expiresAt {
+			return cached.settings, nil
 		}
-		return nil, fmt.Errorf("get model identity settings: %w", err)
 	}
-	if value == "" {
-		return DefaultModelIdentitySettings(), nil
+	val, _, _ := modelIdentitySF.Do("model_identity", func() (any, error) {
+		if cached, ok := modelIdentityCache.Load().(*cachedModelIdentitySettings); ok && cached != nil {
+			if time.Now().UnixNano() < cached.expiresAt {
+				return cached, nil
+			}
+		}
+		dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), modelIdentityDBTimeout)
+		defer cancel()
+		value, err := s.settingRepo.GetValue(dbCtx, SettingKeyModelIdentitySettings)
+		if err != nil || value == "" {
+			dflt := DefaultModelIdentitySettings()
+			ttl := modelIdentityCacheTTL
+			if err != nil && !errors.Is(err, ErrSettingNotFound) {
+				ttl = modelIdentityErrorTTL
+			}
+			entry := &cachedModelIdentitySettings{
+				settings:         dflt,
+				compiledPatterns: compileIdentityPatterns(dflt.IdentityPatterns),
+				expiresAt:        time.Now().Add(ttl).UnixNano(),
+			}
+			modelIdentityCache.Store(entry)
+			return entry, nil
+		}
+		var settings ModelIdentitySettings
+		if jsonErr := json.Unmarshal([]byte(value), &settings); jsonErr != nil {
+			slog.Warn("failed to parse model identity settings", "error", jsonErr, "value", value)
+			dflt := DefaultModelIdentitySettings()
+			entry := &cachedModelIdentitySettings{
+				settings:         dflt,
+				compiledPatterns: compileIdentityPatterns(dflt.IdentityPatterns),
+				expiresAt:        time.Now().Add(modelIdentityCacheTTL).UnixNano(),
+			}
+			modelIdentityCache.Store(entry)
+			return entry, nil
+		}
+		entry := &cachedModelIdentitySettings{
+			settings:         &settings,
+			compiledPatterns: compileIdentityPatterns(settings.IdentityPatterns),
+			expiresAt:        time.Now().Add(modelIdentityCacheTTL).UnixNano(),
+		}
+		modelIdentityCache.Store(entry)
+		return entry, nil
+	})
+	if entry, ok := val.(*cachedModelIdentitySettings); ok {
+		return entry.settings, nil
 	}
+	return DefaultModelIdentitySettings(), nil
+}
 
-	var settings ModelIdentitySettings
-	if err := json.Unmarshal([]byte(value), &settings); err != nil {
-		return DefaultModelIdentitySettings(), nil
+// GetModelIdentitySettingsWithPatterns is like GetModelIdentitySettings but also
+// returns pre-compiled regex patterns, avoiding per-request recompilation.
+func (s *SettingService) GetModelIdentitySettingsWithPatterns(ctx context.Context) (*ModelIdentitySettings, []*regexp.Regexp) {
+	// Trigger cache population via GetModelIdentitySettings.
+	_, _ = s.GetModelIdentitySettings(ctx)
+	if cached, ok := modelIdentityCache.Load().(*cachedModelIdentitySettings); ok && cached != nil {
+		return cached.settings, cached.compiledPatterns
 	}
-
-	return &settings, nil
+	dflt := DefaultModelIdentitySettings()
+	return dflt, compileIdentityPatterns(dflt.IdentityPatterns)
 }
 
 // SetModelIdentitySettings stores model identity masking configuration.
@@ -1770,7 +1833,12 @@ func (s *SettingService) SetModelIdentitySettings(ctx context.Context, settings 
 		return fmt.Errorf("marshal model identity settings: %w", err)
 	}
 
-	return s.settingRepo.Set(ctx, SettingKeyModelIdentitySettings, string(data))
+	if err := s.settingRepo.Set(ctx, SettingKeyModelIdentitySettings, string(data)); err != nil {
+		return err
+	}
+	// Invalidate cache so next read picks up new values.
+	modelIdentityCache.Store((*cachedModelIdentitySettings)(nil))
+	return nil
 }
 
 // IsSignatureRectifierEnabled 判断签名整流是否启用（总开关 && 签名子开关）

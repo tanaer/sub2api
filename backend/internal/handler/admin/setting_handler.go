@@ -1863,6 +1863,20 @@ func (h *SettingHandler) GetModelIdentitySettings(c *gin.Context) {
 	})
 }
 
+// GetModelIdentityDefaults returns the built-in default model identity settings.
+// GET /api/v1/admin/settings/model-identity/defaults
+func (h *SettingHandler) GetModelIdentityDefaults(c *gin.Context) {
+	defaults := service.DefaultModelIdentitySettings()
+	response.Success(c, dto.ModelIdentitySettings{
+		LocalResponseEnabled:        defaults.LocalResponseEnabled,
+		InstructionInjectionEnabled: defaults.InstructionInjectionEnabled,
+		ResponseRewriteEnabled:      defaults.ResponseRewriteEnabled,
+		HitWords:                    defaults.HitWords,
+		IdentityPatterns:            defaults.IdentityPatterns,
+		ReplyTemplate:               defaults.ReplyTemplate,
+	})
+}
+
 // UpdateModelIdentitySettingsRequest is the request body for updating model identity settings.
 type UpdateModelIdentitySettingsRequest struct {
 	LocalResponseEnabled        bool     `json:"local_response_enabled"`

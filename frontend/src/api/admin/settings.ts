@@ -518,6 +518,14 @@ export async function updateModelIdentitySettings(
   return data
 }
 
+/**
+ * Get default model identity settings from the server.
+ */
+export async function getModelIdentityDefaults(): Promise<ModelIdentitySettings> {
+  const { data } = await apiClient.get<ModelIdentitySettings>('/admin/settings/model-identity/defaults')
+  return data
+}
+
 // ==================== Beta Policy Settings ====================
 
 /**
@@ -726,7 +734,8 @@ export const settingsAPI = {
   deleteSoraS3Profile,
   setActiveSoraS3Profile,
   getModelIdentitySettings,
-  updateModelIdentitySettings
+  updateModelIdentitySettings,
+  getModelIdentityDefaults
 }
 
 export default settingsAPI

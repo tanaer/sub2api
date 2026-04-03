@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -325,14 +326,16 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 
 	{
 		var bufSettings *ModelIdentitySettings
+		var bufPatterns []*regexp.Regexp
 		if s.settingService != nil {
-			bufSettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+			bufSettings, bufPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(c.Request.Context())
 		}
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
+			bufPatterns = compileIdentityPatterns(bufSettings.IdentityPatterns)
 		}
 		bufIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, compileIdentityPatterns(bufSettings.IdentityPatterns))
+		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, bufPatterns)
 		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufChecker)
 	}
 	anthropicResp := apicompat.ResponsesToAnthropic(finalResponse, originalModel)
@@ -394,15 +397,16 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	var identityGuardMsg *streamingIdentityGuard
 	var msgIdentitySettings *ModelIdentitySettings
 	var msgIdentityChecker identityCheckFunc
+	var msgCompiledPatterns []*regexp.Regexp
 	if s.settingService != nil {
-		msgIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+		msgIdentitySettings, msgCompiledPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(c.Request.Context())
 	}
 	if msgIdentitySettings == nil {
 		msgIdentitySettings = DefaultModelIdentitySettings()
+		msgCompiledPatterns = compileIdentityPatterns(msgIdentitySettings.IdentityPatterns)
 	}
 	{
 		msgIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		msgCompiledPatterns := compileIdentityPatterns(msgIdentitySettings.IdentityPatterns)
 		msgIdentityChecker = newIdentityChecker(msgIsIdentityQ == true, msgIdentitySettings.HitWords, msgCompiledPatterns)
 		if msgIdentitySettings.ResponseRewriteEnabled {
 			if msgIsIdentityQ == true {

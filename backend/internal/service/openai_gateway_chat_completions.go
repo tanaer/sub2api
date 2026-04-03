@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -316,14 +317,16 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 
 	{
 		var bufSettings *ModelIdentitySettings
+		var bufPatterns []*regexp.Regexp
 		if s.settingService != nil {
-			bufSettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+			bufSettings, bufPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(c.Request.Context())
 		}
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
+			bufPatterns = compileIdentityPatterns(bufSettings.IdentityPatterns)
 		}
 		bufIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, compileIdentityPatterns(bufSettings.IdentityPatterns))
+		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, bufPatterns)
 		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufChecker)
 	}
 	chatResp := apicompat.ResponsesToChatCompletions(finalResponse, originalModel)
@@ -385,15 +388,16 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 	var identityGuardCC *streamingIdentityGuard
 	var ccIdentitySettings *ModelIdentitySettings
 	var ccIdentityChecker identityCheckFunc
+	var ccCompiledPatterns []*regexp.Regexp
 	if s.settingService != nil {
-		ccIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
+		ccIdentitySettings, ccCompiledPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(c.Request.Context())
 	}
 	if ccIdentitySettings == nil {
 		ccIdentitySettings = DefaultModelIdentitySettings()
+		ccCompiledPatterns = compileIdentityPatterns(ccIdentitySettings.IdentityPatterns)
 	}
 	{
 		ccIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		ccCompiledPatterns := compileIdentityPatterns(ccIdentitySettings.IdentityPatterns)
 		ccIdentityChecker = newIdentityChecker(ccIsIdentityQ == true, ccIdentitySettings.HitWords, ccCompiledPatterns)
 		if ccIdentitySettings.ResponseRewriteEnabled {
 			if ccIsIdentityQ == true {

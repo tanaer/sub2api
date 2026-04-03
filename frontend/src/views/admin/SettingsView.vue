@@ -2312,7 +2312,7 @@ import type {
   UpdateSettingsRequest,
   DefaultSubscriptionSetting
 } from '@/api/admin/settings'
-import { getModelIdentitySettings, updateModelIdentitySettings, type ModelIdentitySettings } from '@/api/admin/settings'
+import { getModelIdentitySettings, updateModelIdentitySettings, getModelIdentityDefaults, type ModelIdentitySettings } from '@/api/admin/settings'
 import type { AdminGroup } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -3226,27 +3226,7 @@ async function resetModelIdentityDefaults() {
   if (!confirm(t('admin.settings.modelIdentity.resetDefaultsConfirm'))) return
   modelIdentityLoading.value = true
   try {
-    const defaults: ModelIdentitySettings = {
-      local_response_enabled: true,
-      instruction_injection_enabled: true,
-      response_rewrite_enabled: true,
-      hit_words: [
-        'kimi', 'moonshot', 'minimax', 'abab', 'qwen', '阿里',
-        'doubao', 'deepseek', 'glm', 'chatglm', '智谱',
-        'ernie', '文心', 'hunyuan', '混元', 'grok',
-        '阶跃星辰', 'yi-lightning', '零一万物',
-        '小米', 'mimo',
-      ],
-      identity_patterns: [
-        '我是(一个)?(由)?(.{1,20})(训练|开发|创建|推出)的(.{1,20})(语言模型|大模型|大语言模型|AI助手|AI模型)',
-        '作为(一个|一款)?(.{1,20})(模型|AI助手|语言模型|大语言模型)',
-        '我(是|叫)\\s*(kimi|moonshot|deepseek|qwen|glm|chatglm|doubao|grok|ernie|hunyuan|mimo)',
-        'I am .{0,30}(model|assistant) (developed|trained|created|built) by',
-        "I'm .{0,30}(model|assistant) (developed|trained|created|built) by",
-        'as (a |an )?.{0,20}(model|AI assistant) (by|from)',
-      ],
-      reply_template: '我是一个由{company}训练的{model}大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！',
-    }
+    const defaults = await getModelIdentityDefaults()
     const updated = await updateModelIdentitySettings(defaults)
     modelIdentitySettings.value = updated
     identityPatternsDraft.value = updated.identity_patterns.join('\n')

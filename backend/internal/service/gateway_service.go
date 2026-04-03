@@ -5489,16 +5489,17 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	// Layer 3: conditional streaming identity guard
 	var identityGuard *streamingIdentityGuard
 	var ptIdentitySettings *ModelIdentitySettings
+	var ptCompiledPatterns []*regexp.Regexp
 	if s.settingService != nil {
-		ptIdentitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		ptIdentitySettings, ptCompiledPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(ctx)
 	}
 	if ptIdentitySettings == nil {
 		ptIdentitySettings = DefaultModelIdentitySettings()
+		ptCompiledPatterns = compileIdentityPatterns(ptIdentitySettings.IdentityPatterns)
 	}
 	var ptIdentityChecker identityCheckFunc
 	{
 		ptIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		ptCompiledPatterns := compileIdentityPatterns(ptIdentitySettings.IdentityPatterns)
 		ptIdentityChecker = newIdentityChecker(ptIsIdentityQ == true, ptIdentitySettings.HitWords, ptCompiledPatterns)
 		if ptIdentitySettings.ResponseRewriteEnabled {
 			if ptIsIdentityQ == true {
@@ -5820,14 +5821,16 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 	}
 	{
 		var nsSettings *ModelIdentitySettings
+		var nsPatterns []*regexp.Regexp
 		if s.settingService != nil {
-			nsSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+			nsSettings, nsPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(ctx)
 		}
 		if nsSettings == nil {
 			nsSettings = DefaultModelIdentitySettings()
+			nsPatterns = compileIdentityPatterns(nsSettings.IdentityPatterns)
 		}
 		nsIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		nsChecker := newIdentityChecker(nsIsIdentityQ == true, nsSettings.HitWords, compileIdentityPatterns(nsSettings.IdentityPatterns))
+		nsChecker := newIdentityChecker(nsIsIdentityQ == true, nsSettings.HitWords, nsPatterns)
 		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsSettings.ReplyTemplate, nsChecker)
 	}
 
@@ -7422,16 +7425,17 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	// Layer 3: conditional streaming identity guard
 	var identityGuardMain *streamingIdentityGuard
 	var mainIdentitySettings *ModelIdentitySettings
+	var mainCompiledPatterns []*regexp.Regexp
 	if s.settingService != nil {
-		mainIdentitySettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+		mainIdentitySettings, mainCompiledPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(ctx)
 	}
 	if mainIdentitySettings == nil {
 		mainIdentitySettings = DefaultModelIdentitySettings()
+		mainCompiledPatterns = compileIdentityPatterns(mainIdentitySettings.IdentityPatterns)
 	}
 	var mainIdentityChecker identityCheckFunc
 	{
 		mainIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		mainCompiledPatterns := compileIdentityPatterns(mainIdentitySettings.IdentityPatterns)
 		mainIdentityChecker = newIdentityChecker(mainIsIdentityQ == true, mainIdentitySettings.HitWords, mainCompiledPatterns)
 		if mainIdentitySettings.ResponseRewriteEnabled {
 			if mainIsIdentityQ == true {
@@ -7972,14 +7976,16 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 	}
 	{
 		var nsrSettings *ModelIdentitySettings
+		var nsrPatterns []*regexp.Regexp
 		if s.settingService != nil {
-			nsrSettings, _ = s.settingService.GetModelIdentitySettings(ctx)
+			nsrSettings, nsrPatterns = s.settingService.GetModelIdentitySettingsWithPatterns(ctx)
 		}
 		if nsrSettings == nil {
 			nsrSettings = DefaultModelIdentitySettings()
+			nsrPatterns = compileIdentityPatterns(nsrSettings.IdentityPatterns)
 		}
 		nsrIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
-		nsrChecker := newIdentityChecker(nsrIsIdentityQ == true, nsrSettings.HitWords, compileIdentityPatterns(nsrSettings.IdentityPatterns))
+		nsrChecker := newIdentityChecker(nsrIsIdentityQ == true, nsrSettings.HitWords, nsrPatterns)
 		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsrSettings.ReplyTemplate, nsrChecker)
 	}
 

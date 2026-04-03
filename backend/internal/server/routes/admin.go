@@ -444,6 +444,7 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		adminSettings.PUT("/rectifier", h.Admin.Setting.UpdateRectifierSettings)
 		// Model identity masking configuration
 		adminSettings.GET("/model-identity", h.Admin.Setting.GetModelIdentitySettings)
+		adminSettings.GET("/model-identity/defaults", h.Admin.Setting.GetModelIdentityDefaults)
 		adminSettings.PUT("/model-identity", h.Admin.Setting.UpdateModelIdentitySettings)
 		// Beta 策略配置
 		adminSettings.GET("/beta-policy", h.Admin.Setting.GetBetaPolicySettings)
