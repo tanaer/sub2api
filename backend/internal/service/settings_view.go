@@ -85,6 +85,9 @@ type SystemSettings struct {
 	// Gateway failover status codes
 	FailoverStatusCodes []int `json:"failover_status_codes"`
 	FailoverInclude5xx  bool  `json:"failover_include_5xx"`
+
+	// Health circuit breaker configuration
+	HealthCircuitBreakerConfig *HealthCircuitBreakerConfig `json:"health_circuit_breaker_config"`
 }
 
 type DefaultSubscriptionSetting struct {
@@ -353,6 +356,63 @@ func DefaultOverloadCooldownSettings() *OverloadCooldownSettings {
 	return &OverloadCooldownSettings{
 		Enabled:         true,
 		CooldownMinutes: 10,
+	}
+}
+
+// HealthCircuitBreakerConfig 健康度熔断器动态配置
+type HealthCircuitBreakerConfig struct {
+	// Enabled 总开关（关闭后不再基于健康分数触发短期熔断）
+	Enabled bool `json:"enabled"`
+	// Threshold 触发熔断的健康分数阈值（0-100），健康分 < Threshold 时熔断
+	Threshold int `json:"threshold"`
+	// TTLSeconds 短期熔断持续时长（秒）
+	TTLSeconds int `json:"ttl_seconds"`
+	// MinSamples 最少样本数，低于此值视为健康（数据不足不惩罚）
+	MinSamples int `json:"min_samples"`
+}
+
+// DefaultHealthCircuitBreakerConfig 返回默认的健康度熔断器配置
+func DefaultHealthCircuitBreakerConfig() *HealthCircuitBreakerConfig {
+	return &HealthCircuitBreakerConfig{
+		Enabled:    true,
+		Threshold:  50,
+		TTLSeconds: 30,
+		MinSamples: 3,
+	}
+}
+
+// ModelIdentitySettings controls model identity masking behavior.
+type ModelIdentitySettings struct {
+	LocalResponseEnabled        bool     `json:"local_response_enabled"`
+	InstructionInjectionEnabled bool     `json:"instruction_injection_enabled"`
+	ResponseRewriteEnabled      bool     `json:"response_rewrite_enabled"`
+	HitWords                    []string `json:"hit_words"`
+	IdentityPatterns            []string `json:"identity_patterns"`
+	ReplyTemplate               string   `json:"reply_template"`
+}
+
+// DefaultModelIdentitySettings returns default settings matching previous hardcoded behavior.
+func DefaultModelIdentitySettings() *ModelIdentitySettings {
+	return &ModelIdentitySettings{
+		LocalResponseEnabled:        true,
+		InstructionInjectionEnabled: true,
+		ResponseRewriteEnabled:      true,
+		HitWords: []string{
+			"kimi", "moonshot", "minimax", "abab", "qwen", "阿里",
+			"doubao", "deepseek", "glm", "chatglm", "智谱",
+			"ernie", "文心", "hunyuan", "混元", "grok",
+			"阶跃星辰", "yi-lightning", "零一万物",
+			"小米", "mimo",
+		},
+		IdentityPatterns: []string{
+			`我是(一个)?(由)?(.{1,20})(训练|开发|创建|推出)的(.{1,20})(语言模型|大模型|大语言模型|AI助手|AI模型)`,
+			`作为(一个|一款)?(.{1,20})(模型|AI助手|语言模型|大语言模型)`,
+			`我(是|叫)\s*(kimi|moonshot|deepseek|qwen|glm|chatglm|doubao|grok|ernie|hunyuan|mimo)`,
+			`I am .{0,30}(model|assistant) (developed|trained|created|built) by`,
+			`I'm .{0,30}(model|assistant) (developed|trained|created|built) by`,
+			`as (a |an )?.{0,20}(model|AI assistant) (by|from)`,
+		},
+		ReplyTemplate: "我是一个由{company}训练的{model}大语言模型，旨在通过自然语言处理技术为用户提供专业、高效的解答和支持。如果你有具体的问题或需求,我很乐意帮助你！",
 	}
 }
 

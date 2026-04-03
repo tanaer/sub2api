@@ -259,6 +259,14 @@ const (
 	// Gateway Failover Status Codes
 	// SettingKeyGatewayFailoverStatusCodes 故障转移状态码配置（JSON: {"codes":[400,401,...], "include_5xx":true}）
 	SettingKeyGatewayFailoverStatusCodes = "gateway_failover_status_codes"
+
+	// Health Circuit Breaker 动态配置
+	// SettingKeyHealthCircuitBreakerConfig 健康度熔断器配置（JSON）
+	SettingKeyHealthCircuitBreakerConfig = "health_circuit_breaker_config"
+
+	// Model Identity Settings
+	// SettingKeyModelIdentitySettings stores JSON config for model identity masking behavior.
+	SettingKeyModelIdentitySettings = "model_identity_settings"
 )
 
 // AdminAPIKeyPrefix is the prefix for admin API keys (distinct from user "sk-" keys).
