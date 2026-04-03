@@ -55,6 +55,14 @@ type geminiUsageTotalsBatchProvider interface {
 
 const geminiPrecheckCacheTTL = time.Minute
 
+// upstreamHealthCircuitBreakerTTL 健康分数门控的短期熔断时长。
+const upstreamHealthCircuitBreakerTTL = 30 * time.Second
+
+// upstreamHealthCircuitBreakerThreshold 触发熔断的健康分数阈值。
+// 健康分 0-100，低于等于此值说明账号在 5 分钟窗口内失败率过高。
+// healthMinSamples=3 保证样本不足时不误触发（返回 100）。
+const upstreamHealthCircuitBreakerThreshold = 50
+
 const anthropic429FallbackCooldown = 30 * time.Second
 
 var anthropic429BodyKeywords = []string{
@@ -343,6 +351,21 @@ postProcess:
 	// 进程内熔断：立即将坏账号从调度中剔除，无需等待 outbox 异步重建。
 	if shouldDisable && s.circuitBreaker != nil {
 		s.circuitBreaker.Trip(account.ID)
+	}
+
+	// 健康分数门控的短期熔断：对未被 shouldDisable 覆盖的持续性错误，
+	// 通过短期熔断防止故障账号被反复选中。
+	// 不与 shouldDisable 重复（shouldDisable 已触发正式 Trip）。
+	if !shouldDisable && s.circuitBreaker != nil && s.healthTracker != nil {
+		if score := s.healthTracker.HealthScore(account.ID); score <= upstreamHealthCircuitBreakerThreshold {
+			s.circuitBreaker.TripWithTTL(account.ID, upstreamHealthCircuitBreakerTTL)
+			slog.Info("account_health_circuit_breaker",
+				"account_id", account.ID,
+				"status_code", statusCode,
+				"health_score", score,
+				"ttl", upstreamHealthCircuitBreakerTTL,
+			)
+		}
 	}
 
 	return shouldDisable
