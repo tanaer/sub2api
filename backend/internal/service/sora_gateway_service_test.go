@@ -119,7 +119,7 @@ func TestSoraGatewayService_PollImageTaskCompleted(t *testing.T) {
 			},
 		},
 	}
-	service := NewSoraGatewayService(client, nil, nil, cfg)
+	service := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 
 	urls, err := service.pollImageTask(context.Background(), nil, &Account{ID: 1}, "task", false)
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestSoraGatewayService_ForwardPromptEnhance(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{
 		ID:       1,
 		Platform: PlatformSora,
@@ -175,7 +175,7 @@ func TestSoraGatewayService_ForwardStoryboardPrompt(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{ID: 1, Platform: PlatformSora, Status: StatusActive}
 	body := []byte(`{"model":"sora2-landscape-10s","messages":[{"role":"user","content":"[5.0s]猫猫跳伞 [5.0s]猫猫落地"}],"stream":false}`)
 
@@ -200,7 +200,7 @@ func TestSoraGatewayService_ForwardVideoCount(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{ID: 1, Platform: PlatformSora, Status: StatusActive}
 	body := []byte(`{"model":"sora2-landscape-10s","messages":[{"role":"user","content":"cat running"}],"video_count":3,"stream":false}`)
 
@@ -220,7 +220,7 @@ func TestSoraGatewayService_ForwardCharacterOnly(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{ID: 1, Platform: PlatformSora, Status: StatusActive}
 	body := []byte(`{"model":"sora2-landscape-10s","video":"aGVsbG8=","stream":false}`)
 
@@ -248,7 +248,7 @@ func TestSoraGatewayService_ForwardWatermarkFallback(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{ID: 1, Platform: PlatformSora, Status: StatusActive}
 	body := []byte(`{"model":"sora2-landscape-10s","messages":[{"role":"user","content":"cat running"}],"stream":false,"watermark_free":true,"watermark_parse_method":"custom","watermark_parse_url":"https://parser.example.com","watermark_parse_token":"token","watermark_fallback_on_failure":true}`)
 
@@ -276,7 +276,7 @@ func TestSoraGatewayService_ForwardWatermarkCustomSuccessAndDelete(t *testing.T)
 			},
 		},
 	}
-	svc := NewSoraGatewayService(client, nil, nil, cfg)
+	svc := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 	account := &Account{ID: 1, Platform: PlatformSora, Status: StatusActive}
 	body := []byte(`{"model":"sora2-landscape-10s","messages":[{"role":"user","content":"cat running"}],"stream":false,"watermark_free":true,"watermark_parse_method":"custom","watermark_parse_url":"https://parser.example.com","watermark_parse_token":"token","watermark_delete_post":true}`)
 
@@ -303,7 +303,7 @@ func TestSoraGatewayService_PollVideoTaskFailed(t *testing.T) {
 			},
 		},
 	}
-	service := NewSoraGatewayService(client, nil, nil, cfg)
+	service := NewSoraGatewayService(client, nil, nil, cfg, testFailoverPolicy())
 
 	status, err := service.pollVideoTaskDetailed(context.Background(), nil, &Account{ID: 1}, "task", false)
 	require.Error(t, err)
@@ -319,7 +319,7 @@ func TestSoraGatewayService_BuildSoraMediaURLSigned(t *testing.T) {
 			SoraMediaSignedURLTTLSeconds: 600,
 		},
 	}
-	service := NewSoraGatewayService(nil, nil, nil, cfg)
+	service := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 
 	url := service.buildSoraMediaURL("/image/2025/01/01/a.png", "")
 	require.Contains(t, url, "/sora/media-signed")
@@ -328,7 +328,7 @@ func TestSoraGatewayService_BuildSoraMediaURLSigned(t *testing.T) {
 }
 
 func TestNormalizeSoraMediaURLs_Empty(t *testing.T) {
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	result := svc.normalizeSoraMediaURLs(nil)
 	require.Empty(t, result)
 
@@ -337,7 +337,7 @@ func TestNormalizeSoraMediaURLs_Empty(t *testing.T) {
 }
 
 func TestNormalizeSoraMediaURLs_HTTPUrls(t *testing.T) {
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	urls := []string{"https://example.com/a.png", "http://example.com/b.mp4"}
 	result := svc.normalizeSoraMediaURLs(urls)
 	require.Equal(t, urls, result)
@@ -345,7 +345,7 @@ func TestNormalizeSoraMediaURLs_HTTPUrls(t *testing.T) {
 
 func TestNormalizeSoraMediaURLs_LocalPaths(t *testing.T) {
 	cfg := &config.Config{}
-	svc := NewSoraGatewayService(nil, nil, nil, cfg)
+	svc := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 	urls := []string{"/image/2025/01/a.png", "video/2025/01/b.mp4"}
 	result := svc.normalizeSoraMediaURLs(urls)
 	require.Len(t, result, 2)
@@ -354,7 +354,7 @@ func TestNormalizeSoraMediaURLs_LocalPaths(t *testing.T) {
 }
 
 func TestNormalizeSoraMediaURLs_SkipsBlank(t *testing.T) {
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	urls := []string{"https://example.com/a.png", "", "  ", "https://example.com/b.png"}
 	result := svc.normalizeSoraMediaURLs(urls)
 	require.Len(t, result, 2)
@@ -407,7 +407,7 @@ func TestSoraGatewayService_WriteSoraError_StreamEscapesJSON(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	svc.writeSoraError(c, http.StatusBadGateway, "upstream_error", "invalid \"prompt\"\nline2", true)
 
 	body := rec.Body.String()
@@ -429,7 +429,7 @@ func TestSoraGatewayService_WriteSoraError_StreamEscapesJSON(t *testing.T) {
 }
 
 func TestSoraGatewayService_HandleSoraRequestError_FailoverHeadersCloned(t *testing.T) {
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	sourceHeaders := http.Header{}
 	sourceHeaders.Set("cf-ray", "9d01b0e9ecc35829-SEA")
 
@@ -457,14 +457,14 @@ func TestSoraGatewayService_HandleSoraRequestError_FailoverHeadersCloned(t *test
 }
 
 func TestShouldFailoverUpstreamError(t *testing.T) {
-	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{})
-	require.True(t, svc.shouldFailoverUpstreamError(401))
-	require.True(t, svc.shouldFailoverUpstreamError(404))
-	require.True(t, svc.shouldFailoverUpstreamError(429))
-	require.True(t, svc.shouldFailoverUpstreamError(500))
-	require.True(t, svc.shouldFailoverUpstreamError(502))
-	require.False(t, svc.shouldFailoverUpstreamError(200))
-	require.True(t, svc.shouldFailoverUpstreamError(400))
+	svc := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
+	require.True(t, svc.failoverPolicy.ShouldFailover(401))
+	require.True(t, svc.failoverPolicy.ShouldFailover(404))
+	require.True(t, svc.failoverPolicy.ShouldFailover(429))
+	require.True(t, svc.failoverPolicy.ShouldFailover(500))
+	require.True(t, svc.failoverPolicy.ShouldFailover(502))
+	require.False(t, svc.failoverPolicy.ShouldFailover(200))
+	require.True(t, svc.failoverPolicy.ShouldFailover(400))
 }
 
 func TestWithSoraTimeout_NilService(t *testing.T) {
@@ -476,7 +476,7 @@ func TestWithSoraTimeout_NilService(t *testing.T) {
 
 func TestWithSoraTimeout_ZeroTimeout(t *testing.T) {
 	cfg := &config.Config{}
-	svc := NewSoraGatewayService(nil, nil, nil, cfg)
+	svc := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 	ctx, cancel := svc.withSoraTimeout(context.Background(), false)
 	require.NotNil(t, ctx)
 	require.Nil(t, cancel)
@@ -488,7 +488,7 @@ func TestWithSoraTimeout_PositiveTimeout(t *testing.T) {
 			SoraRequestTimeoutSeconds: 30,
 		},
 	}
-	svc := NewSoraGatewayService(nil, nil, nil, cfg)
+	svc := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 	ctx, cancel := svc.withSoraTimeout(context.Background(), false)
 	require.NotNil(t, ctx)
 	require.NotNil(t, cancel)
@@ -503,11 +503,11 @@ func TestPollInterval(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(nil, nil, nil, cfg)
+	svc := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 	require.Equal(t, 5*time.Second, svc.pollInterval())
 
 	// 默认值
-	svc2 := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc2 := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	require.True(t, svc2.pollInterval() > 0)
 }
 
@@ -519,11 +519,11 @@ func TestPollMaxAttempts(t *testing.T) {
 			},
 		},
 	}
-	svc := NewSoraGatewayService(nil, nil, nil, cfg)
+	svc := NewSoraGatewayService(nil, nil, nil, cfg, testFailoverPolicy())
 	require.Equal(t, 100, svc.pollMaxAttempts())
 
 	// 默认值
-	svc2 := NewSoraGatewayService(nil, nil, nil, &config.Config{})
+	svc2 := NewSoraGatewayService(nil, nil, nil, &config.Config{}, testFailoverPolicy())
 	require.True(t, svc2.pollMaxAttempts() > 0)
 }
 

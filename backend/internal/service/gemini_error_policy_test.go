@@ -20,7 +20,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestShouldFailoverGeminiUpstreamError(t *testing.T) {
-	svc := &GeminiMessagesCompatService{}
+	svc := &GeminiMessagesCompatService{failoverPolicy: testFailoverPolicy()}
 
 	tests := []struct {
 		name       string
@@ -34,14 +34,14 @@ func TestShouldFailoverGeminiUpstreamError(t *testing.T) {
 		{"500_failover", 500, true},
 		{"502_failover", 502, true},
 		{"503_failover", 503, true},
-		{"400_no_failover", 400, false},
-		{"404_no_failover", 404, false},
+		{"400_failover", 400, true},
+		{"404_failover", 404, true},
 		{"422_no_failover", 422, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := svc.shouldFailoverGeminiUpstreamError(tt.statusCode)
+			got := svc.failoverPolicy.ShouldFailover(tt.statusCode)
 			require.Equal(t, tt.expected, got)
 		})
 	}
@@ -268,16 +268,17 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 			expectShouldFailover: true,
 		},
 		{
-			name: "no_policy_400_no_failover",
+			name: "no_policy_400_failover",
 			account: &Account{
 				ID:       204,
 				Type:     AccountTypeAPIKey,
 				Platform: PlatformGemini,
 			},
-			statusCode:        400,
-			respBody:          []byte(`{"error":"bad request"}`),
-			expectFailover:    false,
-			expectHandleError: true,
+			statusCode:           400,
+			respBody:             []byte(`{"error":"bad request"}`),
+			expectFailover:       true,
+			expectHandleError:    true,
+			expectShouldFailover: true,
 		},
 	}
 
@@ -288,6 +289,7 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 			svc := &GeminiMessagesCompatService{
 				accountRepo:      repo,
 				rateLimitService: rlSvc,
+				failoverPolicy:   testFailoverPolicy(),
 			}
 
 			writer := httptest.NewRecorder()
@@ -323,7 +325,7 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 			// ErrorPolicyNone → original logic
 			svc.handleGeminiUpstreamError(ctx, account, statusCode, headers, respBody)
 			handleErrorCalled = true
-			if svc.shouldFailoverGeminiUpstreamError(statusCode) {
+			if svc.failoverPolicy.ShouldFailover(statusCode) {
 				gotFailover = true
 			}
 
@@ -332,8 +334,8 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 			require.Equal(t, tt.expectHandleError, handleErrorCalled, "handleGeminiUpstreamError call mismatch")
 
 			if tt.expectShouldFailover {
-				require.True(t, svc.shouldFailoverGeminiUpstreamError(statusCode),
-					"shouldFailoverGeminiUpstreamError should return true for status %d", statusCode)
+				require.True(t, svc.failoverPolicy.ShouldFailover(statusCode),
+					"failoverPolicy.ShouldFailover should return true for status %d", statusCode)
 			}
 		})
 	}
@@ -346,10 +348,11 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 func TestGeminiErrorPolicy_NilRateLimitService(t *testing.T) {
 	svc := &GeminiMessagesCompatService{
 		rateLimitService: nil,
+		failoverPolicy:   testFailoverPolicy(),
 	}
 
 	// When rateLimitService is nil, error policy is skipped → falls through to
-	// shouldFailoverGeminiUpstreamError (original logic).
+	// failoverPolicy.ShouldFailover (unified logic).
 	// Verify this doesn't panic and follows expected behavior.
 
 	ctx := context.Background()
@@ -368,9 +371,9 @@ func TestGeminiErrorPolicy_NilRateLimitService(t *testing.T) {
 		t.Fatal("rateLimitService should be nil for this test")
 	}
 
-	// shouldFailoverGeminiUpstreamError still works
-	require.True(t, svc.shouldFailoverGeminiUpstreamError(429))
-	require.False(t, svc.shouldFailoverGeminiUpstreamError(400))
+	// failoverPolicy.ShouldFailover still works
+	require.True(t, svc.failoverPolicy.ShouldFailover(429))
+	require.True(t, svc.failoverPolicy.ShouldFailover(400))
 
 	// handleGeminiUpstreamError should not panic with nil rateLimitService
 	require.NotPanics(t, func() {

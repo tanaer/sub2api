@@ -337,6 +337,7 @@ type OpenAIGatewayService struct {
 	openaiWSRetryMetrics  openAIWSRetryMetrics
 	responseHeaderFilter  *responseheaders.CompiledHeaderFilter
 	codexSnapshotThrottle *accountWriteThrottle
+	failoverPolicy        *FailoverPolicy
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService
@@ -357,6 +358,7 @@ func NewOpenAIGatewayService(
 	httpUpstream HTTPUpstream,
 	deferredService *DeferredService,
 	openAITokenProvider *OpenAITokenProvider,
+	failoverPolicy *FailoverPolicy,
 ) *OpenAIGatewayService {
 	svc := &OpenAIGatewayService{
 		accountRepo:         accountRepo,
@@ -386,6 +388,7 @@ func NewOpenAIGatewayService(
 		openaiWSResolver:      NewOpenAIWSProtocolResolver(cfg),
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
+		failoverPolicy:        failoverPolicy,
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
@@ -1692,17 +1695,8 @@ func (s *OpenAIGatewayService) GetAccessToken(ctx context.Context, account *Acco
 	}
 }
 
-func (s *OpenAIGatewayService) shouldFailoverUpstreamError(statusCode int) bool {
-	switch statusCode {
-	case 400, 401, 402, 403, 429, 529:
-		return true
-	default:
-		return statusCode >= 500
-	}
-}
-
 func (s *OpenAIGatewayService) shouldFailoverOpenAIUpstreamResponse(statusCode int, upstreamMsg string, upstreamBody []byte) bool {
-	if s.shouldFailoverUpstreamError(statusCode) {
+	if s.failoverPolicy.ShouldFailover(statusCode) {
 		return true
 	}
 	return isOpenAITransientProcessingError(statusCode, upstreamMsg, upstreamBody)
@@ -3306,7 +3300,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	if s.rateLimitService != nil {
 		shouldDisable = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	}
-	shouldFailover := shouldDisable || s.shouldFailoverUpstreamError(resp.StatusCode)
+	shouldFailover := shouldDisable || s.failoverPolicy.ShouldFailover(resp.StatusCode)
 	kind := "http_error"
 	if shouldFailover {
 		kind = "failover"
@@ -3457,7 +3451,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 			c.Request.Context(), account, resp.StatusCode, resp.Header, body,
 		)
 	}
-	shouldFailover := shouldDisable || s.shouldFailoverUpstreamError(resp.StatusCode)
+	shouldFailover := shouldDisable || s.failoverPolicy.ShouldFailover(resp.StatusCode)
 	kind := "http_error"
 	if shouldFailover {
 		kind = "failover"

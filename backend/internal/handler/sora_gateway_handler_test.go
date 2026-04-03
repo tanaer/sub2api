@@ -466,10 +466,11 @@ func TestSoraGatewayHandler_ChatCompletions(t *testing.T) {
 		nil, // digestStore
 		nil, // settingService
 		nil, // tlsFPProfileService
+		service.NewFailoverPolicy(nil), // failoverPolicy
 	)
 
 	soraClient := &stubSoraClient{imageURLs: []string{"https://example.com/a.png"}}
-	soraGatewayService := service.NewSoraGatewayService(soraClient, nil, nil, cfg)
+	soraGatewayService := service.NewSoraGatewayService(soraClient, nil, nil, cfg, service.NewFailoverPolicy(nil))
 
 	handler := NewSoraGatewayHandler(gatewayService, soraGatewayService, concurrencyService, billingCacheService, nil, cfg)
 

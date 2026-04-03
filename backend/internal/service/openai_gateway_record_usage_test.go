@@ -155,6 +155,7 @@ func newOpenAIRecordUsageServiceForTest(usageRepo UsageLogRepository, userRepo U
 		nil,
 		&DeferredService{},
 		nil,
+		testFailoverPolicy(),
 	)
 	svc.userGroupRateResolver = newUserGroupRateResolver(
 		rateRepo,

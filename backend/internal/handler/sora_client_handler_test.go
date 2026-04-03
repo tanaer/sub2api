@@ -2227,7 +2227,7 @@ func (s *stubSoraClientForHandler) GetVideoTask(_ context.Context, _ *service.Ac
 func newMinimalGatewayService(accountRepo service.AccountRepository) *service.GatewayService {
 	return service.NewGatewayService(
 		accountRepo, nil, nil, nil, nil, nil, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, service.NewFailoverPolicy(nil),
 	)
 }
 
@@ -2241,7 +2241,7 @@ func newMinimalSoraGatewayService(soraClient service.SoraClient) *service.SoraGa
 			},
 		},
 	}
-	return service.NewSoraGatewayService(soraClient, nil, nil, cfg)
+	return service.NewSoraGatewayService(soraClient, nil, nil, cfg, service.NewFailoverPolicy(nil))
 }
 
 // ==================== processGeneration: 更多路径测试 ====================

@@ -84,7 +84,7 @@ func (s *SoraGatewayService) forwardToUpstream(
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 
-		if s.shouldFailoverUpstreamError(resp.StatusCode) {
+		if s.failoverPolicy.ShouldFailover(resp.StatusCode) {
 			return nil, &UpstreamFailoverError{
 				StatusCode:      resp.StatusCode,
 				ResponseBody:    respBody,

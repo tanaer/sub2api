@@ -60,7 +60,17 @@ func NewFailoverPolicy(settingService *SettingService) *FailoverPolicy {
 }
 
 // ShouldFailover 统一判断是否需要故障转移。
+// nil-safe：当 p == nil 时使用默认规则（与旧硬编码逻辑一致）。
 func (p *FailoverPolicy) ShouldFailover(statusCode int) bool {
+	if p == nil {
+		// nil-safe fallback: apply default codes inline to avoid allocation
+		switch statusCode {
+		case 400, 401, 402, 403, 404, 429, 529:
+			return true
+		default:
+			return statusCode >= 500
+		}
+	}
 	p.ensureLoaded()
 	if m, ok := p.codeMap.Load().(map[int]bool); ok && m[statusCode] {
 		return true

@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// testFailoverPolicy creates a FailoverPolicy with default codes for use in tests.
+func testFailoverPolicy() *FailoverPolicy {
+	p := &FailoverPolicy{}
+	p.applyConfig(defaultFailoverCodes)
+	return p
+}
+
 func TestFailoverPolicy_DefaultCodes(t *testing.T) {
 	p := &FailoverPolicy{}
 	// Default codes: 400, 401, 402, 403, 404, 429, 529 + all 5xx

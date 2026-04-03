@@ -161,6 +161,7 @@ func newTestGatewayHandler(t *testing.T, group *service.Group, accounts []*servi
 		nil, // digestStore
 		nil, // settingService
 		nil, // tlsFPProfileService
+		service.NewFailoverPolicy(nil), // failoverPolicy
 	)
 
 	// RunModeSimple：跳过计费检查，避免引入 repo/cache 依赖。

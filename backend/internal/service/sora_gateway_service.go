@@ -67,6 +67,7 @@ type SoraGatewayService struct {
 	rateLimitService *RateLimitService
 	httpUpstream     HTTPUpstream // 用于 apikey 类型账号的 HTTP 透传
 	cfg              *config.Config
+	failoverPolicy   *FailoverPolicy
 }
 
 type soraWatermarkOptions struct {
@@ -104,12 +105,14 @@ func NewSoraGatewayService(
 	rateLimitService *RateLimitService,
 	httpUpstream HTTPUpstream,
 	cfg *config.Config,
+	failoverPolicy *FailoverPolicy,
 ) *SoraGatewayService {
 	return &SoraGatewayService{
 		soraClient:       soraClient,
 		rateLimitService: rateLimitService,
 		httpUpstream:     httpUpstream,
 		cfg:              cfg,
+		failoverPolicy:   failoverPolicy,
 	}
 }
 
@@ -773,15 +776,6 @@ func (s *SoraGatewayService) resolveWatermarkFreeURL(ctx context.Context, accoun
 	}
 }
 
-func (s *SoraGatewayService) shouldFailoverUpstreamError(statusCode int) bool {
-	switch statusCode {
-	case 400, 401, 402, 403, 404, 429, 529:
-		return true
-	default:
-		return statusCode >= 500
-	}
-}
-
 func buildSoraNonStreamResponse(content, model string) map[string]any {
 	return map[string]any{
 		"id":      fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
@@ -994,7 +988,7 @@ func (s *SoraGatewayService) handleSoraRequestError(ctx context.Context, account
 		if s.rateLimitService != nil && account != nil {
 			s.rateLimitService.HandleUpstreamError(ctx, account, upstreamErr.StatusCode, upstreamErr.Headers, upstreamErr.Body)
 		}
-		if s.shouldFailoverUpstreamError(upstreamErr.StatusCode) {
+		if s.failoverPolicy.ShouldFailover(upstreamErr.StatusCode) {
 			var responseHeaders http.Header
 			if upstreamErr.Headers != nil {
 				responseHeaders = upstreamErr.Headers.Clone()
