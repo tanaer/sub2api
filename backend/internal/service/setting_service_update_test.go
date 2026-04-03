@@ -218,3 +218,26 @@ func TestParseStringList_NormalizesValues(t *testing.T) {
 	got := parseStringList(`["Claude"," GPT-4o ","claude","","Gemini"]`)
 	require.Equal(t, []string{"Claude", "GPT-4o", "Gemini"}, got)
 }
+
+func TestSettingService_UpdateSettings_CustomModelList_Normalized(t *testing.T) {
+	repo := &settingUpdateRepoStub{}
+	svc := NewSettingService(repo, &config.Config{})
+
+	err := svc.UpdateSettings(context.Background(), &SystemSettings{
+		CustomModelList: []string{"claude-3-5-sonnet", " Claude-3-5-Sonnet ", "gpt-4o", "", "gpt-4o"},
+	})
+	require.NoError(t, err)
+	// normalizeStringList lowercases and deduplicates; "claude-3-5-sonnet" and "Claude-3-5-Sonnet" are the same
+	require.Equal(t, `["claude-3-5-sonnet","gpt-4o"]`, repo.updates[SettingKeyCustomModelList])
+}
+
+func TestSettingService_UpdateSettings_CustomModelList_Empty(t *testing.T) {
+	repo := &settingUpdateRepoStub{}
+	svc := NewSettingService(repo, &config.Config{})
+
+	err := svc.UpdateSettings(context.Background(), &SystemSettings{
+		CustomModelList: []string{},
+	})
+	require.NoError(t, err)
+	require.Equal(t, `[]`, repo.updates[SettingKeyCustomModelList])
+}

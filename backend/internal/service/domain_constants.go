@@ -118,6 +118,7 @@ const (
 	SettingKeyUserAgreementContent        = "user_agreement_content"        // 用户协议内容（Markdown/HTML）
 	SettingKeyHomeContent                 = "home_content"                  // 首页内容（支持 Markdown/HTML，或 URL 作为 iframe src）
 	SettingKeySupportedAIModels           = "supported_ai_models"           // 首页已支持 AI 模型列表（JSON 数组）
+	SettingKeyCustomModelList             = "custom_model_list"             // 自定义模型列表（/v1/models 返回值覆盖默认列表，JSON 数组）
 	SettingKeyHideCcsImportButton         = "hide_ccs_import_button"        // 是否隐藏 API Keys 页面的导入 CCS 按钮
 	SettingKeyPurchaseSubscriptionEnabled = "purchase_subscription_enabled" // 是否展示"购买订阅"页面入口
 	SettingKeyPurchaseSubscriptionURL     = "purchase_subscription_url"     // "购买订阅"页面 URL（作为 iframe src）

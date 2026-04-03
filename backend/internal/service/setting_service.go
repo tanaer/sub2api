@@ -465,6 +465,7 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 	}
 	settings.RegistrationEmailSuffixWhitelist = normalizedWhitelist
 	settings.SupportedAIModels = normalizeStringList(settings.SupportedAIModels)
+	settings.CustomModelList = normalizeStringList(settings.CustomModelList)
 
 	updates := make(map[string]string)
 
@@ -522,6 +523,11 @@ func (s *SettingService) UpdateSettings(ctx context.Context, settings *SystemSet
 		return fmt.Errorf("marshal supported ai models: %w", err)
 	}
 	updates[SettingKeySupportedAIModels] = string(supportedAIModelsJSON)
+	customModelListJSON, err := json.Marshal(settings.CustomModelList)
+	if err != nil {
+		return fmt.Errorf("marshal custom model list: %w", err)
+	}
+	updates[SettingKeyCustomModelList] = string(customModelListJSON)
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
 	updates[SettingKeyPurchaseSubscriptionEnabled] = strconv.FormatBool(settings.PurchaseSubscriptionEnabled)
 	updates[SettingKeyPurchaseSubscriptionURL] = strings.TrimSpace(settings.PurchaseSubscriptionURL)
@@ -1050,6 +1056,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		UserAgreementContent:             settings[SettingKeyUserAgreementContent],
 		HomeContent:                      settings[SettingKeyHomeContent],
 		SupportedAIModels:                parseStringList(settings[SettingKeySupportedAIModels]),
+		CustomModelList:                  parseStringList(settings[SettingKeyCustomModelList]),
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),

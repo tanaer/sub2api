@@ -100,6 +100,9 @@ type SystemSettings struct {
 	// Gateway forwarding behavior
 	EnableFingerprintUnification bool `json:"enable_fingerprint_unification"`
 	EnableMetadataPassthrough    bool `json:"enable_metadata_passthrough"`
+
+	// CustomModelList 自定义模型列表（/v1/models 返回值覆盖默认列表）
+	CustomModelList []string `json:"custom_model_list"`
 }
 
 type DefaultSubscriptionSetting struct {
