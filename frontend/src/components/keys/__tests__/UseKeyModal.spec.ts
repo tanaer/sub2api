@@ -76,4 +76,31 @@ describe('UseKeyModal', () => {
     expect(codeBlock.text()).toContain('"name": "GPT-5.4 Mini"')
     expect(codeBlock.text()).toContain('"name": "GPT-5.4 Nano"')
   })
+
+  it('uses group default mapped model for OpenAI config when no custom model list is provided', () => {
+    const wrapper = mount(UseKeyModal, {
+      props: {
+        show: true,
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.com/v1',
+        platform: 'openai',
+        defaultMappedModel: 'gpt-4.1'
+      },
+      global: {
+        stubs: {
+          BaseDialog: {
+            template: '<div><slot /><slot name="footer" /></div>'
+          },
+          Icon: {
+            template: '<span />'
+          }
+        }
+      }
+    })
+
+    const codeBlock = wrapper.find('pre code')
+    expect(codeBlock.exists()).toBe(true)
+    expect(codeBlock.text()).toContain('model = "gpt-4.1"')
+    expect(codeBlock.text()).toContain('review_model = "gpt-4.1"')
+  })
 })

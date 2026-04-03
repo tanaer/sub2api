@@ -105,7 +105,8 @@ type Group struct {
 	SoraStorageQuotaBytes int64 `json:"sora_storage_quota_bytes"`
 
 	// OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
-	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
+	AllowMessagesDispatch bool   `json:"allow_messages_dispatch"`
+	DefaultMappedModel    string `json:"default_mapped_model"`
 
 	// 账号过滤控制（仅 OpenAI/Antigravity 平台有效）
 	RequireOAuthOnly  bool `json:"require_oauth_only"`

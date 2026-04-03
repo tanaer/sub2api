@@ -154,6 +154,7 @@ interface Props {
   platform: GroupPlatform | null
   customInstructions?: string | null
   allowMessagesDispatch?: boolean
+  defaultMappedModel?: string | null
   configTemplates?: string | null
 }
 
@@ -196,6 +197,17 @@ const customModelNames = computed((): string[] => {
   } catch {
     return []
   }
+})
+
+const openAIModelNames = computed((): string[] => {
+  if (customModelNames.value.length > 0) {
+    return customModelNames.value
+  }
+  const defaultMappedModel = props.defaultMappedModel?.trim()
+  if (props.platform === 'openai' && defaultMappedModel) {
+    return [defaultMappedModel]
+  }
+  return []
 })
 
 // Parse group config templates with placeholder replacement (legacy format: object array)
@@ -585,8 +597,8 @@ ${keyword('$env:')}${variable('GEMINI_MODEL')}${operator('=')}${string(`"${model
 function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
-  const primaryModel = customModelNames.value[0] || 'gpt-5.4'
-  const reviewModel = customModelNames.value[1] || primaryModel
+  const primaryModel = openAIModelNames.value[0] || 'gpt-5.4'
+  const reviewModel = openAIModelNames.value[1] || primaryModel
 
   // config.toml content
   const configContent = `model_provider = "OpenAI"
@@ -626,8 +638,8 @@ requires_openai_auth = true`
 function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
-  const primaryModel = customModelNames.value[0] || 'gpt-5.4'
-  const reviewModel = customModelNames.value[1] || primaryModel
+  const primaryModel = openAIModelNames.value[0] || 'gpt-5.4'
+  const reviewModel = openAIModelNames.value[1] || primaryModel
 
   // config.toml content with WebSocket v2
   const configContent = `model_provider = "OpenAI"
@@ -1129,10 +1141,14 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
   }
 
   // Use custom model names if provided, otherwise use hardcoded defaults
-  const hasCustomModels = customModelNames.value.length > 0
+  const providerModelNames =
+    platform === 'openai'
+      ? openAIModelNames.value
+      : customModelNames.value
+  const hasCustomModels = providerModelNames.length > 0
   if (hasCustomModels) {
     const models: Record<string, any> = {}
-    for (const m of customModelNames.value) {
+    for (const m of providerModelNames) {
       models[m] = { name: m }
     }
     provider[platform].models = models

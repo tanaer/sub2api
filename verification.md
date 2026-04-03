@@ -322,3 +322,30 @@
 
 - 本次功能已通过隔离 worktree 完成构建并上线，未携带当前工作区里的无关改动。
 - 服务启动成功，迁移链路正常，前后端产物均已切换到本次版本。
+
+---
+
+- 日期：2026-04-03 23:59:30 +0800
+- 执行者：Codex
+- 任务：分组默认映射模型未显示到“使用密钥”弹层
+
+## 验证命令
+
+- `cd backend && go test -tags=unit ./internal/handler/dto`
+  - 结果：通过
+- `cd frontend && pnpm test:run src/components/keys/__tests__/UseKeyModal.spec.ts src/views/user/__tests__/KeysView.spec.ts`
+  - 结果：通过
+  - 关键输出：`Test Files  2 passed (2)`，`Tests  5 passed (5)`
+- `cd frontend && pnpm typecheck`
+  - 结果：通过
+
+## 非阻塞项
+
+- `cd backend && go test -tags=unit ./internal/handler/...`
+  - 结果：失败
+  - 原因：现有 `stubAdminService` 未实现 `BatchUpdateUsers`，属于仓库内既有测试基建问题，不由本次修改引入
+
+## 结论
+
+- 后端已把 `default_mapped_model` 返回给用户侧 API Key 关联分组。
+- 前端“使用密钥”弹层已能在无自定义模型列表时展示分组默认映射模型对应的 OpenAI 配置。

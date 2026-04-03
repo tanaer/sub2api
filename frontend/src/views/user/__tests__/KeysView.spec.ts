@@ -39,6 +39,7 @@ const messages: Record<string, string> = {
   'keys.today': 'Today',
   'keys.total': 'Total',
   'keys.quota': 'Quota',
+  'keys.useKey': 'Use Key',
   'keyUsage.requestQuota': 'Request Quota',
   'keyUsage.requestQuotaRemaining': 'Remaining Requests',
   'keyUsage.requestQuotaUsed': 'Used Requests',
@@ -92,6 +93,7 @@ const DataTableStub = {
     <div>
       <div v-for="row in data" :key="row.id">
         <slot name="cell-usage" :row="row" :value="row.usage" />
+        <slot name="cell-actions" :row="row" />
       </div>
     </div>
   `,
@@ -186,5 +188,111 @@ describe('user KeysView request quota display', () => {
     expect(text).toContain('5 / 12')
     expect(text).toContain('Remaining Requests')
     expect(text).toContain('7')
+  })
+
+  it('passes group default mapped model into the use key modal', async () => {
+    list.mockResolvedValue({
+      items: [
+        {
+          id: 1,
+          name: 'mapped-key',
+          key: 'sk-test-1234567890abcdef',
+          request_quota: 0,
+          request_quota_used: 0,
+          quota: 0,
+          quota_used: 0,
+          status: 'active',
+          group_id: 9,
+          ip_whitelist: [],
+          ip_blacklist: [],
+          last_used_at: null,
+          expires_at: null,
+          created_at: '2026-03-27T00:00:00Z',
+          updated_at: '2026-03-27T00:00:00Z',
+          rate_limit_5h: 0,
+          rate_limit_1d: 0,
+          rate_limit_7d: 0,
+          usage_5h: 0,
+          usage_1d: 0,
+          usage_7d: 0,
+          window_5h_start: null,
+          window_1d_start: null,
+          window_7d_start: null,
+          reset_5h_at: null,
+          reset_1d_at: null,
+          reset_7d_at: null,
+          group: {
+            id: 9,
+            name: 'OpenAI Group',
+            description: null,
+            use_key_instructions: null,
+            config_templates: null,
+            platform: 'openai',
+            rate_multiplier: 1,
+            is_exclusive: false,
+            status: 'active',
+            subscription_type: 'standard',
+            daily_limit_usd: null,
+            weekly_limit_usd: null,
+            monthly_limit_usd: null,
+            image_price_1k: null,
+            image_price_2k: null,
+            image_price_4k: null,
+            sora_image_price_360: null,
+            sora_image_price_540: null,
+            sora_video_price_per_request: null,
+            sora_video_price_per_request_hd: null,
+            sora_storage_quota_bytes: 0,
+            claude_code_only: false,
+            fallback_group_id: null,
+            fallback_group_id_on_invalid_request: null,
+            allow_messages_dispatch: true,
+            require_oauth_only: false,
+            require_privacy_set: false,
+            default_mapped_model: 'gpt-4.1',
+            created_at: '2026-03-27T00:00:00Z',
+            updated_at: '2026-03-27T00:00:00Z',
+          }
+        },
+      ],
+      total: 1,
+      pages: 1,
+    })
+    getDashboardApiKeysUsage.mockResolvedValue({ stats: {} })
+    getAvailable.mockResolvedValue([])
+    getUserGroupRates.mockResolvedValue({})
+    getPublicSettings.mockResolvedValue({})
+
+    const wrapper = mount(KeysView, {
+      global: {
+        stubs: {
+          AppLayout: AppLayoutStub,
+          TablePageLayout: TablePageLayoutStub,
+          DataTable: DataTableStub,
+          Pagination: true,
+          BaseDialog: true,
+          ConfirmDialog: true,
+          EmptyState: true,
+          Select: true,
+          SearchInput: true,
+          Icon: true,
+          UseKeyModal: {
+            props: ['defaultMappedModel'],
+            template: '<div class="use-key-modal-stub" :data-default-mapped-model="defaultMappedModel"></div>',
+          },
+          GroupBadge: true,
+          GroupOptionItem: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    await flushPromises()
+    const useKeyButton = wrapper.findAll('button').find((button) => button.text().includes('Use Key'))
+    expect(useKeyButton).toBeTruthy()
+    await useKeyButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.use-key-modal-stub').attributes('data-default-mapped-model')).toBe('gpt-4.1')
   })
 })

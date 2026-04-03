@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGroupFromService_MapsUseKeyInstructionsForUserAndAdmin(t *testing.T) {
+func TestGroupFromService_MapsUseKeyInstructionsAndDefaultMappedModelForUserAndAdmin(t *testing.T) {
 	group := &service.Group{
 		ID:                 7,
 		Name:               "vip-openai",
@@ -15,6 +15,7 @@ func TestGroupFromService_MapsUseKeyInstructionsForUserAndAdmin(t *testing.T) {
 		Platform:           service.PlatformOpenAI,
 		Status:             service.StatusActive,
 		UseKeyInstructions: "VIP 分组请优先使用内部 Codex 配置模板。",
+		DefaultMappedModel: "gpt-4.1",
 	}
 
 	userDTO := GroupFromService(group)
@@ -24,4 +25,6 @@ func TestGroupFromService_MapsUseKeyInstructionsForUserAndAdmin(t *testing.T) {
 	require.NotNil(t, adminDTO)
 	require.Equal(t, "VIP 分组请优先使用内部 Codex 配置模板。", userDTO.UseKeyInstructions)
 	require.Equal(t, "VIP 分组请优先使用内部 Codex 配置模板。", adminDTO.UseKeyInstructions)
+	require.Equal(t, "gpt-4.1", userDTO.DefaultMappedModel)
+	require.Equal(t, "gpt-4.1", adminDTO.DefaultMappedModel)
 }
