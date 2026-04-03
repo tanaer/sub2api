@@ -2056,6 +2056,8 @@ export default {
       allStatus: '全部状态',
       allGroups: '全部分组',
       ungroupedGroup: '未分配分组',
+      allModels: '全部模型',
+      searchByModel: '按模型名称搜索...',
       oauthType: 'OAuth',
       // Schedulable toggle
       schedulable: '参与调度',

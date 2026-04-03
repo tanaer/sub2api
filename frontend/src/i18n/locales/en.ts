@@ -1974,6 +1974,8 @@ export default {
       allStatus: 'All Status',
       allGroups: 'All Groups',
       ungroupedGroup: 'Ungrouped',
+      allModels: 'All Models',
+      searchByModel: 'Search by model name...',
       oauthType: 'OAuth',
       setupToken: 'Setup Token',
       apiKey: 'API Key',
