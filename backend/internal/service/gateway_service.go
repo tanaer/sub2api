@@ -4323,6 +4323,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		identitySettings = DefaultModelIdentitySettings()
 	}
 	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromResponsesInput(parsed.Messages))
+	c.Set(ContextKeyIdentityQuestion, isIdentityQ)
 
 	// Layer 1: local response for identity questions
 	if identitySettings.LocalResponseEnabled && isIdentityQ {
@@ -5494,9 +5495,18 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 	if ptIdentitySettings == nil {
 		ptIdentitySettings = DefaultModelIdentitySettings()
 	}
-	if ptIdentitySettings.ResponseRewriteEnabled {
-		compiledPatterns := compileIdentityPatterns(ptIdentitySettings.IdentityPatterns)
-		identityGuard = newStreamingIdentityGuard(originalModel, ptIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	var ptIdentityChecker identityCheckFunc
+	{
+		ptIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		ptCompiledPatterns := compileIdentityPatterns(ptIdentitySettings.IdentityPatterns)
+		ptIdentityChecker = newIdentityChecker(ptIsIdentityQ == true, ptIdentitySettings.HitWords, ptCompiledPatterns)
+		if ptIdentitySettings.ResponseRewriteEnabled {
+			if ptIsIdentityQ == true {
+				identityGuard = newStreamingIdentityGuard(originalModel, ptIdentitySettings.ReplyTemplate, identityMatchHitWords, ptIdentitySettings.HitWords, nil)
+			} else {
+				identityGuard = newStreamingIdentityGuard(originalModel, ptIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, ptCompiledPatterns)
+			}
+		}
 	}
 
 	scanner := bufio.NewScanner(resp.Body)
@@ -5594,7 +5604,7 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 					}
 				}
 				if trimmed != "" && trimmed != "[DONE]" {
-					rewritten := rewriteAnthropicEventTextInJSONBytes([]byte(trimmed), originalModel, ptIdentitySettings.ReplyTemplate, ptIdentitySettings.HitWords)
+					rewritten := rewriteAnthropicEventTextInJSONBytes([]byte(trimmed), originalModel, ptIdentitySettings.ReplyTemplate, ptIdentityChecker)
 					if string(rewritten) != trimmed {
 						line = "data: " + string(rewritten)
 						data = string(rewritten)
@@ -5816,7 +5826,9 @@ func (s *GatewayService) handleNonStreamingResponseAnthropicAPIKeyPassthrough(
 		if nsSettings == nil {
 			nsSettings = DefaultModelIdentitySettings()
 		}
-		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsSettings.ReplyTemplate, nsSettings.HitWords)
+		nsIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		nsChecker := newIdentityChecker(nsIsIdentityQ == true, nsSettings.HitWords, compileIdentityPatterns(nsSettings.IdentityPatterns))
+		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsSettings.ReplyTemplate, nsChecker)
 	}
 
 	writeAnthropicPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
@@ -7416,9 +7428,18 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 	if mainIdentitySettings == nil {
 		mainIdentitySettings = DefaultModelIdentitySettings()
 	}
-	if mainIdentitySettings.ResponseRewriteEnabled {
-		compiledPatterns := compileIdentityPatterns(mainIdentitySettings.IdentityPatterns)
-		identityGuardMain = newStreamingIdentityGuard(originalModel, mainIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	var mainIdentityChecker identityCheckFunc
+	{
+		mainIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		mainCompiledPatterns := compileIdentityPatterns(mainIdentitySettings.IdentityPatterns)
+		mainIdentityChecker = newIdentityChecker(mainIsIdentityQ == true, mainIdentitySettings.HitWords, mainCompiledPatterns)
+		if mainIdentitySettings.ResponseRewriteEnabled {
+			if mainIsIdentityQ == true {
+				identityGuardMain = newStreamingIdentityGuard(originalModel, mainIdentitySettings.ReplyTemplate, identityMatchHitWords, mainIdentitySettings.HitWords, nil)
+			} else {
+				identityGuardMain = newStreamingIdentityGuard(originalModel, mainIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, mainCompiledPatterns)
+			}
+		}
 	}
 	clientDisconnected := false // 客户端断开标志，断开后继续读取上游以获取完整usage
 	sawTerminalEvent := false
@@ -7518,7 +7539,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			sawTerminalEvent = true
 		}
 		if !eventChanged {
-			rewrittenData := rewriteAnthropicEventTextInJSONBytes([]byte(dataLine), originalModel, mainIdentitySettings.ReplyTemplate, mainIdentitySettings.HitWords)
+			rewrittenData := rewriteAnthropicEventTextInJSONBytes([]byte(dataLine), originalModel, mainIdentitySettings.ReplyTemplate, mainIdentityChecker)
 			if string(rewrittenData) != dataLine {
 				dataLine = string(rewrittenData)
 			}
@@ -7545,7 +7566,7 @@ func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http
 			block += "data: " + dataLine + "\n\n"
 			return []string{block}, dataLine, usagePatch, nil
 		}
-		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel, mainIdentitySettings.ReplyTemplate, mainIdentitySettings.HitWords)
+		newData = rewriteAnthropicEventTextInJSONBytes(newData, originalModel, mainIdentitySettings.ReplyTemplate, mainIdentityChecker)
 		newData = rewriteAnthropicEventWithGuard(newData, identityGuardMain)
 
 		block := ""
@@ -7957,7 +7978,9 @@ func (s *GatewayService) handleNonStreamingResponse(ctx context.Context, resp *h
 		if nsrSettings == nil {
 			nsrSettings = DefaultModelIdentitySettings()
 		}
-		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsrSettings.ReplyTemplate, nsrSettings.HitWords)
+		nsrIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		nsrChecker := newIdentityChecker(nsrIsIdentityQ == true, nsrSettings.HitWords, compileIdentityPatterns(nsrSettings.IdentityPatterns))
+		body = rewriteAnthropicResponseTextInJSONBytes(body, originalModel, nsrSettings.ReplyTemplate, nsrChecker)
 	}
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)

@@ -52,6 +52,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 		identitySettings = DefaultModelIdentitySettings()
 	}
 	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromAnthropicMessages(anthropicReq.Messages))
+	c.Set(ContextKeyIdentityQuestion, isIdentityQ)
 
 	// Layer 1: local response for identity questions
 	if identitySettings.LocalResponseEnabled && isIdentityQ {
@@ -330,7 +331,9 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
 		}
-		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufSettings.HitWords)
+		bufIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, compileIdentityPatterns(bufSettings.IdentityPatterns))
+		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufChecker)
 	}
 	anthropicResp := apicompat.ResponsesToAnthropic(finalResponse, originalModel)
 
@@ -390,15 +393,24 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 	// Layer 3: conditional streaming identity guard
 	var identityGuardMsg *streamingIdentityGuard
 	var msgIdentitySettings *ModelIdentitySettings
+	var msgIdentityChecker identityCheckFunc
 	if s.settingService != nil {
 		msgIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
 	}
 	if msgIdentitySettings == nil {
 		msgIdentitySettings = DefaultModelIdentitySettings()
 	}
-	if msgIdentitySettings.ResponseRewriteEnabled {
-		compiledPatterns := compileIdentityPatterns(msgIdentitySettings.IdentityPatterns)
-		identityGuardMsg = newStreamingIdentityGuard(originalModel, msgIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	{
+		msgIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		msgCompiledPatterns := compileIdentityPatterns(msgIdentitySettings.IdentityPatterns)
+		msgIdentityChecker = newIdentityChecker(msgIsIdentityQ == true, msgIdentitySettings.HitWords, msgCompiledPatterns)
+		if msgIdentitySettings.ResponseRewriteEnabled {
+			if msgIsIdentityQ == true {
+				identityGuardMsg = newStreamingIdentityGuard(originalModel, msgIdentitySettings.ReplyTemplate, identityMatchHitWords, msgIdentitySettings.HitWords, nil)
+			} else {
+				identityGuardMsg = newStreamingIdentityGuard(originalModel, msgIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, msgCompiledPatterns)
+			}
+		}
 	}
 	// resultWithUsage builds the final result snapshot.
 	resultWithUsage := func() *OpenAIForwardResult {
@@ -431,7 +443,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			)
 			return false
 		}
-		rewriteResponsesStreamEventText(&event, originalModel, msgIdentitySettings.ReplyTemplate, msgIdentitySettings.HitWords)
+		rewriteResponsesStreamEventText(&event, originalModel, msgIdentitySettings.ReplyTemplate, msgIdentityChecker)
 		rewriteResponsesStreamEventWithGuard(&event, identityGuardMsg)
 
 		// Extract usage from completion events

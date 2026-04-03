@@ -51,6 +51,7 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 		identitySettings = DefaultModelIdentitySettings()
 	}
 	isIdentityQ := isModelIdentityQuestion(extractLastUserTextFromChatMessages(chatReq.Messages))
+	c.Set(ContextKeyIdentityQuestion, isIdentityQ)
 
 	// Layer 1: local response for identity questions
 	if identitySettings.LocalResponseEnabled && isIdentityQ {
@@ -321,7 +322,9 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 		if bufSettings == nil {
 			bufSettings = DefaultModelIdentitySettings()
 		}
-		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufSettings.HitWords)
+		bufIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		bufChecker := newIdentityChecker(bufIsIdentityQ == true, bufSettings.HitWords, compileIdentityPatterns(bufSettings.IdentityPatterns))
+		rewriteResponsesResponseText(finalResponse, originalModel, bufSettings.ReplyTemplate, bufChecker)
 	}
 	chatResp := apicompat.ResponsesToChatCompletions(finalResponse, originalModel)
 
@@ -381,15 +384,24 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 	// Layer 3: conditional streaming identity guard
 	var identityGuardCC *streamingIdentityGuard
 	var ccIdentitySettings *ModelIdentitySettings
+	var ccIdentityChecker identityCheckFunc
 	if s.settingService != nil {
 		ccIdentitySettings, _ = s.settingService.GetModelIdentitySettings(c.Request.Context())
 	}
 	if ccIdentitySettings == nil {
 		ccIdentitySettings = DefaultModelIdentitySettings()
 	}
-	if ccIdentitySettings.ResponseRewriteEnabled {
-		compiledPatterns := compileIdentityPatterns(ccIdentitySettings.IdentityPatterns)
-		identityGuardCC = newStreamingIdentityGuard(originalModel, ccIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, compiledPatterns)
+	{
+		ccIsIdentityQ, _ := c.Get(ContextKeyIdentityQuestion)
+		ccCompiledPatterns := compileIdentityPatterns(ccIdentitySettings.IdentityPatterns)
+		ccIdentityChecker = newIdentityChecker(ccIsIdentityQ == true, ccIdentitySettings.HitWords, ccCompiledPatterns)
+		if ccIdentitySettings.ResponseRewriteEnabled {
+			if ccIsIdentityQ == true {
+				identityGuardCC = newStreamingIdentityGuard(originalModel, ccIdentitySettings.ReplyTemplate, identityMatchHitWords, ccIdentitySettings.HitWords, nil)
+			} else {
+				identityGuardCC = newStreamingIdentityGuard(originalModel, ccIdentitySettings.ReplyTemplate, identityMatchPatterns, nil, ccCompiledPatterns)
+			}
+		}
 	}
 	resultWithUsage := func() *OpenAIForwardResult {
 		return &OpenAIForwardResult{
@@ -419,7 +431,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 			)
 			return false
 		}
-		rewriteResponsesStreamEventText(&event, originalModel, ccIdentitySettings.ReplyTemplate, ccIdentitySettings.HitWords)
+		rewriteResponsesStreamEventText(&event, originalModel, ccIdentitySettings.ReplyTemplate, ccIdentityChecker)
 		rewriteResponsesStreamEventWithGuard(&event, identityGuardCC)
 
 		// Extract usage from completion events

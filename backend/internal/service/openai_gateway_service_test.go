@@ -1743,7 +1743,8 @@ func TestRewriteResponsesResponseTextInJSONBytes_RewritesForbiddenIdentityHitWor
 	reply := buildModelIdentityReply("qwen-plus-2025", defaults.ReplyTemplate)
 	body := []byte(`{"id":"resp_1","object":"response","model":"upstream-model","status":"completed","output":[{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"我来自阿里巴巴"}]}],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}`)
 
-	got := rewriteResponsesResponseTextInJSONBytes(body, "qwen-plus-2025", defaults.ReplyTemplate, defaults.HitWords)
+	checker := newIdentityChecker(true, defaults.HitWords, nil)
+	got := rewriteResponsesResponseTextInJSONBytes(body, "qwen-plus-2025", defaults.ReplyTemplate, checker)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "阿里巴巴")
@@ -1754,7 +1755,8 @@ func TestRewriteResponsesEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(
 	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"type":"response.output_text.delta","delta":"我来自dEePsEeK"}`)
 
-	got := rewriteResponsesEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
+	checker := newIdentityChecker(true, defaults.HitWords, nil)
+	got := rewriteResponsesEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, checker)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "dEePsEeK")
@@ -1788,6 +1790,7 @@ func TestOpenAIGatewayService_HandleNonStreamingResponsePassthrough_RewritesForb
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{}
 	resp := &http.Response{
@@ -1809,6 +1812,7 @@ func TestOpenAIGatewayService_HandleStreamingResponsePassthrough_RewritesForbidd
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{}
 	resp := &http.Response{
@@ -1835,6 +1839,7 @@ func TestOpenAIGatewayService_HandleChatBufferedStreamingResponse_RewritesForbid
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/chat/completions", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
 	resp := &http.Response{
@@ -1859,6 +1864,7 @@ func TestOpenAIGatewayService_HandleChatStreamingResponse_RewritesForbiddenIdent
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/chat/completions", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
 	resp := &http.Response{
@@ -1887,6 +1893,7 @@ func TestOpenAIGatewayService_HandleAnthropicBufferedStreamingResponse_RewritesF
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
 	resp := &http.Response{
@@ -1911,6 +1918,7 @@ func TestOpenAIGatewayService_HandleAnthropicStreamingResponse_RewritesForbidden
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := &OpenAIGatewayService{cfg: &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}}
 	resp := &http.Response{

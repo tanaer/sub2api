@@ -267,6 +267,10 @@ const (
 	// Model Identity Settings
 	// SettingKeyModelIdentitySettings stores JSON config for model identity masking behavior.
 	SettingKeyModelIdentitySettings = "model_identity_settings"
+
+	// ContextKeyIdentityQuestion is the gin.Context key for the identity question flag.
+	// Set at Layer 1 detection, read at Layer 3 to choose strict vs loose detection mode.
+	ContextKeyIdentityQuestion = "identity_question"
 )
 
 // AdminAPIKeyPrefix is the prefix for admin API keys (distinct from user "sk-" keys).

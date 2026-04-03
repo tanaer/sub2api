@@ -11,6 +11,19 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+// identityCheckFunc detects identity violations in text.
+// Returns true if the text contains an identity leak that should be rewritten.
+type identityCheckFunc func(text string) bool
+
+// newIdentityChecker creates a check function that uses strict keyword matching
+// for identity questions, or loose regex pattern matching for normal requests.
+func newIdentityChecker(isIdentityQuestion bool, hitWords []string, patterns []*regexp.Regexp) identityCheckFunc {
+	if isIdentityQuestion {
+		return func(text string) bool { return containsForbiddenIdentityHitWord(text, hitWords) }
+	}
+	return func(text string) bool { return containsIdentityPattern(text, patterns) }
+}
+
 func containsForbiddenIdentityHitWord(text string, hitWords []string) bool {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
@@ -63,8 +76,8 @@ func compileIdentityPatterns(patterns []string) []*regexp.Regexp {
 	return compiled
 }
 
-func rewriteModelIdentityResponseText(text, requestedModel, replyTemplate string, hitWords []string) (string, bool) {
-	if !containsForbiddenIdentityHitWord(text, hitWords) {
+func rewriteModelIdentityResponseText(text, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) (string, bool) {
+	if !checkIdentity(text) {
 		return text, false
 	}
 
@@ -75,48 +88,48 @@ func rewriteModelIdentityResponseText(text, requestedModel, replyTemplate string
 	return reply, true
 }
 
-func rewriteAnthropicResponseTextInJSONBytes(body []byte, requestedModel, replyTemplate string, hitWords []string) []byte {
-	if len(body) == 0 || !containsForbiddenIdentityHitWord(string(body), hitWords) {
+func rewriteAnthropicResponseTextInJSONBytes(body []byte, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) []byte {
+	if len(body) == 0 || !checkIdentity(string(body)) {
 		return body
 	}
 
-	updated, changed := rewriteAnthropicContentTextFieldsAtPath(body, "content", requestedModel, replyTemplate, hitWords, false)
+	updated, changed := rewriteAnthropicContentTextFieldsAtPath(body, "content", requestedModel, replyTemplate, checkIdentity, false)
 	if !changed {
 		return body
 	}
 	return updated
 }
 
-func rewriteAnthropicEventTextInJSONBytes(body []byte, requestedModel, replyTemplate string, hitWords []string) []byte {
-	if len(body) == 0 || !containsForbiddenIdentityHitWord(string(body), hitWords) {
+func rewriteAnthropicEventTextInJSONBytes(body []byte, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) []byte {
+	if len(body) == 0 || !checkIdentity(string(body)) {
 		return body
 	}
 
 	updated := body
 	changed := false
-	updated, changed = rewriteJSONTextPathIfNeeded(updated, "delta.text", requestedModel, replyTemplate, hitWords, changed)
-	updated, changed = rewriteJSONTextPathIfNeeded(updated, "content_block.text", requestedModel, replyTemplate, hitWords, changed)
-	updated, changed = rewriteAnthropicContentTextFieldsAtPath(updated, "message.content", requestedModel, replyTemplate, hitWords, changed)
+	updated, changed = rewriteJSONTextPathIfNeeded(updated, "delta.text", requestedModel, replyTemplate, checkIdentity, changed)
+	updated, changed = rewriteJSONTextPathIfNeeded(updated, "content_block.text", requestedModel, replyTemplate, checkIdentity, changed)
+	updated, changed = rewriteAnthropicContentTextFieldsAtPath(updated, "message.content", requestedModel, replyTemplate, checkIdentity, changed)
 	if !changed {
 		return body
 	}
 	return updated
 }
 
-func rewriteResponsesResponseTextInJSONBytes(body []byte, requestedModel, replyTemplate string, hitWords []string) []byte {
-	if len(body) == 0 || !containsForbiddenIdentityHitWord(string(body), hitWords) {
+func rewriteResponsesResponseTextInJSONBytes(body []byte, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) []byte {
+	if len(body) == 0 || !checkIdentity(string(body)) {
 		return body
 	}
 
-	updated, changed := rewriteResponsesOutputTextFieldsAtPath(body, "output", requestedModel, replyTemplate, hitWords, false)
+	updated, changed := rewriteResponsesOutputTextFieldsAtPath(body, "output", requestedModel, replyTemplate, checkIdentity, false)
 	if !changed {
 		return body
 	}
 	return updated
 }
 
-func rewriteResponsesEventTextInJSONBytes(body []byte, requestedModel, replyTemplate string, hitWords []string) []byte {
-	if len(body) == 0 || !containsForbiddenIdentityHitWord(string(body), hitWords) {
+func rewriteResponsesEventTextInJSONBytes(body []byte, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) []byte {
+	if len(body) == 0 || !checkIdentity(string(body)) {
 		return body
 	}
 
@@ -125,21 +138,21 @@ func rewriteResponsesEventTextInJSONBytes(body []byte, requestedModel, replyTemp
 
 	switch strings.TrimSpace(gjson.GetBytes(updated, "type").String()) {
 	case "response.output_text.delta":
-		updated, changed = rewriteJSONTextPathIfNeeded(updated, "delta", requestedModel, replyTemplate, hitWords, changed)
+		updated, changed = rewriteJSONTextPathIfNeeded(updated, "delta", requestedModel, replyTemplate, checkIdentity, changed)
 	case "response.output_text.done":
-		updated, changed = rewriteJSONTextPathIfNeeded(updated, "text", requestedModel, replyTemplate, hitWords, changed)
+		updated, changed = rewriteJSONTextPathIfNeeded(updated, "text", requestedModel, replyTemplate, checkIdentity, changed)
 	}
 
-	updated, changed = rewriteResponsesOutputTextFieldsAtPath(updated, "response.output", requestedModel, replyTemplate, hitWords, changed)
-	updated, changed = rewriteResponsesContentTextFieldsAtPath(updated, "item.content", requestedModel, replyTemplate, hitWords, changed)
+	updated, changed = rewriteResponsesOutputTextFieldsAtPath(updated, "response.output", requestedModel, replyTemplate, checkIdentity, changed)
+	updated, changed = rewriteResponsesContentTextFieldsAtPath(updated, "item.content", requestedModel, replyTemplate, checkIdentity, changed)
 	if !changed {
 		return body
 	}
 	return updated
 }
 
-func rewriteResponsesTextInSSEBody(body, requestedModel, replyTemplate string, hitWords []string) string {
-	if !containsForbiddenIdentityHitWord(body, hitWords) {
+func rewriteResponsesTextInSSEBody(body, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) string {
+	if !checkIdentity(body) {
 		return body
 	}
 
@@ -155,7 +168,7 @@ func rewriteResponsesTextInSSEBody(body, requestedModel, replyTemplate string, h
 			continue
 		}
 
-		rewritten := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel, replyTemplate, hitWords)
+		rewritten := rewriteResponsesEventTextInJSONBytes([]byte(data), requestedModel, replyTemplate, checkIdentity)
 		if !bytes.Equal(rewritten, []byte(data)) {
 			lines[i] = "data: " + string(rewritten)
 		}
@@ -163,34 +176,34 @@ func rewriteResponsesTextInSSEBody(body, requestedModel, replyTemplate string, h
 	return strings.Join(lines, "\n")
 }
 
-func rewriteResponsesResponseText(resp *apicompat.ResponsesResponse, requestedModel, replyTemplate string, hitWords []string) bool {
+func rewriteResponsesResponseText(resp *apicompat.ResponsesResponse, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) bool {
 	if resp == nil {
 		return false
 	}
-	return rewriteResponsesOutputTextParts(resp.Output, requestedModel, replyTemplate, hitWords)
+	return rewriteResponsesOutputTextParts(resp.Output, requestedModel, replyTemplate, checkIdentity)
 }
 
-func rewriteResponsesStreamEventText(evt *apicompat.ResponsesStreamEvent, requestedModel, replyTemplate string, hitWords []string) bool {
+func rewriteResponsesStreamEventText(evt *apicompat.ResponsesStreamEvent, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) bool {
 	if evt == nil {
 		return false
 	}
 
 	changed := false
-	if rewriteResponsesResponseText(evt.Response, requestedModel, replyTemplate, hitWords) {
+	if rewriteResponsesResponseText(evt.Response, requestedModel, replyTemplate, checkIdentity) {
 		changed = true
 	}
-	if evt.Item != nil && rewriteResponsesOutputTextPartsInPlace(evt.Item, requestedModel, replyTemplate, hitWords) {
+	if evt.Item != nil && rewriteResponsesOutputTextPartsInPlace(evt.Item, requestedModel, replyTemplate, checkIdentity) {
 		changed = true
 	}
 
 	switch evt.Type {
 	case "response.output_text.delta":
-		if rewritten, ok := rewriteModelIdentityResponseText(evt.Delta, requestedModel, replyTemplate, hitWords); ok {
+		if rewritten, ok := rewriteModelIdentityResponseText(evt.Delta, requestedModel, replyTemplate, checkIdentity); ok {
 			evt.Delta = rewritten
 			changed = true
 		}
 	case "response.output_text.done":
-		if rewritten, ok := rewriteModelIdentityResponseText(evt.Text, requestedModel, replyTemplate, hitWords); ok {
+		if rewritten, ok := rewriteModelIdentityResponseText(evt.Text, requestedModel, replyTemplate, checkIdentity); ok {
 			evt.Text = rewritten
 			changed = true
 		}
@@ -199,24 +212,24 @@ func rewriteResponsesStreamEventText(evt *apicompat.ResponsesStreamEvent, reques
 	return changed
 }
 
-func rewriteResponsesOutputTextParts(outputs []apicompat.ResponsesOutput, requestedModel, replyTemplate string, hitWords []string) bool {
+func rewriteResponsesOutputTextParts(outputs []apicompat.ResponsesOutput, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) bool {
 	changed := false
 	for i := range outputs {
-		if rewriteResponsesOutputTextPartsInPlace(&outputs[i], requestedModel, replyTemplate, hitWords) {
+		if rewriteResponsesOutputTextPartsInPlace(&outputs[i], requestedModel, replyTemplate, checkIdentity) {
 			changed = true
 		}
 	}
 	return changed
 }
 
-func rewriteResponsesOutputTextPartsInPlace(output *apicompat.ResponsesOutput, requestedModel, replyTemplate string, hitWords []string) bool {
+func rewriteResponsesOutputTextPartsInPlace(output *apicompat.ResponsesOutput, requestedModel, replyTemplate string, checkIdentity identityCheckFunc) bool {
 	if output == nil {
 		return false
 	}
 
 	changed := false
 	for i := range output.Content {
-		if rewritten, ok := rewriteModelIdentityResponseText(output.Content[i].Text, requestedModel, replyTemplate, hitWords); ok {
+		if rewritten, ok := rewriteModelIdentityResponseText(output.Content[i].Text, requestedModel, replyTemplate, checkIdentity); ok {
 			output.Content[i].Text = rewritten
 			changed = true
 		}
@@ -224,13 +237,13 @@ func rewriteResponsesOutputTextPartsInPlace(output *apicompat.ResponsesOutput, r
 	return changed
 }
 
-func rewriteJSONTextPathIfNeeded(body []byte, path, requestedModel, replyTemplate string, hitWords []string, changed bool) ([]byte, bool) {
+func rewriteJSONTextPathIfNeeded(body []byte, path, requestedModel, replyTemplate string, checkIdentity identityCheckFunc, changed bool) ([]byte, bool) {
 	value := gjson.GetBytes(body, path)
 	if !value.Exists() {
 		return body, changed
 	}
 
-	rewritten, ok := rewriteModelIdentityResponseText(value.String(), requestedModel, replyTemplate, hitWords)
+	rewritten, ok := rewriteModelIdentityResponseText(value.String(), requestedModel, replyTemplate, checkIdentity)
 	if !ok {
 		return body, changed
 	}
@@ -242,32 +255,32 @@ func rewriteJSONTextPathIfNeeded(body []byte, path, requestedModel, replyTemplat
 	return next, true
 }
 
-func rewriteAnthropicContentTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, hitWords []string, changed bool) ([]byte, bool) {
+func rewriteAnthropicContentTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, checkIdentity identityCheckFunc, changed bool) ([]byte, bool) {
 	updated := body
 	items := gjson.GetBytes(updated, path).Array()
 	for i := range items {
-		updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.text", path, i), requestedModel, replyTemplate, hitWords, changed)
+		updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.text", path, i), requestedModel, replyTemplate, checkIdentity, changed)
 	}
 	return updated, changed
 }
 
-func rewriteResponsesOutputTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, hitWords []string, changed bool) ([]byte, bool) {
+func rewriteResponsesOutputTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, checkIdentity identityCheckFunc, changed bool) ([]byte, bool) {
 	updated := body
 	outputs := gjson.GetBytes(updated, path).Array()
 	for i, output := range outputs {
 		content := output.Get("content").Array()
 		for j := range content {
-			updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.content.%d.text", path, i, j), requestedModel, replyTemplate, hitWords, changed)
+			updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.content.%d.text", path, i, j), requestedModel, replyTemplate, checkIdentity, changed)
 		}
 	}
 	return updated, changed
 }
 
-func rewriteResponsesContentTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, hitWords []string, changed bool) ([]byte, bool) {
+func rewriteResponsesContentTextFieldsAtPath(body []byte, path, requestedModel, replyTemplate string, checkIdentity identityCheckFunc, changed bool) ([]byte, bool) {
 	updated := body
 	items := gjson.GetBytes(updated, path).Array()
 	for i := range items {
-		updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.text", path, i), requestedModel, replyTemplate, hitWords, changed)
+		updated, changed = rewriteJSONTextPathIfNeeded(updated, fmt.Sprintf("%s.%d.text", path, i), requestedModel, replyTemplate, checkIdentity, changed)
 	}
 	return updated, changed
 }

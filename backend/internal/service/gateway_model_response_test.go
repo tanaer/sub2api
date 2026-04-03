@@ -40,7 +40,8 @@ func TestRewriteAnthropicResponseTextInJSONBytes_RewritesForbiddenIdentityHitWor
 	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"id":"msg_1","type":"message","role":"assistant","model":"upstream-model","content":[{"type":"text","text":"我来自MoOnShOt。"}],"usage":{"input_tokens":1,"output_tokens":2}}`)
 
-	got := rewriteAnthropicResponseTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
+	checker := newIdentityChecker(true, defaults.HitWords, nil)
+	got := rewriteAnthropicResponseTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, checker)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "MoOnShOt")
@@ -51,7 +52,8 @@ func TestRewriteAnthropicEventTextInJSONBytes_RewritesForbiddenIdentityHitWords(
 	reply := buildModelIdentityReply("glm-4.5", defaults.ReplyTemplate)
 	body := []byte(`{"type":"content_block_delta","delta":{"type":"text_delta","text":"我是DeepSeek"}}`)
 
-	got := rewriteAnthropicEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, defaults.HitWords)
+	checker := newIdentityChecker(true, defaults.HitWords, nil)
+	got := rewriteAnthropicEventTextInJSONBytes(body, "glm-4.5", defaults.ReplyTemplate, checker)
 
 	require.Contains(t, string(got), reply)
 	require.NotContains(t, string(got), "DeepSeek")
@@ -96,6 +98,7 @@ func TestGatewayService_HandleStreamingResponse_RewritesForbiddenIdentityText(t 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
@@ -192,6 +195,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_NonStreamingRewritesForbidden
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := newGatewayServiceForModelResponseTest()
 	account := newAnthropicAPIKeyAccountForTest()
@@ -214,6 +218,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingRewritesForbiddenIde
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	c.Set(ContextKeyIdentityQuestion, true)
 
 	svc := newGatewayServiceForModelResponseTest()
 	account := newAnthropicAPIKeyAccountForTest()
