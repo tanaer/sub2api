@@ -9,6 +9,8 @@ import (
 type opsRepoMock struct {
 	InsertErrorLogFn              func(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error)
 	BatchInsertErrorLogsFn        func(ctx context.Context, inputs []*OpsInsertErrorLogInput) (int64, error)
+	ListRequestTracesByKeyFn      func(ctx context.Context, key string, keyType string, limit int) ([]*OpsRequestTrace, error)
+	UpsertRequestTraceFn          func(ctx context.Context, trace *OpsRequestTrace) error
 	BatchInsertSystemLogsFn       func(ctx context.Context, inputs []*OpsInsertSystemLogInput) (int64, error)
 	ListSystemLogsFn              func(ctx context.Context, filter *OpsSystemLogFilter) (*OpsSystemLogList, error)
 	DeleteSystemLogsFn            func(ctx context.Context, filter *OpsSystemLogCleanupFilter) (int64, error)
@@ -39,6 +41,20 @@ func (m *opsRepoMock) GetErrorLogByID(ctx context.Context, id int64) (*OpsErrorL
 
 func (m *opsRepoMock) ListRequestDetails(ctx context.Context, filter *OpsRequestDetailFilter) ([]*OpsRequestDetail, int64, error) {
 	return []*OpsRequestDetail{}, 0, nil
+}
+
+func (m *opsRepoMock) ListRequestTracesByKey(ctx context.Context, key string, keyType string, limit int) ([]*OpsRequestTrace, error) {
+	if m.ListRequestTracesByKeyFn != nil {
+		return m.ListRequestTracesByKeyFn(ctx, key, keyType, limit)
+	}
+	return nil, nil
+}
+
+func (m *opsRepoMock) UpsertRequestTrace(ctx context.Context, trace *OpsRequestTrace) error {
+	if m.UpsertRequestTraceFn != nil {
+		return m.UpsertRequestTraceFn(ctx, trace)
+	}
+	return nil
 }
 
 func (m *opsRepoMock) BatchInsertSystemLogs(ctx context.Context, inputs []*OpsInsertSystemLogInput) (int64, error) {
