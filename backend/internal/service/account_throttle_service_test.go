@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/model"
 )
@@ -142,5 +144,40 @@ func TestErrorCodeMatches_WithBodyCodes(t *testing.T) {
 				t.Errorf("errorCodeMatches() = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestMatchAndThrottle_DefaultBillingCycle403Rule(t *testing.T) {
+	svc := &AccountThrottleService{}
+	resetAt := time.Now().Add(6 * time.Hour).UTC().Truncate(time.Second)
+	account := &Account{
+		ID:       88,
+		Platform: PlatformOpenAI,
+		Extra: map[string]any{
+			"quota_daily_reset_at": resetAt.Format(time.RFC3339),
+		},
+	}
+
+	result := svc.MatchAndThrottle(
+		context.Background(),
+		account,
+		403,
+		[]byte(`{"error":{"message":"Access forbidden (403): You've reached your usage limit for this billing cycle. Your quota will be refreshed in the next cycle. Upgrade to get more."}}`),
+	)
+
+	if result == nil {
+		t.Fatal("expected builtin billing-cycle 403 rule to match")
+	}
+	if !result.Matched {
+		t.Fatal("expected builtin billing-cycle 403 rule to be marked matched")
+	}
+	if result.Rule == nil {
+		t.Fatal("expected matched builtin rule metadata")
+	}
+	if result.UntilTime.IsZero() {
+		t.Fatal("expected builtin billing-cycle 403 rule to set recovery time")
+	}
+	if !result.UntilTime.Equal(resetAt) {
+		t.Fatalf("until = %v, want %v", result.UntilTime, resetAt)
 	}
 }

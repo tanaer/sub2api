@@ -1736,7 +1736,7 @@ func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Acco
 		return false
 	}
 
-	result := s.accountThrottleService.MatchAndThrottle(ctx, account.ID, account.Platform, statusCode, responseBody)
+	result := s.accountThrottleService.MatchAndThrottle(ctx, account, statusCode, responseBody)
 	if result == nil || !result.Matched {
 		return false
 	}

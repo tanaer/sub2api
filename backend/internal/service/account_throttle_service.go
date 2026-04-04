@@ -51,8 +51,21 @@ type AccountThrottleService struct {
 // cachedThrottleRule 预计算的规则缓存
 type cachedThrottleRule struct {
 	*model.AccountThrottleRule
-	lowerKeywords  []string
-	lowerPlatforms []string
+	lowerKeywords        []string
+	lowerPlatforms       []string
+	builtinResetStrategy string
+}
+
+const builtinThrottleResetStrategyQuotaCycle = "quota_cycle"
+
+var defaultBillingCycleThrottleKeywords = []string{
+	"usage limit for this billing cycle",
+	"reached your usage limit for this billing cycle",
+	"quota will be refreshed in the next cycle",
+	"your quota will be refreshed in the next cycle",
+	"refreshed in the next cycle",
+	"本计费周期",
+	"下个周期刷新",
 }
 
 // NewAccountThrottleService 创建账户限流服务
@@ -156,13 +169,17 @@ type ThrottleMatchResult struct {
 // MatchAndThrottle 匹配限流规则并执行限流
 // statusCode 用于 error_codes 过滤（与 per-account temp_unschedulable_rules 的 error_code 对齐）
 // 返回是否匹配到规则以及限流截止时间
-func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID int64, platform string, statusCode int, responseBody []byte) *ThrottleMatchResult {
+func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, account *Account, statusCode int, responseBody []byte) *ThrottleMatchResult {
+	if account == nil {
+		return nil
+	}
 	rules := s.getCachedRules()
 	if len(rules) == 0 {
 		return nil
 	}
 
-	lowerPlatform := strings.ToLower(platform)
+	accountID := account.ID
+	lowerPlatform := strings.ToLower(account.Platform)
 	var bodyLower string
 	var bodyLowerDone bool
 
@@ -201,7 +218,7 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID
 		}
 
 		// 触发限流，计算截止时间
-		until := s.calculateUntilTime(rule.AccountThrottleRule)
+		until := s.calculateUntilTime(rule, account)
 
 		return &ThrottleMatchResult{
 			Matched:        true,
@@ -215,11 +232,21 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, accountID
 }
 
 // calculateUntilTime 根据规则计算限流截止时间
-func (s *AccountThrottleService) calculateUntilTime(rule *model.AccountThrottleRule) time.Time {
+func (s *AccountThrottleService) calculateUntilTime(rule *cachedThrottleRule, account *Account) time.Time {
 	now := time.Now()
-	if rule.ActionType == model.ThrottleActionScheduledRecovery {
+	if rule != nil && rule.builtinResetStrategy == builtinThrottleResetStrategyQuotaCycle {
+		if until, ok := nextQuotaCycleResetAt(account, now); ok {
+			return until
+		}
+		return now.Add(24 * time.Hour)
+	}
+	if rule == nil || rule.AccountThrottleRule == nil {
+		return now.Add(24 * time.Hour)
+	}
+	modelRule := rule.AccountThrottleRule
+	if modelRule.ActionType == model.ThrottleActionScheduledRecovery {
 		// 定期恢复：计算下一个恢复时刻
-		targetHour := rule.ActionRecoverHour
+		targetHour := modelRule.ActionRecoverHour
 		next := time.Date(now.Year(), now.Month(), now.Day(), targetHour, 0, 0, 0, now.Location())
 		if !next.After(now) {
 			next = next.Add(24 * time.Hour)
@@ -227,7 +254,7 @@ func (s *AccountThrottleService) calculateUntilTime(rule *model.AccountThrottleR
 		return next
 	}
 	// 时长限流
-	return now.Add(time.Duration(rule.ActionDuration) * time.Second)
+	return now.Add(time.Duration(modelRule.ActionDuration) * time.Second)
 }
 
 // matchKeywords 匹配关键词
@@ -339,6 +366,14 @@ func (s *AccountThrottleService) getCachedRules() []*cachedThrottleRule {
 		return rules
 	}
 
+	if s.repo == nil {
+		builtinRules := s.buildBuiltinRules()
+		s.localCacheMu.Lock()
+		s.localCache = builtinRules
+		s.localCacheMu.Unlock()
+		return builtinRules
+	}
+
 	ctx := context.Background()
 	if err := s.refreshLocalCache(ctx); err != nil {
 		logger.LegacyPrintf("service.account_throttle", "[AccountThrottleService] Failed to refresh cache: %v", err)
@@ -377,23 +412,11 @@ func (s *AccountThrottleService) reloadRulesFromDB(ctx context.Context) error {
 }
 
 func (s *AccountThrottleService) setLocalCache(rules []*model.AccountThrottleRule) {
-	cached := make([]*cachedThrottleRule, len(rules))
-	for i, r := range rules {
-		cr := &cachedThrottleRule{AccountThrottleRule: r}
-		if len(r.Keywords) > 0 {
-			cr.lowerKeywords = make([]string, len(r.Keywords))
-			for j, kw := range r.Keywords {
-				cr.lowerKeywords[j] = strings.ToLower(kw)
-			}
-		}
-		if len(r.Platforms) > 0 {
-			cr.lowerPlatforms = make([]string, len(r.Platforms))
-			for j, p := range r.Platforms {
-				cr.lowerPlatforms[j] = strings.ToLower(p)
-			}
-		}
-		cached[i] = cr
+	cached := make([]*cachedThrottleRule, 0, len(rules)+1)
+	for _, r := range rules {
+		cached = append(cached, buildCachedThrottleRule(r))
 	}
+	cached = append(cached, s.buildBuiltinRules()...)
 
 	sort.Slice(cached, func(i, j int) bool {
 		return cached[i].Priority < cached[j].Priority
@@ -402,6 +425,81 @@ func (s *AccountThrottleService) setLocalCache(rules []*model.AccountThrottleRul
 	s.localCacheMu.Lock()
 	s.localCache = cached
 	s.localCacheMu.Unlock()
+}
+
+func buildCachedThrottleRule(rule *model.AccountThrottleRule) *cachedThrottleRule {
+	if rule == nil {
+		return nil
+	}
+	cr := &cachedThrottleRule{AccountThrottleRule: rule}
+	if len(rule.Keywords) > 0 {
+		cr.lowerKeywords = make([]string, len(rule.Keywords))
+		for j, kw := range rule.Keywords {
+			cr.lowerKeywords[j] = strings.ToLower(kw)
+		}
+	}
+	if len(rule.Platforms) > 0 {
+		cr.lowerPlatforms = make([]string, len(rule.Platforms))
+		for j, p := range rule.Platforms {
+			cr.lowerPlatforms[j] = strings.ToLower(p)
+		}
+	}
+	return cr
+}
+
+func (s *AccountThrottleService) buildBuiltinRules() []*cachedThrottleRule {
+	rule := &model.AccountThrottleRule{
+		Name:           "builtin_billing_cycle_quota_exhausted_403",
+		Enabled:        true,
+		Priority:       100000,
+		ErrorCodes:     []int{403},
+		Keywords:       append([]string(nil), defaultBillingCycleThrottleKeywords...),
+		MatchMode:      model.ThrottleMatchContains,
+		TriggerMode:    model.ThrottleTriggerImmediate,
+		ActionType:     model.ThrottleActionDuration,
+		ActionDuration: int((24 * time.Hour).Seconds()),
+	}
+	cachedRule := buildCachedThrottleRule(rule)
+	cachedRule.builtinResetStrategy = builtinThrottleResetStrategyQuotaCycle
+	return []*cachedThrottleRule{cachedRule}
+}
+
+func nextQuotaCycleResetAt(account *Account, now time.Time) (time.Time, bool) {
+	if account == nil {
+		return time.Time{}, false
+	}
+
+	candidates := make([]time.Time, 0, 4)
+	if resetAt := account.getExtraTime("quota_daily_reset_at"); !resetAt.IsZero() && resetAt.After(now) {
+		candidates = append(candidates, resetAt)
+	}
+	if resetAt := account.getExtraTime("quota_weekly_reset_at"); !resetAt.IsZero() && resetAt.After(now) {
+		candidates = append(candidates, resetAt)
+	}
+
+	tz, err := time.LoadLocation(account.GetQuotaResetTimezone())
+	if err != nil {
+		tz = time.UTC
+	}
+
+	if account.GetQuotaDailyResetMode() == "fixed" {
+		candidates = append(candidates, nextFixedDailyReset(account.GetQuotaDailyResetHour(), tz, now))
+	}
+	if account.GetQuotaWeeklyResetMode() == "fixed" {
+		candidates = append(candidates, nextFixedWeeklyReset(account.GetQuotaWeeklyResetDay(), account.GetQuotaWeeklyResetHour(), tz, now))
+	}
+
+	if len(candidates) == 0 {
+		return time.Time{}, false
+	}
+
+	next := candidates[0]
+	for _, candidate := range candidates[1:] {
+		if candidate.Before(next) {
+			next = candidate
+		}
+	}
+	return next, true
 }
 
 func (s *AccountThrottleService) clearLocalCache() {

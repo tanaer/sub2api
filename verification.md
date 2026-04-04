@@ -349,3 +349,25 @@
 
 - 后端已把 `default_mapped_model` 返回给用户侧 API Key 关联分组。
 - 前端“使用密钥”弹层已能在无自定义模型列表时展示分组默认映射模型对应的 OpenAI 配置。
+
+---
+
+- 日期：2026-04-04 15:57:58 +0800
+- 执行者：Codex
+- 任务：`403 billing cycle quota exhausted` 智能限流整合
+
+## 验证命令
+
+- `cd backend && go test -tags=unit ./internal/service -run 'TestMatchAndThrottle_DefaultBillingCycle403Rule|TestHandleUpstreamError_403BillingCycleUsesSmartThrottleInsteadOfPermanentError'`
+  - 结果：通过
+- `cd backend && go test -tags=unit ./internal/service -run 'Test(CheckErrorPolicy|ApplyErrorPolicy|HandleUpstreamError_|ExtractBodyErrorCodes|ErrorCodeMatches_|MatchAndThrottle_DefaultBillingCycle403Rule)'`
+  - 结果：通过
+- `cd backend && go test -tags=unit ./internal/service`
+  - 结果：通过
+  - 关键输出：`ok github.com/Wei-Shaw/sub2api/internal/service 83.069s`
+
+## 结论
+
+- 所有上游共用一条默认智能限流规则来识别“计费周期额度耗尽”的 `403` 文案。
+- 命中后走 `SetTempUnschedulable`，不再走 `SetError` 永久封禁路径。
+- 恢复时间优先复用账号既有 quota reset 配置；无配置时使用 `24h` 兜底冷却。

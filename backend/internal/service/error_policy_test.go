@@ -264,6 +264,34 @@ func TestHandleUpstreamError_PoolModeCustomErrorCodesOverride(t *testing.T) {
 	})
 }
 
+func TestHandleUpstreamError_403BillingCycleUsesSmartThrottleInsteadOfPermanentError(t *testing.T) {
+	repo := &errorPolicyRepoStub{}
+	rlSvc := NewRateLimitService(repo, nil, &config.Config{}, nil, nil, nil)
+	rlSvc.SetAccountThrottleService(&AccountThrottleService{})
+
+	resetAt := time.Now().Add(8 * time.Hour).UTC().Truncate(time.Second)
+	account := &Account{
+		ID:       66,
+		Type:     AccountTypeAPIKey,
+		Platform: PlatformOpenAI,
+		Extra: map[string]any{
+			"quota_daily_reset_at": resetAt.Format(time.RFC3339),
+		},
+	}
+
+	shouldDisable := rlSvc.HandleUpstreamError(
+		context.Background(),
+		account,
+		http.StatusForbidden,
+		http.Header{},
+		[]byte(`{"error":{"message":"Access forbidden (403): You've reached your usage limit for this billing cycle. Your quota will be refreshed in the next cycle. Upgrade to get more."}}`),
+	)
+
+	require.True(t, shouldDisable)
+	require.Equal(t, 1, repo.tempCalls, "expected smart throttle temp-unschedule path")
+	require.Equal(t, 0, repo.setErrCalls, "billing-cycle quota exhaustion must not become permanent error")
+}
+
 // ---------------------------------------------------------------------------
 // TestApplyErrorPolicy — 4 table-driven cases for the wrapper method
 // ---------------------------------------------------------------------------
