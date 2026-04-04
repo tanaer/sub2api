@@ -95,7 +95,7 @@ The gateway serves multiple API protocols simultaneously:
 每次开发新功能、修复 bug 或推送到 GitHub 时，必须同步更新 changelog。
 
 **操作步骤**:
-1. 打开 `frontend/src/data/changelog/YYYY.json`
+1. 打开 `frontend/public/changelog/YYYY.json`
 2. 在数组开头添加新条目: `{ "date": "YYYY-MM-DD", "type": "类型", "content": "改动说明" }`
 3. type 可选值: `feature` / `fix` / `improvement` / `perf` / `docs`
 

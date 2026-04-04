@@ -24,7 +24,12 @@
 
         <!-- 更新列表 -->
         <div class="overflow-y-auto flex-1 py-2">
-          <template v-if="recentChanges.length > 0">
+          <template v-if="loading">
+            <div class="px-4 py-8 text-center text-sm text-gray-400 dark:text-dark-400">
+              {{ t('common.loading') }}
+            </div>
+          </template>
+          <template v-else-if="recentChanges.length > 0">
             <div
               v-for="(item, index) in recentChanges"
               :key="index"
@@ -66,30 +71,33 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import changelogData from '@/data/changelog/2026.json'
+
+interface ChangelogItem {
+  date: string
+  type: string
+  content: string
+}
 
 const { t } = useI18n()
 
 const isOpen = ref(false)
+const loading = ref(false)
 const triggerRef = ref<HTMLElement | null>(null)
+const changelog = ref<ChangelogItem[]>([])
+const loaded = ref(false)
 
-// 合并多年数据，按日期倒序
-const allChangelog = computed(() => {
-  return changelogData.sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  )
-})
+const recentChanges = computed(() =>
+  [...changelog.value]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 20)
+)
 
-// 最近 20 条
-const recentChanges = computed(() => allChangelog.value.slice(0, 20))
-
-// 类型样式
 const typeStyles: Record<string, { bg: string }> = {
-  feature: { bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  fix: { bg: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  feature:     { bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  fix:         { bg: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   improvement: { bg: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  perf: { bg: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-  docs: { bg: 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300' }
+  perf:        { bg: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  docs:        { bg: 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300' }
 }
 
 function formatDate(dateStr: string) {
@@ -97,8 +105,24 @@ function formatDate(dateStr: string) {
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
+async function loadChangelog() {
+  if (loaded.value) return
+  loading.value = true
+  try {
+    const year = new Date().getFullYear()
+    const res = await fetch(`/changelog/${year}.json`)
+    if (res.ok) {
+      changelog.value = await res.json()
+    }
+    loaded.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
 function togglePanel() {
   isOpen.value = !isOpen.value
+  if (isOpen.value) loadChangelog()
 }
 
 function handleClickOutside(event: MouseEvent) {
@@ -107,13 +131,8 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 </script>
 
 <style scoped>
