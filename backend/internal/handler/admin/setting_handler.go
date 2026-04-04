@@ -1267,7 +1267,7 @@ func (h *SettingHandler) GetProviderLatencyStats(c *gin.Context) {
 }
 
 // GetSLAReport returns a comprehensive SLA monitoring report.
-// GET /api/v1/admin/settings/sla-report?minutes=60  (or legacy: ?hours=1)
+// GET /api/v1/admin/settings/sla-report?minutes=60&page=1&page_size=20
 func (h *SettingHandler) GetSLAReport(c *gin.Context) {
 	minutes := 60
 	if v := c.Query("minutes"); v != "" {
@@ -1280,12 +1280,25 @@ func (h *SettingHandler) GetSLAReport(c *gin.Context) {
 		}
 	}
 
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 1 {
+			page = parsed
+		}
+	}
+	pageSize := 0
+	if v := c.Query("page_size"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 1 && parsed <= 200 {
+			pageSize = parsed
+		}
+	}
+
 	if h.opsService == nil {
 		response.Error(c, 500, "OPS service not available")
 		return
 	}
 
-	report, err := h.opsService.GetSLAReport(c.Request.Context(), minutes)
+	report, err := h.opsService.GetSLAReportPaginated(c.Request.Context(), minutes, page, pageSize)
 	if err != nil {
 		log.Printf("[SettingHandler] GetSLAReport error: %v", err)
 		response.Error(c, 500, "Failed to generate SLA report")

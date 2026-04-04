@@ -128,9 +128,18 @@
 
       <!-- Tab: Failover Paths -->
       <div v-if="report && activeTab === 'failover'" class="overflow-x-auto">
-        <div class="text-xs text-gray-500 mb-2">
-          {{ t('admin.sla.failoverAvg') }}: {{ report.failover_metrics.avg_attempts.toFixed(1) }}
-          {{ t('admin.sla.failoverMax') }}: {{ report.failover_metrics.max_attempts }}
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs text-gray-500">
+            {{ t('admin.sla.failoverAvg') }}: {{ report.failover_metrics.avg_attempts.toFixed(1) }}
+            {{ t('admin.sla.failoverMax') }}: {{ report.failover_metrics.max_attempts }}
+          </div>
+          <div v-if="failoverPageCount > 1" class="flex items-center gap-1">
+            <button @click="loadFailoverPage(failoverPage - 1)" :disabled="failoverPage <= 1"
+              class="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700">‹</button>
+            <span class="text-xs text-gray-500">{{ failoverPage }}/{{ failoverPageCount }}</span>
+            <button @click="loadFailoverPage(failoverPage + 1)" :disabled="failoverPage >= failoverPageCount"
+              class="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700">›</button>
+          </div>
         </div>
         <table class="w-full text-sm">
           <thead>
@@ -154,17 +163,22 @@
               </td>
               <td class="py-1.5 px-2">
                 <div class="flex flex-wrap items-center gap-1">
-                  <span v-for="step in parseUpstreamErrors(row.upstream_errors)" :key="step.at_unix_ms || step.account_id"
-                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs"
-                    :class="step.kind === 'success' || step.upstream_status_code === 200
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                      : step.upstream_status_code >= 400
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'">
-                    {{ step.account_name || `#${step.account_id}` }}
-                    <span class="font-mono">&rarr;{{ step.kind === 'success' ? '✓' : (step.upstream_status_code || 'err') }}</span>
-                    <span v-if="step._duration_ms != null" class="ml-0.5 opacity-70 font-mono">{{ formatMs(step._duration_ms) }}</span>
-                  </span>
+                  <template v-for="(step, si) in parseUpstreamErrors(row.upstream_errors)" :key="si">
+                    <!-- Deduplicate consecutive steps with the same account -->
+                    <template v-if="si === 0 || step.account_id !== parseUpstreamErrors(row.upstream_errors)[si - 1].account_id">
+                      <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs cursor-help" :title="step.message || ''"
+                        :class="step.kind === 'success' || step.upstream_status_code === 200
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                          : step.upstream_status_code >= 400
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'">
+                        {{ step.account_name || `#${step.account_id}` }}
+                        <span class="font-mono">&rarr;{{ step.kind === 'success' ? '✓' : (step.upstream_status_code || step.message || 'err') }}</span>
+                        <span class="text-[9px] opacity-60 ml-0.5">{{ step.kind }}</span>
+                        <span v-if="step._duration_ms != null" class="ml-0.5 opacity-70 font-mono">{{ formatMs(step._duration_ms) }}</span>
+                      </span>
+                    </template>
+                  </template>
                   <span v-if="failoverTotalMs(row.upstream_errors) > 0"
                     class="ml-1 text-xs text-gray-400 dark:text-gray-500 font-mono whitespace-nowrap">
                     &Sigma;{{ formatMs(failoverTotalMs(row.upstream_errors)) }}
@@ -271,13 +285,35 @@ const loading = ref(false)
 const report = ref<SLAReport | null>(null)
 const activeTab = ref('upstream')
 const tabs = ['upstream', 'clientErrors', 'failover', 'latency', 'accountRate']
+const failoverPage = ref(1)
+const failoverPageSize = 20
+const failoverPageCount = ref(1)
 
 async function loadReport() {
   loading.value = true
   try {
-    report.value = await getSLAReport(hours.value)
+    report.value = await getSLAReport(hours.value, 1, 0)
+    failoverPageCount.value = Math.max(1, Math.ceil((report.value?.failover_metrics?.total_with_failover || 0) / failoverPageSize))
+    failoverPage.value = 1
   } catch (e: any) {
     appStore.showError(e.message || 'Failed to load SLA report')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadFailoverPage(page: number) {
+  if (!report.value) return
+  loading.value = true
+  try {
+    const data = await getSLAReport(hours.value, page, failoverPageSize)
+    report.value = {
+      ...report.value,
+      failover_paths: data.failover_paths,
+    }
+    failoverPage.value = page
+  } catch (e: any) {
+    appStore.showError(e.message || 'Failed to load failover page')
   } finally {
     loading.value = false
   }

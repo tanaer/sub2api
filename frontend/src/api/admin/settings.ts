@@ -379,10 +379,13 @@ export interface SLAReport {
   }>
 }
 
-export async function getSLAReport(minutes: number = 60): Promise<SLAReport> {
-  const { data } = await apiClient.get<SLAReport>('/admin/settings/sla-report', {
-    params: { minutes },
-  })
+export async function getSLAReport(minutes: number = 60, page: number = 1, pageSize: number = 0): Promise<SLAReport> {
+  const params: Record<string, number> = { minutes }
+  if (page > 1) params['page'] = page
+  if (pageSize > 0) {
+    params['page_size'] = pageSize
+  }
+  const { data } = await apiClient.get<SLAReport>('/admin/settings/sla-report', { params })
   return data
 }
 

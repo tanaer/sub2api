@@ -10,6 +10,10 @@ import (
 )
 
 func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service.SLAReport, error) {
+	return r.GetSLAReportPaginated(ctx, minutes, 1, 0)
+}
+
+func (r *opsRepository) GetSLAReportPaginated(ctx context.Context, minutes int, page, pageSize int) (*service.SLAReport, error) {
 	if minutes <= 0 || minutes > 10080 {
 		minutes = 60
 	}
@@ -67,6 +71,12 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	}
 
 	// === 3. Upstream errors by account ===
+	var upstreamPage, upstreamPageSize = 1, 30
+	if page > 0 && pageSize > 0 {
+		upstreamPage = page
+		upstreamPageSize = pageSize
+	}
+	upstreamOffset := (upstreamPage - 1) * upstreamPageSize
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			COALESCE(a.name, 'unknown') AS account_name,
@@ -81,8 +91,8 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 			AND e.error_phase = 'upstream'
 		GROUP BY a.name, COALESCE(NULLIF(a.upstream_provider, ''), NULLIF(a.platform, ''), 'unknown'), e.upstream_status_code
 		ORDER BY total DESC
-		LIMIT 30
-	`, interval)
+		LIMIT $2 OFFSET $3
+	`, interval, upstreamPageSize, upstreamOffset)
 	if err != nil {
 		return nil, fmt.Errorf("upstream errors: %w", err)
 	}
@@ -99,6 +109,12 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	}
 
 	// === 4. Client-facing errors (what users actually see) ===
+	var clientPage, clientPageSize = 1, 20
+	if page > 0 && pageSize > 0 {
+		clientPage = page
+		clientPageSize = pageSize
+	}
+	clientOffset := (clientPage - 1) * clientPageSize
 	rows2, err := r.db.QueryContext(ctx, `
 		SELECT
 			e.status_code,
@@ -110,8 +126,8 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 			AND e.status_code != 200
 		GROUP BY e.status_code, e.error_phase, LEFT(e.error_message, 120)
 		ORDER BY cnt DESC
-		LIMIT 20
-	`, interval)
+		LIMIT $2 OFFSET $3
+	`, interval, clientPageSize, clientOffset)
 	if err != nil {
 		return nil, fmt.Errorf("client errors: %w", err)
 	}
@@ -128,6 +144,12 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	}
 
 	// === 5. Failover path details (recent failover chains) ===
+	var failoverPage, failoverPageSize = 1, 20
+	if page > 0 && pageSize > 0 {
+		failoverPage = page
+		failoverPageSize = pageSize
+	}
+	failoverOffset := (failoverPage - 1) * failoverPageSize
 	rows3, err := r.db.QueryContext(ctx, `
 		SELECT
 			e.request_id,
@@ -143,8 +165,8 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 			AND jsonb_typeof(e.upstream_errors) = 'array'
 			AND jsonb_array_length(e.upstream_errors) > 0
 		ORDER BY e.created_at DESC
-		LIMIT 20
-	`, interval)
+		LIMIT $2 OFFSET $3
+	`, interval, failoverPageSize, failoverOffset)
 	if err != nil {
 		return nil, fmt.Errorf("failover paths: %w", err)
 	}
@@ -202,6 +224,12 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 	}
 
 	// === 7. Per-account success rate ===
+	var accountPage, accountPageSize = 1, 50
+	if page > 0 && pageSize > 0 {
+		accountPage = page
+		accountPageSize = pageSize
+	}
+	accountOffset := (accountPage - 1) * accountPageSize
 	rows5, err := r.db.QueryContext(ctx, `
 		WITH account_success AS (
 			SELECT
@@ -233,8 +261,8 @@ func (r *opsRepository) GetSLAReport(ctx context.Context, minutes int) (*service
 		LEFT JOIN accounts a ON a.id = COALESCE(s.account_id, f.account_id)
 		WHERE COALESCE(s.success_count, 0) + COALESCE(f.error_count, 0) >= 1
 		ORDER BY (COALESCE(s.success_count, 0) + COALESCE(f.error_count, 0)) DESC
-		LIMIT 50
-	`, interval)
+		LIMIT $2 OFFSET $3
+	`, interval, accountPageSize, accountOffset)
 	if err != nil {
 		return nil, fmt.Errorf("account success rate: %w", err)
 	}
