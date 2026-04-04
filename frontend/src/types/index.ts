@@ -680,6 +680,10 @@ export interface TempUnschedulableState {
   matched_keyword: string
   rule_index: number
   error_message: string
+  request_id?: string
+  upstream_status_code?: number
+  upstream_error_message?: string
+  upstream_error_detail?: string
 }
 
 export interface TempUnschedulableStatus {

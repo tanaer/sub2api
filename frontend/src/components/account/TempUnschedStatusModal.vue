@@ -93,6 +93,63 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.tempUnschedulable.requestId') }}
+            </p>
+            <div class="mt-1 flex items-center gap-2">
+              <p class="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                {{ state?.request_id || '-' }}
+              </p>
+              <button
+                v-if="hasRequestId"
+                data-testid="temp-unsched-copy-request"
+                type="button"
+                class="btn btn-secondary btn-xs"
+                @click="handleCopyRequestId"
+              >
+                {{ t('admin.accounts.tempUnschedulable.copyRequestId') }}
+              </button>
+              <button
+                v-if="hasRequestId"
+                data-testid="temp-unsched-open-request"
+                type="button"
+                class="btn btn-secondary btn-xs"
+                @click="handleOpenRequestDetails"
+              >
+                {{ t('admin.accounts.tempUnschedulable.viewRequestDetails') }}
+              </button>
+            </div>
+          </div>
+          <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.tempUnschedulable.upstreamStatusCode') }}
+            </p>
+            <p class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+              {{ state?.upstream_status_code || '-' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.accounts.tempUnschedulable.upstreamErrorMessage') }}
+          </p>
+          <div class="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-700 dark:bg-dark-700 dark:text-gray-300">
+            {{ state?.upstream_error_message || '-' }}
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.accounts.tempUnschedulable.upstreamErrorDetail') }}
+          </p>
+          <div class="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-700 dark:bg-dark-700 dark:text-gray-300">
+            {{ state?.upstream_error_detail || '-' }}
+          </div>
+        </div>
+
         <div class="rounded-lg border border-gray-200 p-3 dark:border-dark-600">
           <p class="text-xs text-gray-500 dark:text-gray-400">
             {{ t('admin.accounts.tempUnschedulable.errorMessage') }}
@@ -145,10 +202,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
 import type { Account, TempUnschedulableStatus } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import { useClipboard } from '@/composables/useClipboard'
 import { formatDateTime } from '@/utils/format'
 
 const props = defineProps<{
@@ -163,12 +222,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const router = useRouter()
+const { copyToClipboard } = useClipboard()
 
 const loading = ref(false)
 const resetting = ref(false)
 const status = ref<TempUnschedulableStatus | null>(null)
 
 const state = computed(() => status.value?.state || null)
+const hasRequestId = computed(() => Boolean(state.value?.request_id?.trim()))
 
 const isActive = computed(() => {
   if (!status.value?.active || !state.value) return false
@@ -223,6 +285,32 @@ const loadStatus = async () => {
 
 const handleClose = () => {
   emit('close')
+}
+
+const handleCopyRequestId = async () => {
+  const requestId = state.value?.request_id?.trim()
+  if (!requestId) return
+  await copyToClipboard(requestId, t('admin.accounts.tempUnschedulable.requestIdCopied'))
+}
+
+const handleOpenRequestDetails = async () => {
+  const requestId = state.value?.request_id?.trim()
+  if (!requestId || !state.value) return
+
+  const startUnix = Math.max(0, state.value.triggered_at_unix - 300)
+  const endUnix = Math.max(state.value.until_unix, Math.ceil(Date.now() / 1000)) + 300
+
+  await router.push({
+    path: '/admin/ops',
+    query: {
+      tr: 'custom',
+      start_time: new Date(startUnix * 1000).toISOString(),
+      end_time: new Date(endUnix * 1000).toISOString(),
+      open_request_details: '1',
+      request_id: requestId,
+    },
+  })
+  handleClose()
 }
 
 const handleReset = async () => {
