@@ -1,4 +1,5 @@
 [
+  { “date”: “2026-04-04”, “type”: “improvement”, “content”: “CI 增加前端检查（lint/typecheck/test）、path 过滤、并发控制和超时保护，修复安全审计例外即将过期的问题，并在 CLAUDE.md 中建立 CI 纪律规范” },
   { “date”: “2026-04-04”, “type”: “improvement”, “content”: “「使用密钥」弹层 Claude Code 配置新增模型映射环境变量：分组配置了「自定义模型名称」时，settings.json 与终端命令同步输出 ANTHROPIC_DEFAULT_OPUS/SONNET/HAIKU_MODEL” },
   { “date”: “2026-04-04”, “type”: “fix”,        “content”: “修复上游返回”本计费周期额度已用尽”的 403 被永久标记为账号异常的问题，现会按智能限流规则临时冷却并优先复用账号现有的 quota reset 配置恢复调度” },
   { "date": "2026-04-04", "type": "fix",        "content": "补充分组平台分流回归测试并修正 Anthropic 分组误入 OpenAI 选号链时的错误提示，避免将 /v1/chat/completions 用户错误引导到 /v1/messages" },

@@ -107,6 +107,29 @@ The gateway serves multiple API protocols simultaneously:
 4. **Interface changes**: All test stubs/mocks implementing the interface must be updated with new methods. Search with `grep -r "type.*Stub.*struct\|type.*Mock.*struct" internal/`.
 5. **PR checklist**: unit tests pass, integration tests pass, golangci-lint clean, lock file synced, ent code regenerated if schema changed, stubs updated if interface changed.
 
+## CI 纪律
+
+### 推送前必须本地验证
+```bash
+# 后端改动
+cd backend && go test -tags=unit ./... && golangci-lint run ./...
+
+# 前端改动
+cd frontend && pnpm lint:check && pnpm typecheck && pnpm test:run
+```
+
+### 安全审计例外管理
+- 例外清单: `.github/audit-exceptions.yml`
+- 每条例外必须包含: `package`, `advisory`, `severity`, `mitigation`, `expires_on`
+- `expires_on` 到期后 CI 自动失败，必须评估后续处理（升级依赖/续期/移除）
+- 续期最长 6 个月，需更新 `reason` 说明续期理由
+
+### Workflow 维护规则
+- 所有 workflow 必须设置 `timeout-minutes` 防止挂起
+- 必须配置 `concurrency` + `cancel-in-progress` 避免重复运行
+- 使用 `paths` 过滤，只在相关文件变更时触发
+- 修改 workflow 文件后，在 PR 描述中注明 CI 配置变更
+
 ## Deployment
 
 - **Docker**: Multi-stage build (Node -> Go -> Alpine). `docker-compose.local.yml` for local dirs, `docker-compose.yml` for named volumes.
