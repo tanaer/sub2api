@@ -85,6 +85,11 @@ The gateway serves multiple API protocols simultaneously:
 - API layer in `src/api/` using axios
 - Frontend builds into `backend/internal/web/dist/` and gets embedded with `-tags=embed`
 
+## Key Reference Docs
+
+- 模型路由、账号模型限制、请求追踪相关开发前，先阅读 `docs/OPS_REQUEST_TRACE_AND_MODEL_ROUTING.md`
+  这份文档说明了分组模型改写、账号支持判断、账号内模型映射、同账号重试、账号 failover，以及如何通过 request id 追踪全链路。
+
 ## Changelog 维护规则
 
 每次开发新功能、修复 bug 或推送到 GitHub 时，必须同步更新 changelog。
