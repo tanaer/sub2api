@@ -134,6 +134,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		BackendModeEnabled:                   settings.BackendModeEnabled,
 		EnableFingerprintUnification:         settings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:            settings.EnableMetadataPassthrough,
+		CustomModelList:                       settings.CustomModelList,
 	})
 }
 
@@ -227,6 +228,9 @@ type UpdateSettingsRequest struct {
 
 	// Health circuit breaker configuration
 	HealthCircuitBreakerConfig *service.HealthCircuitBreakerConfig `json:"health_circuit_breaker_config"`
+
+	// CustomModelList 自定义模型列表（/v1/models 返回值覆盖默认列表）
+	CustomModelList []string `json:"custom_model_list"`
 }
 
 // UpdateSettings 更新系统设置
@@ -651,6 +655,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.HealthCircuitBreakerConfig
 		}(),
+		CustomModelList: req.CustomModelList,
 	}
 
 	if err := h.settingService.UpdateSettings(c.Request.Context(), settings); err != nil {
@@ -733,6 +738,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		BackendModeEnabled:                   updatedSettings.BackendModeEnabled,
 		EnableFingerprintUnification:         updatedSettings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:            updatedSettings.EnableMetadataPassthrough,
+		CustomModelList:                       updatedSettings.CustomModelList,
 	})
 }
 
