@@ -503,6 +503,30 @@ const currentFiles = computed((): FileConfig[] => {
 })
 
 function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
+  const models = customModelNames.value
+  const opusModel   = models[0] || ''
+  const sonnetModel = models[1] || ''
+  const haikuModel  = models[2] || ''
+
+  // 模型环境变量行（仅有值时追加）
+  const modelEnvUnix = [
+    opusModel   ? `export ANTHROPIC_DEFAULT_OPUS_MODEL="${opusModel}"` : '',
+    sonnetModel ? `export ANTHROPIC_DEFAULT_SONNET_MODEL="${sonnetModel}"` : '',
+    haikuModel  ? `export ANTHROPIC_DEFAULT_HAIKU_MODEL="${haikuModel}"` : '',
+  ].filter(Boolean).join('\n')
+
+  const modelEnvCmd = [
+    opusModel   ? `set ANTHROPIC_DEFAULT_OPUS_MODEL=${opusModel}` : '',
+    sonnetModel ? `set ANTHROPIC_DEFAULT_SONNET_MODEL=${sonnetModel}` : '',
+    haikuModel  ? `set ANTHROPIC_DEFAULT_HAIKU_MODEL=${haikuModel}` : '',
+  ].filter(Boolean).join('\n')
+
+  const modelEnvPs = [
+    opusModel   ? `$env:ANTHROPIC_DEFAULT_OPUS_MODEL="${opusModel}"` : '',
+    sonnetModel ? `$env:ANTHROPIC_DEFAULT_SONNET_MODEL="${sonnetModel}"` : '',
+    haikuModel  ? `$env:ANTHROPIC_DEFAULT_HAIKU_MODEL="${haikuModel}"` : '',
+  ].filter(Boolean).join('\n')
+
   let path: string
   let content: string
 
@@ -511,19 +535,19 @@ function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
       path = 'Terminal'
       content = `export ANTHROPIC_BASE_URL="${baseUrl}"
 export ANTHROPIC_AUTH_TOKEN="${apiKey}"
-export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1${modelEnvUnix ? '\n' + modelEnvUnix : ''}`
       break
     case 'cmd':
       path = 'Command Prompt'
       content = `set ANTHROPIC_BASE_URL=${baseUrl}
 set ANTHROPIC_AUTH_TOKEN=${apiKey}
-set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1${modelEnvCmd ? '\n' + modelEnvCmd : ''}`
       break
     case 'powershell':
       path = 'PowerShell'
       content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
 $env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
-$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1${modelEnvPs ? '\n' + modelEnvPs : ''}`
       break
     default:
       path = 'Terminal'
@@ -534,12 +558,23 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
     ? '~/.claude/settings.json'
     : '%userprofile%\\.claude\\settings.json'
 
+  // settings.json 模型 env 条目（仅有值时追加）
+  const modelJsonEntries = [
+    opusModel   ? `    "ANTHROPIC_DEFAULT_OPUS_MODEL": "${opusModel}"` : '',
+    sonnetModel ? `    "ANTHROPIC_DEFAULT_SONNET_MODEL": "${sonnetModel}"` : '',
+    haikuModel  ? `    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "${haikuModel}"` : '',
+  ].filter(Boolean)
+
+  const modelJsonBlock = modelJsonEntries.length
+    ? ',\n' + modelJsonEntries.join(',\n')
+    : ''
+
   const vscodeContent = `{
   "env": {
     "ANTHROPIC_BASE_URL": "${baseUrl}",
     "ANTHROPIC_AUTH_TOKEN": "${apiKey}",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"${modelJsonBlock}
   }
 }`
 
