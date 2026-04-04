@@ -3,6 +3,7 @@
 package service
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -375,4 +376,40 @@ func TestAccount_TempUnschedulableUntil(t *testing.T) {
 			require.Equal(t, tt.schedulable, got)
 		})
 	}
+}
+
+func TestTempUnschedState_UnmarshalLegacyJSON(t *testing.T) {
+	raw := `{"until_unix":1735689600,"triggered_at_unix":1735686000,"status_code":404,"matched_keyword":"Model Not Found","rule_index":0,"error_message":"legacy"}`
+
+	var state TempUnschedState
+	require.NoError(t, json.Unmarshal([]byte(raw), &state))
+
+	require.Equal(t, int64(1735689600), state.UntilUnix)
+	require.Equal(t, "legacy", state.ErrorMessage)
+	require.Empty(t, state.RequestID)
+	require.Zero(t, state.UpstreamStatusCode)
+	require.Empty(t, state.UpstreamErrorMessage)
+	require.Empty(t, state.UpstreamErrorDetail)
+}
+
+func TestTempUnschedState_MarshalTraceFields(t *testing.T) {
+	state := TempUnschedState{
+		UntilUnix:            1735689600,
+		TriggeredAtUnix:      1735686000,
+		StatusCode:           404,
+		MatchedKeyword:       "Model Not Found",
+		RuleIndex:            0,
+		ErrorMessage:         `{"error":{"message":"Model Not Found"}}`,
+		RequestID:            "req-temp-1",
+		UpstreamStatusCode:   404,
+		UpstreamErrorMessage: "Model Not Found",
+		UpstreamErrorDetail:  `{"error":{"message":"Model Not Found"}}`,
+	}
+
+	raw, err := json.Marshal(state)
+	require.NoError(t, err)
+
+	require.Contains(t, string(raw), `"request_id":"req-temp-1"`)
+	require.Contains(t, string(raw), `"upstream_status_code":404`)
+	require.Contains(t, string(raw), `"upstream_error_message":"Model Not Found"`)
 }

@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 )
 
 // TempUnschedState 临时不可调度状态
@@ -13,6 +16,30 @@ type TempUnschedState struct {
 	MatchedKeyword  string `json:"matched_keyword"`   // 匹配的关键词
 	RuleIndex       int    `json:"rule_index"`        // 触发的规则索引
 	ErrorMessage    string `json:"error_message"`     // 错误消息
+
+	RequestID            string `json:"request_id,omitempty"`            // 请求追踪 ID
+	UpstreamStatusCode   int    `json:"upstream_status_code,omitempty"`  // 上游状态码
+	UpstreamErrorMessage string `json:"upstream_error_message,omitempty"` // 上游错误摘要
+	UpstreamErrorDetail  string `json:"upstream_error_detail,omitempty"`  // 上游错误详情
+}
+
+func applyTempUnschedTrace(ctx context.Context, state *TempUnschedState, upstreamStatusCode int, responseBody []byte) {
+	if state == nil {
+		return
+	}
+
+	if requestID, _ := ctx.Value(ctxkey.RequestID).(string); strings.TrimSpace(requestID) != "" {
+		state.RequestID = strings.TrimSpace(requestID)
+	}
+	if upstreamStatusCode > 0 {
+		state.UpstreamStatusCode = upstreamStatusCode
+	}
+	if msg := sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(responseBody))); msg != "" {
+		state.UpstreamErrorMessage = truncateForLog([]byte(msg), 512)
+	}
+	if detail := truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes); detail != "" {
+		state.UpstreamErrorDetail = detail
+	}
 }
 
 // TempUnschedCache 临时不可调度缓存接口
