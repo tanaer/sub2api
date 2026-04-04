@@ -35,9 +35,9 @@ func RegisterGatewayRoutes(
 	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService)
 	endpointNorm := handler.InboundEndpointMiddleware()
 	errorThrottle := middleware.GatewayErrorThrottle(redisClient, middleware.GatewayErrorThrottleConfig{
-		Enabled:    cfg.Gateway.ErrorThrottle.Enabled,
-		ErrorLimit: cfg.Gateway.ErrorThrottle.ErrorLimit,
-		Window:     time.Duration(cfg.Gateway.ErrorThrottle.WindowSeconds) * time.Second,
+		Enabled:      cfg.Gateway.ErrorThrottle.Enabled,
+		ErrorLimit:   cfg.Gateway.ErrorThrottle.ErrorLimit,
+		Window:       time.Duration(cfg.Gateway.ErrorThrottle.WindowSeconds) * time.Second,
 		CooldownSecs: cfg.Gateway.ErrorThrottle.CooldownSeconds,
 	})
 
