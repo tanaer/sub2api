@@ -87,6 +87,14 @@
       </button>
       <button
         type="button"
+        @click="copyWhitelist"
+        :disabled="modelValue.length === 0"
+        class="rounded-lg border border-green-200 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/30"
+      >
+        {{ t('admin.accounts.copyModels', '复制模型') }}
+      </button>
+      <button
+        type="button"
         @click="clearAll"
         class="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/30"
       >
@@ -154,7 +162,8 @@ import { useAppStore } from '@/stores/app'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { allModels, getModelsByPlatform } from '@/composables/useModelWhitelist'
-import { parseWhitelistPaste } from '@/components/account/modelRestriction'
+import { parseWhitelistPaste, exportWhitelist } from '@/components/account/modelRestriction'
+import { useClipboard } from '@/composables/useClipboard'
 
 const { t } = useI18n()
 
@@ -169,6 +178,7 @@ const emit = defineEmits<{
 }>()
 
 const appStore = useAppStore()
+const { copyToClipboard } = useClipboard()
 
 const showDropdown = ref(false)
 const searchQuery = ref('')
@@ -262,6 +272,10 @@ const fillRelated = () => {
 
 const clearAll = () => {
   emit('update:modelValue', [])
+}
+
+const copyWhitelist = () => {
+  copyToClipboard(exportWhitelist(props.modelValue))
 }
 
 const applyWhitelistPaste = () => {

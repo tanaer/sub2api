@@ -117,6 +117,17 @@ export function decodeModelRestriction(mapping?: Record<string, string> | null):
   }
 }
 
+export function exportWhitelist(models: string[]): string {
+  return models.filter((m) => m.trim()).join('\n')
+}
+
+export function exportMapping(mappings: ModelMappingRow[]): string {
+  return mappings
+    .filter((row) => row.from.trim() && row.to.trim())
+    .map((row) => `${row.from} -> ${row.to}`)
+    .join('\n')
+}
+
 export function summarizeModelRestriction(
   mapping?: Record<string, string> | null,
   options?: ModelRestrictionSummaryOptions

@@ -1089,7 +1089,15 @@
                 </p>
               </div>
 
-              <div class="mb-3 flex justify-end">
+              <div class="mb-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  @click="copyModelMapping"
+                  :disabled="modelMappings.length === 0"
+                  class="rounded-lg border border-green-200 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/30"
+                >
+                  {{ t('admin.accounts.copyMappings', '复制映射') }}
+                </button>
                 <button
                   type="button"
                   data-testid="model-mapping-paste-toggle"
@@ -1532,7 +1540,15 @@
 
           <!-- Mapping Mode -->
           <div v-else class="space-y-3">
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                @click="copyModelMapping"
+                :disabled="modelMappings.length === 0"
+                class="rounded-lg border border-green-200 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/30"
+              >
+                {{ t('admin.accounts.copyMappings', '复制映射') }}
+              </button>
               <button
                 type="button"
                 data-testid="model-mapping-paste-toggle"
@@ -1741,7 +1757,15 @@
               </p>
             </div>
 
-            <div class="mb-3 flex justify-end">
+            <div class="mb-3 flex justify-end gap-2">
+              <button
+                type="button"
+                @click="copyModelMapping"
+                :disabled="modelMappings.length === 0"
+                class="rounded-lg border border-green-200 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/30"
+              >
+                {{ t('admin.accounts.copyMappings', '复制映射') }}
+              </button>
               <button
                 type="button"
                 data-testid="model-mapping-paste-toggle"
@@ -3044,7 +3068,8 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
 import QuotaLimitCard from '@/components/account/QuotaLimitCard.vue'
 import { applyInterceptWarmup } from '@/components/account/credentialsBuilder'
-import { decodeModelRestriction, parseMappingPaste } from '@/components/account/modelRestriction'
+import { decodeModelRestriction, parseMappingPaste, exportMapping } from '@/components/account/modelRestriction'
+import { useClipboard } from '@/composables/useClipboard'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
@@ -3108,6 +3133,7 @@ const emit = defineEmits<{
 }>()
 
 const appStore = useAppStore()
+const { copyToClipboard } = useClipboard()
 
 // OAuth composables
 const oauth = useAccountOAuth() // For Anthropic OAuth
@@ -3945,6 +3971,10 @@ const applyModelMappingPaste = () => {
   modelMappings.value = parseMappingPaste(modelMappingPasteInput.value)
   modelMappingPasteInput.value = ''
   showModelMappingPaste.value = false
+}
+
+const copyModelMapping = () => {
+  copyToClipboard(exportMapping(modelMappings.value))
 }
 
 const addAntigravityModelMapping = () => {

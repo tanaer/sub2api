@@ -259,7 +259,15 @@
                 </p>
               </div>
 
-              <div class="mb-3 flex justify-end">
+              <div class="mb-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  @click="copyModelMapping"
+                  :disabled="modelMappings.length === 0"
+                  class="rounded-lg border border-green-200 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/30"
+                >
+                  {{ t('admin.accounts.copyMappings', '复制映射') }}
+                </button>
                 <button
                   type="button"
                   data-testid="model-mapping-paste-toggle"
@@ -954,7 +962,8 @@ import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { parseMappingPaste } from '@/components/account/modelRestriction'
+import { parseMappingPaste, exportMapping } from '@/components/account/modelRestriction'
+import { useClipboard } from '@/composables/useClipboard'
 import {
   buildModelMappingObject as buildModelMappingPayload,
   getPresetMappingsByPlatform
@@ -984,6 +993,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const { copyToClipboard } = useClipboard()
 
 // Platform awareness
 const isMixedPlatform = computed(() => props.selectedPlatforms.length > 1)
@@ -1137,6 +1147,10 @@ const applyModelMappingPaste = () => {
   modelMappings.value = parseMappingPaste(modelMappingPasteInput.value)
   modelMappingPasteInput.value = ''
   showModelMappingPaste.value = false
+}
+
+const copyModelMapping = () => {
+  copyToClipboard(exportMapping(modelMappings.value))
 }
 
 // Error code helpers
