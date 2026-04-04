@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveChatCompletionsSelectionErrorMessage_AnthropicGroupReturnsExplicitHint(t *testing.T) {
+func TestResolveChatCompletionsSelectionErrorMessage_AnthropicGroupExplainsRoutingInsteadOfProtocolRejection(t *testing.T) {
 	msg := resolveChatCompletionsSelectionErrorMessage(
 		&service.APIKey{
 			Group: &service.Group{Platform: service.PlatformAnthropic},
@@ -16,8 +16,9 @@ func TestResolveChatCompletionsSelectionErrorMessage_AnthropicGroupReturnsExplic
 		errors.New("no available OpenAI accounts"),
 	)
 
-	require.Contains(t, msg, "/v1/chat/completions")
-	require.Contains(t, msg, "/v1/messages")
+	require.Contains(t, msg, "Anthropic group")
+	require.Contains(t, msg, "routing")
+	require.NotContains(t, msg, "use /v1/messages instead")
 }
 
 func TestResolveChatCompletionsSelectionErrorMessage_DefaultsToGenericMessage(t *testing.T) {

@@ -24,7 +24,7 @@ func resolveChatCompletionsSelectionErrorMessage(apiKey *service.APIKey, selecti
 		apiKey.Group.Platform == service.PlatformAnthropic &&
 		selectionErr != nil &&
 		strings.Contains(strings.ToLower(selectionErr.Error()), "no available openai accounts") {
-		return "This group is configured for Anthropic messages. /v1/chat/completions is unavailable for this group; use /v1/messages instead."
+		return "This API key is bound to an Anthropic group, but the request reached the OpenAI account path. OpenAI-style HTTP requests should be supported; verify the gateway version or routing configuration."
 	}
 	return "Service temporarily unavailable"
 }
