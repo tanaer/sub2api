@@ -129,6 +129,8 @@
         <OpsRequestDetailsModal
           v-model="showRequestDetails"
           :time-range="timeRange"
+          :custom-start-time="customStartTime"
+          :custom-end-time="customEndTime"
           :preset="requestDetailsPreset"
           :platform="platform"
           :group-id="groupId"
@@ -217,12 +219,16 @@ const QUERY_KEYS = {
   groupId: 'group_id',
   queryMode: 'mode',
   fullscreen: 'fullscreen',
+  startTime: 'start_time',
+  endTime: 'end_time',
 
   // Deep links
   openErrorDetails: 'open_error_details',
   errorType: 'error_type',
   alertRuleId: 'alert_rule_id',
-  openAlertRules: 'open_alert_rules'
+  openAlertRules: 'open_alert_rules',
+  openRequestDetails: 'open_request_details',
+  requestId: 'request_id',
 } as const
 
 const isApplyingRouteQuery = ref(false)
@@ -289,6 +295,8 @@ const applyRouteQueryToState = () => {
   if (nextTimeRange && allowedTimeRanges.has(nextTimeRange as TimeRange)) {
     timeRange.value = nextTimeRange as TimeRange
   }
+  customStartTime.value = readQueryString(QUERY_KEYS.startTime) || null
+  customEndTime.value = readQueryString(QUERY_KEYS.endTime) || null
 
   platform.value = readQueryString(QUERY_KEYS.platform) || ''
 
@@ -320,9 +328,18 @@ const applyRouteQueryToState = () => {
     errorDetailsType.value = typ === 'upstream' ? 'upstream' : 'request'
     showErrorDetails.value = true
   }
-}
 
-applyRouteQueryToState()
+  const openRequest = readQueryString(QUERY_KEYS.openRequestDetails)
+  if (openRequest === '1' || openRequest === 'true') {
+    const requestID = readQueryString(QUERY_KEYS.requestId)
+    handleOpenRequestDetails({
+      title: t('admin.ops.requestDetails.title'),
+      kind: 'all',
+      sort: 'created_at_desc',
+      request_id: requestID || undefined,
+    })
+  }
+}
 
 const buildQueryFromState = () => {
   const next: Record<string, any> = { ...route.query }
@@ -332,6 +349,10 @@ const buildQueryFromState = () => {
   })
 
   if (timeRange.value !== '1h') next[QUERY_KEYS.timeRange] = timeRange.value
+  if (timeRange.value === 'custom' && customStartTime.value && customEndTime.value) {
+    next[QUERY_KEYS.startTime] = customStartTime.value
+    next[QUERY_KEYS.endTime] = customEndTime.value
+  }
   if (platform.value) next[QUERY_KEYS.platform] = platform.value
   if (typeof groupId.value === 'number' && groupId.value > 0) next[QUERY_KEYS.groupId] = String(groupId.value)
   if (queryMode.value !== 'auto') next[QUERY_KEYS.queryMode] = queryMode.value
@@ -393,6 +414,8 @@ const requestDetailsPreset = ref<OpsRequestDetailsPreset>({
 
 const showSettingsDialog = ref(false)
 const showAlertRulesCard = ref(false)
+
+applyRouteQueryToState()
 
 // Auto refresh settings
 const showAlertEvents = ref(true)

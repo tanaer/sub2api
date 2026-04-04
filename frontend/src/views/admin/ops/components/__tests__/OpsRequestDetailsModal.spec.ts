@@ -3,6 +3,17 @@ import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import OpsRequestDetailsModal from '../OpsRequestDetailsModal.vue'
 
+vi.hoisted(() => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    },
+    configurable: true,
+  })
+})
+
 const mockListRequestDetails = vi.fn()
 const mockShowError = vi.fn()
 const mockShowWarning = vi.fn()
@@ -135,5 +146,35 @@ describe('OpsRequestDetailsModal', () => {
     await traceButton!.trigger('click')
 
     expect(wrapper.emitted('openRequestTrace')).toEqual([['req-trace-1']])
+  })
+
+  it('request trace 预设会透传 request_id 和自定义时间范围', async () => {
+    const wrapper = mount(OpsRequestDetailsModal, {
+      props: {
+        modelValue: false,
+        timeRange: 'custom',
+        customStartTime: '2026-04-04T01:00:00.000Z',
+        customEndTime: '2026-04-04T03:00:00.000Z',
+        preset: {
+          title: 'Request Trace',
+          request_id: 'req-temp-ui-1',
+        } as any,
+      },
+      global: {
+        stubs: {
+          BaseDialog: BaseDialogStub,
+          Pagination: PaginationStub,
+        },
+      },
+    })
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    expect(mockListRequestDetails).toHaveBeenCalledWith(expect.objectContaining({
+      request_id: 'req-temp-ui-1',
+      start_time: '2026-04-04T01:00:00.000Z',
+      end_time: '2026-04-04T03:00:00.000Z',
+    }))
   })
 })

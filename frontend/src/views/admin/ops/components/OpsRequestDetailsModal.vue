@@ -15,11 +15,14 @@ export interface OpsRequestDetailsPreset {
   sort?: OpsRequestDetailsParams['sort']
   min_duration_ms?: number
   max_duration_ms?: number
+  request_id?: string
 }
 
 interface Props {
   modelValue: boolean
   timeRange: string
+  customStartTime?: string | null
+  customEndTime?: string | null
   preset: OpsRequestDetailsPreset
   platform?: string
   groupId?: number | null
@@ -51,6 +54,13 @@ const rangeLabel = computed(() => {
 })
 
 function buildTimeParams(): Pick<OpsRequestDetailsParams, 'start_time' | 'end_time'> {
+  if (props.timeRange === 'custom' && props.customStartTime && props.customEndTime) {
+    return {
+      start_time: props.customStartTime,
+      end_time: props.customEndTime
+    }
+  }
+
   const minutes = parseTimeRangeMinutes(props.timeRange)
   const endTime = new Date()
   const startTime = new Date(endTime.getTime() - minutes * 60 * 1000)
@@ -81,6 +91,7 @@ const fetchData = async () => {
 
     if (typeof props.preset.min_duration_ms === 'number') params.min_duration_ms = props.preset.min_duration_ms
     if (typeof props.preset.max_duration_ms === 'number') params.max_duration_ms = props.preset.max_duration_ms
+    if (props.preset.request_id?.trim()) params.request_id = props.preset.request_id.trim()
 
     const res = await opsAPI.listRequestDetails(params)
     items.value = res.items || []
@@ -109,12 +120,15 @@ watch(
 watch(
   () => [
     props.timeRange,
+    props.customStartTime,
+    props.customEndTime,
     props.platform,
     props.groupId,
     props.preset.kind,
     props.preset.sort,
     props.preset.min_duration_ms,
-    props.preset.max_duration_ms
+    props.preset.max_duration_ms,
+    props.preset.request_id
   ],
   () => {
     if (!props.modelValue) return
