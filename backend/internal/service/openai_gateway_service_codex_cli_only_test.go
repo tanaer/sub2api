@@ -257,7 +257,8 @@ func TestOpenAIGatewayService_Forward_LogsInstructionsRequiredDetails(t *testing
 		cfg: &config.Config{
 			Gateway: config.GatewayConfig{ForceCodexCLI: false},
 		},
-		httpUpstream: upstream,
+		httpUpstream:   upstream,
+		failoverPolicy: noFailoverPolicy(),
 	}
 	account := &Account{
 		ID:             1001,

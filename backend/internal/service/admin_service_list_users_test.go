@@ -84,6 +84,10 @@ func (s *userGroupRateRepoStubForListUsers) DeleteByUserID(_ context.Context, us
 	panic("unexpected DeleteByUserID call")
 }
 
+func (s *userGroupRateRepoStubForListUsers) GetRequestQuotasByUserIDs(_ context.Context, _ []int64) (map[int64]map[int64]int64, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (s *userGroupRateRepoStubForListUsers) GetRequestQuotasByUserID(_ context.Context, _ int64) (map[int64]int64, error) {
 	panic("unexpected GetRequestQuotasByUserID call")
 }

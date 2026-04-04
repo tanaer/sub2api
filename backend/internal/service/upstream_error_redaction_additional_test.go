@@ -31,7 +31,7 @@ func TestGatewayHandleErrorResponse_BillingErrorRedactsUpstreamModelExposure(t *
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	svc := &GatewayService{}
+	svc := &GatewayService{failoverPolicy: noFailoverPolicy()}
 	respBody := []byte(`{"error":{"code":"1113","message":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'. Please recharge."}}`)
 	resp := &http.Response{
 		StatusCode: http.StatusTooManyRequests,
@@ -52,7 +52,7 @@ func TestOpenAIHandleErrorResponse_BillingErrorRedactsUpstreamModelExposure(t *t
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	svc := &OpenAIGatewayService{}
+	svc := &OpenAIGatewayService{failoverPolicy: noFailoverPolicy()}
 	respBody := []byte(`{"error":{"code":"1113","message":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'. Please recharge."}}`)
 	resp := &http.Response{
 		StatusCode: http.StatusTooManyRequests,

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/model"
 	"github.com/gin-gonic/gin"
@@ -62,12 +63,35 @@ func TestGatewayHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 	assert.Equal(t, "Upstream request failed", errField["message"])
 }
 
+// noFailoverPolicy returns a FailoverPolicy that never triggers failover for non-5xx codes.
+// This allows testing error redaction logic without triggering the failover path.
+// We use applyConfig to set the instance-level codeMap directly, bypassing the
+// package-level cache that is shared across all tests (and would interfere with
+// TestFailoverPolicy_DefaultCodes). We also pre-set the package-level cache to
+// empty codes so ensureLoaded() exits early without triggering a refresh that would
+// overwrite the instance-level config.
+func noFailoverPolicy() *FailoverPolicy {
+	// Clear singleflight and set package-level cache to empty so ensureLoaded() exits early.
+	failoverPolicySF.Forget("failover_policy")
+	failoverPolicyCache.Store(&cachedFailoverPolicy{
+		codeMap:    map[int]bool{},
+		include5xx: false,
+		expiresAt:  time.Now().Add(time.Hour).UnixNano(),
+	})
+	p := &FailoverPolicy{}
+	p.applyConfig(&FailoverStatusCodesConfig{
+		Codes:      []int{},
+		Include5xx: false,
+	})
+	return p
+}
+
 func TestGatewayHandleErrorResponse_RedactsUpstreamModelExposureOn400(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	svc := &GatewayService{}
+	svc := &GatewayService{failoverPolicy: noFailoverPolicy()}
 	respBody := []byte(`{"detail":"Model GLM-Z1-AirX not supported. Available: 'qwen2-coder-next', 'glm-5'"}`)
 	resp := &http.Response{
 		StatusCode: http.StatusBadRequest,
