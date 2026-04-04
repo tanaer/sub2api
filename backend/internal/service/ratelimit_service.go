@@ -1703,6 +1703,7 @@ func (s *RateLimitService) triggerTempUnschedulable(ctx context.Context, account
 		RuleIndex:       ruleIndex,
 		ErrorMessage:    truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes),
 	}
+	applyTempUnschedTrace(ctx, state, statusCode, responseBody)
 
 	reason := ""
 	if raw, err := json.Marshal(state); err == nil {
@@ -1757,6 +1758,7 @@ func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Acco
 		RuleIndex:       -1, // 全局规则，非 per-account 规则索引
 		ErrorMessage:    truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes),
 	}
+	applyTempUnschedTrace(ctx, state, statusCode, responseBody)
 
 	reason := ""
 	if raw, err := json.Marshal(state); err == nil {
@@ -1851,6 +1853,7 @@ func (s *RateLimitService) triggerStreamTimeoutTempUnsched(ctx context.Context, 
 		RuleIndex:       -1, // 表示系统级规则
 		ErrorMessage:    "Stream data interval timeout for model: " + model,
 	}
+	applyTempUnschedTrace(ctx, state, 0, []byte(state.ErrorMessage))
 
 	reason := ""
 	if raw, err := json.Marshal(state); err == nil {
