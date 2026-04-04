@@ -1,4 +1,5 @@
 [
+  { "date": "2026-04-04", "type": "fix",        "content": "补充分组平台分流回归测试并修正 Anthropic 分组误入 OpenAI 选号链时的错误提示，避免将 /v1/chat/completions 用户错误引导到 /v1/messages" },
   { "date": "2026-04-04", "type": "fix",        "content": "/api/provider 模型映射新增 config_templates 兜底：分组「自定义模型名称」中填写的三个模型名（opus/sonnet/haiku）将自动同步到 CLI provider 的 model_mapping，无需重复配置模型别名" },
   { "date": "2026-04-04", "type": "feature",    "content": "运维面板新增按请求标识查看全链路追踪能力，可从请求明细或错误详情进入查看模型改写、选号、重试与故障转移时间线" },
   { "date": "2026-04-04", "type": "feature",    "content": "账号列表新增模型限制摘要列，可区分白名单、模型映射和全部模型，并支持在列设置中显示或隐藏" },
