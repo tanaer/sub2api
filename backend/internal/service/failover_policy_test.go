@@ -9,13 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// testFailoverPolicy creates a FailoverPolicy with default codes for use in tests.
-func testFailoverPolicy() *FailoverPolicy {
-	p := &FailoverPolicy{}
-	p.applyConfig(defaultFailoverCodes)
-	return p
-}
-
 func TestFailoverPolicy_DefaultCodes(t *testing.T) {
 	// Simulate what NewFailoverPolicy does: initialize with default codes.
 	// Note: ensureLoaded() does NOT apply the package-level cache to the instance;
