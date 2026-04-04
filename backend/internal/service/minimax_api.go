@@ -67,7 +67,7 @@ func (c *MiniMaxAPIClient) CallVLM(ctx context.Context, baseURL, apiKey, prompt,
 	if err != nil {
 		return "", fmt.Errorf("VLM request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
@@ -119,7 +119,7 @@ func (c *MiniMaxAPIClient) CallWebSearch(ctx context.Context, baseURL, apiKey, q
 	if err != nil {
 		return "", fmt.Errorf("search request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
 	if err != nil {
@@ -152,17 +152,17 @@ func (c *MiniMaxAPIClient) CallWebSearch(ctx context.Context, baseURL, apiKey, q
 
 	// 格式化为文本，便于模型理解
 	var sb strings.Builder
-	sb.WriteString("Web search results:\n\n")
+	_, _ = sb.WriteString("Web search results:\n\n")
 	for i, item := range result.Organic {
 		if i >= 8 {
 			break // 最多保留 8 条结果
 		}
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, item.Title))
+		_, _ = sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, item.Title))
 		if item.Date != "" {
-			sb.WriteString(fmt.Sprintf("   Date: %s\n", item.Date))
+			_, _ = sb.WriteString(fmt.Sprintf("   Date: %s\n", item.Date))
 		}
-		sb.WriteString(fmt.Sprintf("   URL: %s\n", item.Link))
-		sb.WriteString(fmt.Sprintf("   %s\n\n", item.Snippet))
+		_, _ = sb.WriteString(fmt.Sprintf("   URL: %s\n", item.Link))
+		_, _ = sb.WriteString(fmt.Sprintf("   %s\n\n", item.Snippet))
 	}
 	return sb.String(), nil
 }

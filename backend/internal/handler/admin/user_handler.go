@@ -241,7 +241,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 // PUT /api/v1/admin/users/batch
 func (h *UserHandler) BatchUpdate(c *gin.Context) {
 	var req struct {
-		IDs    []int64          `json:"ids" binding:"required,min=1"`
+		IDs    []int64           `json:"ids" binding:"required,min=1"`
 		Fields UpdateUserRequest `json:"fields" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -273,9 +273,9 @@ func (h *UserHandler) BatchUpdate(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"updated":      updated,
-		"total":        len(req.IDs),
-		"errors":       perErrors,
+		"updated": updated,
+		"total":   len(req.IDs),
+		"errors":  perErrors,
 	})
 }
 

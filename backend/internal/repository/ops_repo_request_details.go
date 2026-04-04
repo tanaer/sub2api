@@ -277,11 +277,11 @@ LIMIT $%d OFFSET $%d
 			accountID sql.NullInt64
 			groupID   sql.NullInt64
 
-			stream               bool
-			inputTokens          sql.NullInt64
-			outputTokens         sql.NullInt64
-			cacheCreationTokens  sql.NullInt64
-			cacheReadTokens      sql.NullInt64
+			stream              bool
+			inputTokens         sql.NullInt64
+			outputTokens        sql.NullInt64
+			cacheCreationTokens sql.NullInt64
+			cacheReadTokens     sql.NullInt64
 		)
 
 		if err := rows.Scan(

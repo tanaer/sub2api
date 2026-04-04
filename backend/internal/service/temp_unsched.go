@@ -17,8 +17,8 @@ type TempUnschedState struct {
 	RuleIndex       int    `json:"rule_index"`        // 触发的规则索引
 	ErrorMessage    string `json:"error_message"`     // 错误消息
 
-	RequestID            string `json:"request_id,omitempty"`            // 请求追踪 ID
-	UpstreamStatusCode   int    `json:"upstream_status_code,omitempty"`  // 上游状态码
+	RequestID            string `json:"request_id,omitempty"`             // 请求追踪 ID
+	UpstreamStatusCode   int    `json:"upstream_status_code,omitempty"`   // 上游状态码
 	UpstreamErrorMessage string `json:"upstream_error_message,omitempty"` // 上游错误摘要
 	UpstreamErrorDetail  string `json:"upstream_error_detail,omitempty"`  // 上游错误详情
 }

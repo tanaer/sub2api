@@ -20,9 +20,9 @@ type FileConcurrencyCache struct {
 	// Per-process in-memory slot tracking to avoid excessive flock calls.
 	// Key: "account:{id}" or "user:{id}", Value: set of requestIDs (simplified: just count)
 	mu           sync.Mutex
-	slotCounts   map[string]int      // key -> current count
+	slotCounts   map[string]int                 // key -> current count
 	slotOwners   map[string]map[string]struct{} // key -> set of requestIDs
-	slotLastSeen map[string]time.Time // key -> last access time for cleanup
+	slotLastSeen map[string]time.Time           // key -> last access time for cleanup
 }
 
 const fileConcurrencyLockDir = "/var/run/sub2api/concurrency"
@@ -45,17 +45,17 @@ func NewFileConcurrencyCache(slotTTLMinutes int) (*FileConcurrencyCache, error) 
 	}
 
 	return &FileConcurrencyCache{
-		lockDir:     lockDir,
-		ttlSecs:     ttlSecs,
-		slotCounts:  make(map[string]int),
-		slotOwners:  make(map[string]map[string]struct{}),
+		lockDir:      lockDir,
+		ttlSecs:      ttlSecs,
+		slotCounts:   make(map[string]int),
+		slotOwners:   make(map[string]map[string]struct{}),
 		slotLastSeen: make(map[string]time.Time),
 	}, nil
 }
 
 type slotFileData struct {
-	Count   int               `json:"count"`
-	Slots   map[string]int64  `json:"slots"` // requestID -> expiry unix timestamp
+	Count int              `json:"count"`
+	Slots map[string]int64 `json:"slots"` // requestID -> expiry unix timestamp
 }
 
 func (f *FileConcurrencyCache) slotFilePath(key string) string {
@@ -112,17 +112,19 @@ func (f *FileConcurrencyCache) acquireSlot(kind string, id int64, maxConcurrency
 	if err != nil {
 		return false, fmt.Errorf("open lock file: %w", err)
 	}
-	defer lockFile.Close()
+	defer func() { _ = lockFile.Close() }()
 
 	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
 		return false, fmt.Errorf("flock: %w", err)
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer func() { _ = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN) }()
 
 	// Read existing data
 	var data slotFileData
 	if raw, err := os.ReadFile(dataPath); err == nil {
-		json.Unmarshal(raw, &data)
+		if err := json.Unmarshal(raw, &data); err != nil {
+			data = slotFileData{}
+		}
 	} else if !os.IsNotExist(err) {
 		return false, fmt.Errorf("read slot data: %w", err)
 	}
@@ -142,7 +144,9 @@ func (f *FileConcurrencyCache) acquireSlot(kind string, id int64, maxConcurrency
 		// Refresh — update expiry
 		data.Slots[requestID] = now.Add(time.Duration(f.ttlSecs) * time.Second).Unix()
 		data.Count = len(data.Slots)
-		f.writeSlotData(dataPath, &data)
+		if err := f.writeSlotData(dataPath, &data); err != nil {
+			return false, err
+		}
 		f.updateMemory(key, requestID, now)
 		return true, nil
 	}
@@ -155,7 +159,9 @@ func (f *FileConcurrencyCache) acquireSlot(kind string, id int64, maxConcurrency
 	// Acquire slot
 	data.Slots[requestID] = now.Add(time.Duration(f.ttlSecs) * time.Second).Unix()
 	data.Count = len(data.Slots)
-	f.writeSlotData(dataPath, &data)
+	if err := f.writeSlotData(dataPath, &data); err != nil {
+		return false, err
+	}
 	f.updateMemory(key, requestID, now)
 	return true, nil
 }
@@ -193,16 +199,18 @@ func (f *FileConcurrencyCache) releaseSlot(kind string, id int64, requestID stri
 	if err != nil {
 		return fmt.Errorf("open lock file: %w", err)
 	}
-	defer lockFile.Close()
+	defer func() { _ = lockFile.Close() }()
 
 	if err := syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX); err != nil {
 		return fmt.Errorf("flock: %w", err)
 	}
-	defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+	defer func() { _ = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN) }()
 
 	var data slotFileData
 	if raw, err := os.ReadFile(dataPath); err == nil {
-		json.Unmarshal(raw, &data)
+		if err := json.Unmarshal(raw, &data); err != nil {
+			data = slotFileData{}
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("read slot data: %w", err)
 	}
@@ -211,16 +219,26 @@ func (f *FileConcurrencyCache) releaseSlot(kind string, id int64, requestID stri
 	data.Count = len(data.Slots)
 
 	if data.Count == 0 {
-		os.Remove(dataPath)
+		if err := os.Remove(dataPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove slot data: %w", err)
+		}
 	} else {
-		f.writeSlotData(dataPath, &data)
+		if err := f.writeSlotData(dataPath, &data); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (f *FileConcurrencyCache) writeSlotData(path string, data *slotFileData) {
-	raw, _ := json.Marshal(data)
-	os.WriteFile(path, raw, 0644)
+func (f *FileConcurrencyCache) writeSlotData(path string, data *slotFileData) error {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("marshal slot data: %w", err)
+	}
+	if err := os.WriteFile(path, raw, 0644); err != nil {
+		return fmt.Errorf("write slot data: %w", err)
+	}
+	return nil
 }
 
 func (f *FileConcurrencyCache) updateMemory(key, requestID string, now time.Time) {
@@ -229,8 +247,10 @@ func (f *FileConcurrencyCache) updateMemory(key, requestID string, now time.Time
 	if f.slotOwners[key] == nil {
 		f.slotOwners[key] = make(map[string]struct{})
 	}
-	f.slotOwners[key][requestID] = struct{}{}
-	f.slotCounts[key]++
+	if _, exists := f.slotOwners[key][requestID]; !exists {
+		f.slotOwners[key][requestID] = struct{}{}
+		f.slotCounts[key]++
+	}
 	f.slotLastSeen[key] = now
 }
 
@@ -255,10 +275,10 @@ func (f *FileConcurrencyCache) CleanupExpiredSlots() error {
 		}
 		// If file hasn't been modified in ttl*2, consider it stale
 		if info.ModTime().Before(cutoff) {
-			os.Remove(filepath.Join(f.lockDir, entry.Name()))
+			_ = os.Remove(filepath.Join(f.lockDir, entry.Name()))
 			// Also remove corresponding lock file
 			lockName := entry.Name()[:len(entry.Name())-5] + ".lock"
-			os.Remove(filepath.Join(f.lockDir, lockName))
+			_ = os.Remove(filepath.Join(f.lockDir, lockName))
 		}
 	}
 	return nil

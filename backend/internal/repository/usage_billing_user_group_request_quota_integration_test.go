@@ -44,12 +44,12 @@ func TestUsageBillingRepositoryApply_DeduplicatesUserGroupRequestQuotaBilling(t 
 
 	requestID := uuid.NewString()
 	cmd := &service.UsageBillingCommand{
-		RequestID:                  requestID,
-		APIKeyID:                   apiKey.ID,
-		UserID:                     user.ID,
+		RequestID:                    requestID,
+		APIKeyID:                     apiKey.ID,
+		UserID:                       user.ID,
 		UserGroupRequestQuotaGroupID: group.ID,
-		UserGroupRequestQuotaCount: 1,
-		RequestPayloadHash:         "payload-hash-" + uuid.NewString(),
+		UserGroupRequestQuotaCount:   1,
+		RequestPayloadHash:           "payload-hash-" + uuid.NewString(),
 	}
 
 	result1, err := repo.Apply(ctx, cmd)

@@ -20,7 +20,9 @@ type tempUnschedTraceRepo struct {
 	until   time.Time
 }
 
-func (r *tempUnschedTraceRepo) GetByID(context.Context, int64) (*Account, error) { return r.account, nil }
+func (r *tempUnschedTraceRepo) GetByID(context.Context, int64) (*Account, error) {
+	return r.account, nil
+}
 func (r *tempUnschedTraceRepo) SetTempUnschedulable(_ context.Context, _ int64, until time.Time, reason string) error {
 	r.until = until
 	r.reason = reason
@@ -64,15 +66,15 @@ func TestRateLimitService_TryAccountThrottle_PersistsRequestTrace(t *testing.T) 
 		localCache: []*cachedThrottleRule{
 			{
 				AccountThrottleRule: &model.AccountThrottleRule{
-					ID:          1,
-					Name:        "xunfei",
-					Enabled:     true,
-					Platforms:   []string{"anthropic"},
-					ErrorCodes:  []int{},
-					Keywords:    []string{"Xunfei claude request failed with Sid"},
-					MatchMode:   model.ThrottleMatchContains,
-					TriggerMode: model.ThrottleTriggerImmediate,
-					ActionType:  model.ThrottleActionScheduledRecovery,
+					ID:                1,
+					Name:              "xunfei",
+					Enabled:           true,
+					Platforms:         []string{"anthropic"},
+					ErrorCodes:        []int{},
+					Keywords:          []string{"Xunfei claude request failed with Sid"},
+					MatchMode:         model.ThrottleMatchContains,
+					TriggerMode:       model.ThrottleTriggerImmediate,
+					ActionType:        model.ThrottleActionScheduledRecovery,
 					ActionRecoverHour: 0,
 				},
 				lowerKeywords:  []string{"xunfei claude request failed with sid"},

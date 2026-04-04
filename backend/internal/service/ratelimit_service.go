@@ -55,14 +55,6 @@ type geminiUsageTotalsBatchProvider interface {
 
 const geminiPrecheckCacheTTL = time.Minute
 
-// upstreamHealthCircuitBreakerTTL 健康分数门控的短期熔断时长。
-const upstreamHealthCircuitBreakerTTL = 30 * time.Second
-
-// upstreamHealthCircuitBreakerThreshold 触发熔断的健康分数阈值。
-// 健康分 0-100，低于等于此值说明账号在 5 分钟窗口内失败率过高。
-// healthMinSamples=3 保证样本不足时不误触发（返回 100）。
-const upstreamHealthCircuitBreakerThreshold = 50
-
 const anthropic429FallbackCooldown = 30 * time.Second
 
 var anthropic429BodyKeywords = []string{

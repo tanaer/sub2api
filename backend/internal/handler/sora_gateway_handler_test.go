@@ -462,10 +462,10 @@ func TestSoraGatewayHandler_ChatCompletions(t *testing.T) {
 		deferredService,
 		nil,
 		testutil.StubSessionLimitCache{},
-		nil, // rpmCache
-		nil, // digestStore
-		nil, // settingService
-		nil, // tlsFPProfileService
+		nil,                            // rpmCache
+		nil,                            // digestStore
+		nil,                            // settingService
+		nil,                            // tlsFPProfileService
 		service.NewFailoverPolicy(nil), // failoverPolicy
 	)
 

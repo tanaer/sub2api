@@ -105,19 +105,24 @@ func TestBuildToolLoopNextRequest(t *testing.T) {
 	var req map[string]any
 	require.NoError(t, json.Unmarshal(out, &req))
 
-	messages := req["messages"].([]any)
+	messages, ok := req["messages"].([]any)
+	require.True(t, ok)
 	require.Len(t, messages, 3) // original user + assistant + tool_result
 
 	// Check assistant message
-	assistantMsg := messages[1].(map[string]any)
+	assistantMsg, ok := messages[1].(map[string]any)
+	require.True(t, ok)
 	require.Equal(t, "assistant", assistantMsg["role"])
 
 	// Check user message with tool_result
-	userMsg := messages[2].(map[string]any)
+	userMsg, ok := messages[2].(map[string]any)
+	require.True(t, ok)
 	require.Equal(t, "user", userMsg["role"])
-	toolResults := userMsg["content"].([]any)
+	toolResults, ok := userMsg["content"].([]any)
+	require.True(t, ok)
 	require.Len(t, toolResults, 1)
-	tr := toolResults[0].(map[string]any)
+	tr, ok := toolResults[0].(map[string]any)
+	require.True(t, ok)
 	require.Equal(t, "tool_result", tr["type"])
 	require.Equal(t, "call_1", tr["tool_use_id"])
 	require.Contains(t, tr["content"], "Breaking news")
@@ -143,9 +148,13 @@ func TestBuildToolLoopNextRequest_ErrorResult(t *testing.T) {
 	var req map[string]any
 	require.NoError(t, json.Unmarshal(out, &req))
 
-	messages := req["messages"].([]any)
-	userMsg := messages[2].(map[string]any)
-	toolResults := userMsg["content"].([]any)
-	tr := toolResults[0].(map[string]any)
+	messages, ok := req["messages"].([]any)
+	require.True(t, ok)
+	userMsg, ok := messages[2].(map[string]any)
+	require.True(t, ok)
+	toolResults, ok := userMsg["content"].([]any)
+	require.True(t, ok)
+	tr, ok := toolResults[0].(map[string]any)
+	require.True(t, ok)
 	require.Equal(t, true, tr["is_error"])
 }

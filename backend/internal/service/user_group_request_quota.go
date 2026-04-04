@@ -13,15 +13,15 @@ type UserGroupRequestQuota struct {
 
 // UserGroupRequestQuotaGrant 表示单笔发放且会过期的分组次数额度。
 type UserGroupRequestQuotaGrant struct {
-	ID                int64      `json:"id"`
-	UserID            int64      `json:"user_id"`
-	GroupID           int64      `json:"group_id"`
-	RedeemCodeID      *int64     `json:"redeem_code_id,omitempty"`
-	RequestQuotaTotal int64      `json:"request_quota_total"`
-	RequestQuotaUsed  int64      `json:"request_quota_used"`
-	ExpiresAt         time.Time  `json:"expires_at"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID                int64     `json:"id"`
+	UserID            int64     `json:"user_id"`
+	GroupID           int64     `json:"group_id"`
+	RedeemCodeID      *int64    `json:"redeem_code_id,omitempty"`
+	RequestQuotaTotal int64     `json:"request_quota_total"`
+	RequestQuotaUsed  int64     `json:"request_quota_used"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // Remaining 返回剩余可用次数。

@@ -40,12 +40,12 @@ func (s *GatewayService) preProcessMiniMaxImages(ctx context.Context, body []byt
 
 	// 收集所有需要处理的 image block 引用
 	type imageRef struct {
-		msgIdx, blockIdx       int
-		innerIdx               int // -1 表示非嵌套
-		source                 map[string]any
-		prompt                 string
-		replaceTarget          *[]any // 指向需要替换的 content 数组
-		replaceIdx             int    // 在 replaceTarget 中的索引
+		msgIdx, blockIdx int
+		innerIdx         int // -1 表示非嵌套
+		source           map[string]any
+		prompt           string
+		replaceTarget    *[]any // 指向需要替换的 content 数组
+		replaceIdx       int    // 在 replaceTarget 中的索引
 	}
 
 	var refs []imageRef

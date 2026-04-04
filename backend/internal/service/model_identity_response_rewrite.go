@@ -188,10 +188,7 @@ func rewriteResponsesStreamEventText(evt *apicompat.ResponsesStreamEvent, reques
 		return false
 	}
 
-	changed := false
-	if rewriteResponsesResponseText(evt.Response, requestedModel, replyTemplate, checkIdentity) {
-		changed = true
-	}
+	changed := rewriteResponsesResponseText(evt.Response, requestedModel, replyTemplate, checkIdentity)
 	if evt.Item != nil && rewriteResponsesOutputTextPartsInPlace(evt.Item, requestedModel, replyTemplate, checkIdentity) {
 		changed = true
 	}

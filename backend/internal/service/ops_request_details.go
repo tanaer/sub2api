@@ -39,10 +39,10 @@ type OpsRequestDetail struct {
 
 	Stream bool `json:"stream"`
 
-	InputTokens          *int `json:"input_tokens,omitempty"`
-	OutputTokens         *int `json:"output_tokens,omitempty"`
-	CacheCreationTokens  *int `json:"cache_creation_tokens,omitempty"`
-	CacheReadTokens      *int `json:"cache_read_tokens,omitempty"`
+	InputTokens         *int `json:"input_tokens,omitempty"`
+	OutputTokens        *int `json:"output_tokens,omitempty"`
+	CacheCreationTokens *int `json:"cache_creation_tokens,omitempty"`
+	CacheReadTokens     *int `json:"cache_read_tokens,omitempty"`
 }
 
 type OpsRequestDetailFilter struct {

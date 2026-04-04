@@ -878,7 +878,7 @@ type AntigravityGatewayService struct {
 	cache             GatewayCache // 用于模型级限流时清除粘性会话绑定
 	schedulerSnapshot *SchedulerSnapshotService
 	internal500Cache  Internal500CounterCache // INTERNAL 500 渐进惩罚计数器
-	failoverPolicy   *FailoverPolicy
+	failoverPolicy    *FailoverPolicy
 }
 
 func NewAntigravityGatewayService(
@@ -901,7 +901,7 @@ func NewAntigravityGatewayService(
 		cache:             cache,
 		schedulerSnapshot: schedulerSnapshot,
 		internal500Cache:  internal500Cache,
-		failoverPolicy:   failoverPolicy,
+		failoverPolicy:    failoverPolicy,
 	}
 }
 

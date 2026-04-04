@@ -1394,10 +1394,13 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 					_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 				}
 				cbOK := func() bool {
-					if s.rateLimitService == nil { return true }
-					cb := s.rateLimitService.CircuitBreaker(); return cb == nil || !cb.IsTripped(accountID)
+					if s.rateLimitService == nil {
+						return true
+					}
+					cb := s.rateLimitService.CircuitBreaker()
+					return cb == nil || !cb.IsTripped(accountID)
 				}
-			if !clearSticky && cbOK() && account.IsSchedulable() && account.IsOpenAI() &&
+				if !clearSticky && cbOK() && account.IsSchedulable() && account.IsOpenAI() &&
 					(requestedModel == "" || account.IsModelSupported(requestedModel)) {
 					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel)
 					if account == nil {
@@ -2036,7 +2039,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	modelRetryChain := buildModelRetryChain(account, originalModel)
 	modelRetryIndex := 0
 	if len(modelRetryChain) > 0 {
-		reqBody, upstreamModel, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])
+		reqBody, _, err = applyOpenAIModelCandidateToRequestMap(reqBody, modelRetryChain[0])
 		if err != nil {
 			return nil, err
 		}

@@ -64,14 +64,6 @@ func buildModelIdentityReplyForUserText(requestedModel, replyTemplate, text stri
 	return buildModelIdentityReply(requestedModel, replyTemplate)
 }
 
-func buildModelIdentityReplyForChatMessages(requestedModel, replyTemplate string, messages []apicompat.ChatMessage) string {
-	return buildModelIdentityReplyForUserText(requestedModel, replyTemplate, extractLastUserTextFromChatMessages(messages))
-}
-
-func buildModelIdentityReplyForAnthropicMessages(requestedModel, replyTemplate string, messages []apicompat.AnthropicMessage) string {
-	return buildModelIdentityReplyForUserText(requestedModel, replyTemplate, extractLastUserTextFromAnthropicMessages(messages))
-}
-
 func injectModelIdentityInstruction(reqBody map[string]any, requestedModel, replyTemplate string) bool {
 	if reqBody == nil {
 		return false

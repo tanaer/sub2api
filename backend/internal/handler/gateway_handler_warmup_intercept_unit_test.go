@@ -148,19 +148,19 @@ func newTestGatewayHandler(t *testing.T, group *service.Group, accounts []*servi
 		nil, // cache (disable sticky)
 		nil, // cfg
 		schedulerSnapshot,
-		nil, // concurrencyService (disable load-aware; tryAcquire always acquired)
-		nil, // billingService
-		nil, // rateLimitService
-		nil, // billingCacheService
-		nil, // identityService
-		nil, // httpUpstream
-		nil, // deferredService
-		nil, // claudeTokenProvider
-		nil, // sessionLimitCache
-		nil, // rpmCache
-		nil, // digestStore
-		nil, // settingService
-		nil, // tlsFPProfileService
+		nil,                            // concurrencyService (disable load-aware; tryAcquire always acquired)
+		nil,                            // billingService
+		nil,                            // rateLimitService
+		nil,                            // billingCacheService
+		nil,                            // identityService
+		nil,                            // httpUpstream
+		nil,                            // deferredService
+		nil,                            // claudeTokenProvider
+		nil,                            // sessionLimitCache
+		nil,                            // rpmCache
+		nil,                            // digestStore
+		nil,                            // settingService
+		nil,                            // tlsFPProfileService
 		service.NewFailoverPolicy(nil), // failoverPolicy
 	)
 

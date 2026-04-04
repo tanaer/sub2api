@@ -23,6 +23,7 @@ func ProvideConcurrencyCache(rdb *redis.Client, cfg *config.Config) service.Conc
 		waitTTLSeconds = cfg.Gateway.ConcurrencySlotTTLMinutes * 60
 	}
 	health := InitRedisHealth(rdb)
+	service.SetRedisHealthStatus(health)
 	return NewConcurrencyCacheWithHealth(rdb, cfg.Gateway.ConcurrencySlotTTLMinutes, waitTTLSeconds, health, cfg.Gateway.ConcurrencySlotTTLMinutes)
 }
 

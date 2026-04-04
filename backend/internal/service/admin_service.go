@@ -1016,7 +1016,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
 		ModelRouting:                    input.ModelRouting,
 		ModelAliases:                    input.ModelAliases,
-		FallbackModel:                  input.FallbackModel,
+		FallbackModel:                   input.FallbackModel,
 		MCPXMLInject:                    mcpXMLInject,
 		SupportedModelScopes:            input.SupportedModelScopes,
 		SoraStorageQuotaBytes:           input.SoraStorageQuotaBytes,

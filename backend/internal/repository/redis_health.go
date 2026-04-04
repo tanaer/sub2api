@@ -32,7 +32,6 @@ type RedisHealth struct {
 	rdb *redis.Client
 
 	available atomic.Bool
-	mu        sync.RWMutex
 	lastError atomic.Value // stores string
 	downSince atomic.Value // stores time.Time (zero = not down)
 
@@ -70,7 +69,9 @@ func (h *RedisHealth) Available() bool {
 // LastError returns the last error string (empty if healthy).
 func (h *RedisHealth) LastError() string {
 	if v := h.lastError.Load(); v != nil {
-		return v.(string)
+		if s, ok := v.(string); ok {
+			return s
+		}
 	}
 	return ""
 }
@@ -78,7 +79,9 @@ func (h *RedisHealth) LastError() string {
 // DownSince returns when Redis became unavailable (zero value if currently up).
 func (h *RedisHealth) DownSince() time.Time {
 	if v := h.downSince.Load(); v != nil {
-		return v.(time.Time)
+		if ts, ok := v.(time.Time); ok {
+			return ts
+		}
 	}
 	return time.Time{}
 }

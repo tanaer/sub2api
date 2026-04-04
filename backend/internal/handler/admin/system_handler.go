@@ -9,7 +9,6 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/sysutil"
-	"github.com/Wei-Shaw/sub2api/internal/repository"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -42,14 +41,14 @@ func (h *SystemHandler) GetVersion(c *gin.Context) {
 // GetRedisHealthStatus returns Redis availability and degradation info.
 // GET /api/v1/admin/system/redis
 func (h *SystemHandler) GetRedisHealthStatus(c *gin.Context) {
-	health := repository.GetRedisHealth()
+	health := service.GetRedisHealthStatus()
 	if health == nil {
 		response.Success(c, gin.H{
-			"available":       false,
-			"initialized":      false,
-			"degraded_mode":    true,
-			"message":          "Redis health monitor not initialized — concurrency checks unavailable",
-			"down_duration":    "0s",
+			"available":     false,
+			"initialized":   false,
+			"degraded_mode": true,
+			"message":       "Redis health monitor not initialized — concurrency checks unavailable",
+			"down_duration": "0s",
 		})
 		return
 	}
@@ -61,12 +60,12 @@ func (h *SystemHandler) GetRedisHealthStatus(c *gin.Context) {
 	}
 
 	resp := gin.H{
-		"available":       health.Available(),
-		"initialized":      true,
-		"status":           status,
-		"degraded_mode":    degraded,
-		"down_since":       nil,
-		"down_duration":    "0s",
+		"available":     health.Available(),
+		"initialized":   true,
+		"status":        status,
+		"degraded_mode": degraded,
+		"down_since":    nil,
+		"down_duration": "0s",
 	}
 
 	if degraded {

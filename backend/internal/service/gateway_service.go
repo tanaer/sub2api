@@ -2745,29 +2745,6 @@ func sortAccountsWithHealthWeighting(accounts []*Account, preferOAuth bool, heal
 	shuffleWithinPriorityAndLastUsed(accounts, preferOAuth)
 }
 
-func sortAccountsByPriorityAndLastUsed(accounts []*Account, preferOAuth bool) {
-	sort.SliceStable(accounts, func(i, j int) bool {
-		a, b := accounts[i], accounts[j]
-		if a.Priority != b.Priority {
-			return a.Priority < b.Priority
-		}
-		switch {
-		case a.LastUsedAt == nil && b.LastUsedAt != nil:
-			return true
-		case a.LastUsedAt != nil && b.LastUsedAt == nil:
-			return false
-		case a.LastUsedAt == nil && b.LastUsedAt == nil:
-			if preferOAuth && a.Type != b.Type {
-				return a.Type == AccountTypeOAuth
-			}
-			return false
-		default:
-			return a.LastUsedAt.Before(*b.LastUsedAt)
-		}
-	})
-	shuffleWithinPriorityAndLastUsed(accounts, preferOAuth)
-}
-
 // shuffleWithinSortGroups 对排序后的 accountWithLoad 切片，按 (Priority, LoadRate, LastUsedAt) 分组后组内随机打乱。
 // 防止并发请求读取同一快照时，确定性排序导致所有请求命中相同账号。
 func shuffleWithinSortGroups(accounts []accountWithLoad) {
@@ -8081,10 +8058,6 @@ func (p *postUsageBillingParams) usesRequestQuotaBilling() bool {
 
 func (p *postUsageBillingParams) usesUserGroupRequestQuotaBilling() bool {
 	return p != nil && p.APIKey != nil && p.APIKey.EffectiveRequestQuotaSource() == "user_group" && p.APIKey.HasRemainingEffectiveRequestQuota()
-}
-
-func (p *postUsageBillingParams) usesAPIKeyRequestQuotaBilling() bool {
-	return p != nil && p.APIKey != nil && p.APIKey.EffectiveRequestQuotaSource() == "api_key" && p.APIKey.HasRemainingEffectiveRequestQuota()
 }
 
 // postUsageBilling 统一处理使用量记录后的扣费逻辑：

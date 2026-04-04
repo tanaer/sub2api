@@ -2,7 +2,6 @@ package admin
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -44,15 +43,6 @@ func TestAdminAPIKeyHandler_UpdateRequestQuota(t *testing.T) {
 	require.Equal(t, int64(10), resp.Data.ID)
 	require.Equal(t, int64(15), resp.Data.RequestQuota)
 	require.Equal(t, int64(0), resp.Data.RequestQuotaUsed)
-}
-
-type failingUpdateRequestQuotaService struct {
-	*stubAdminService
-	err error
-}
-
-func (f *failingUpdateRequestQuotaService) AdminUpdateAPIKeyRequestQuota(_ context.Context, _ int64, _ *int64, _ bool) (*service.APIKey, error) {
-	return nil, f.err
 }
 
 func TestAdminAPIKeyHandler_UpdateRequestQuota_InvalidJSON(t *testing.T) {

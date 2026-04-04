@@ -95,7 +95,7 @@ func (p *FailoverPolicy) refresh() {
 		p.storeCache(defaultFailoverCodes, failoverPolicyCacheTTL)
 		return
 	}
-	failoverPolicySF.Do("failover_policy", func() (any, error) {
+	_, _, _ = failoverPolicySF.Do("failover_policy", func() (any, error) {
 		if cached, ok := failoverPolicyCache.Load().(*cachedFailoverPolicy); ok && cached != nil {
 			if time.Now().UnixNano() < cached.expiresAt {
 				return nil, nil

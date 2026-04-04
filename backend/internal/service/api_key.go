@@ -46,14 +46,14 @@ type APIKey struct {
 	Group               *Group
 
 	// Quota fields
-	Quota            float64    // Quota limit in USD (0 = unlimited)
-	QuotaUsed        float64    // Used quota amount
-	RequestQuota     int64      // 按次配额总量（0 = 不启用）
-	RequestQuotaUsed int64      // 已使用次数
+	Quota            float64 // Quota limit in USD (0 = unlimited)
+	QuotaUsed        float64 // Used quota amount
+	RequestQuota     int64   // 按次配额总量（0 = 不启用）
+	RequestQuotaUsed int64   // 已使用次数
 	// 用户+分组维度按次配额，优先级高于 API Key 自身按次配额。
 	UserGroupRequestQuota     int64
 	UserGroupRequestQuotaUsed int64
-	ExpiresAt        *time.Time // Expiration time (nil = never expires)
+	ExpiresAt                 *time.Time // Expiration time (nil = never expires)
 
 	// Rate limit fields
 	RateLimit5h   float64    // Rate limit in USD per 5h (0 = unlimited)
