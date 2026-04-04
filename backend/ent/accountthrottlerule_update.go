@@ -246,6 +246,27 @@ func (_u *AccountThrottleRuleUpdate) AddActionRecoverHour(v int) *AccountThrottl
 	return _u
 }
 
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (_u *AccountThrottleRuleUpdate) SetRecoveryCheckInterval(v int) *AccountThrottleRuleUpdate {
+	_u.mutation.ResetRecoveryCheckInterval()
+	_u.mutation.SetRecoveryCheckInterval(v)
+	return _u
+}
+
+// SetNillableRecoveryCheckInterval sets the "recovery_check_interval" field if the given value is not nil.
+func (_u *AccountThrottleRuleUpdate) SetNillableRecoveryCheckInterval(v *int) *AccountThrottleRuleUpdate {
+	if v != nil {
+		_u.SetRecoveryCheckInterval(*v)
+	}
+	return _u
+}
+
+// AddRecoveryCheckInterval adds value to the "recovery_check_interval" field.
+func (_u *AccountThrottleRuleUpdate) AddRecoveryCheckInterval(v int) *AccountThrottleRuleUpdate {
+	_u.mutation.AddRecoveryCheckInterval(v)
+	return _u
+}
+
 // SetPlatforms sets the "platforms" field.
 func (_u *AccountThrottleRuleUpdate) SetPlatforms(v []string) *AccountThrottleRuleUpdate {
 	_u.mutation.SetPlatforms(v)
@@ -431,6 +452,12 @@ func (_u *AccountThrottleRuleUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if value, ok := _u.mutation.AddedActionRecoverHour(); ok {
 		_spec.AddField(accountthrottlerule.FieldActionRecoverHour, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RecoveryCheckInterval(); ok {
+		_spec.SetField(accountthrottlerule.FieldRecoveryCheckInterval, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecoveryCheckInterval(); ok {
+		_spec.AddField(accountthrottlerule.FieldRecoveryCheckInterval, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Platforms(); ok {
 		_spec.SetField(accountthrottlerule.FieldPlatforms, field.TypeJSON, value)
@@ -686,6 +713,27 @@ func (_u *AccountThrottleRuleUpdateOne) AddActionRecoverHour(v int) *AccountThro
 	return _u
 }
 
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (_u *AccountThrottleRuleUpdateOne) SetRecoveryCheckInterval(v int) *AccountThrottleRuleUpdateOne {
+	_u.mutation.ResetRecoveryCheckInterval()
+	_u.mutation.SetRecoveryCheckInterval(v)
+	return _u
+}
+
+// SetNillableRecoveryCheckInterval sets the "recovery_check_interval" field if the given value is not nil.
+func (_u *AccountThrottleRuleUpdateOne) SetNillableRecoveryCheckInterval(v *int) *AccountThrottleRuleUpdateOne {
+	if v != nil {
+		_u.SetRecoveryCheckInterval(*v)
+	}
+	return _u
+}
+
+// AddRecoveryCheckInterval adds value to the "recovery_check_interval" field.
+func (_u *AccountThrottleRuleUpdateOne) AddRecoveryCheckInterval(v int) *AccountThrottleRuleUpdateOne {
+	_u.mutation.AddRecoveryCheckInterval(v)
+	return _u
+}
+
 // SetPlatforms sets the "platforms" field.
 func (_u *AccountThrottleRuleUpdateOne) SetPlatforms(v []string) *AccountThrottleRuleUpdateOne {
 	_u.mutation.SetPlatforms(v)
@@ -901,6 +949,12 @@ func (_u *AccountThrottleRuleUpdateOne) sqlSave(ctx context.Context) (_node *Acc
 	}
 	if value, ok := _u.mutation.AddedActionRecoverHour(); ok {
 		_spec.AddField(accountthrottlerule.FieldActionRecoverHour, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RecoveryCheckInterval(); ok {
+		_spec.SetField(accountthrottlerule.FieldRecoveryCheckInterval, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRecoveryCheckInterval(); ok {
+		_spec.AddField(accountthrottlerule.FieldRecoveryCheckInterval, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Platforms(); ok {
 		_spec.SetField(accountthrottlerule.FieldPlatforms, field.TypeJSON, value)

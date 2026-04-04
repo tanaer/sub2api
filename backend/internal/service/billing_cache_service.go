@@ -645,17 +645,17 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 		return ErrBillingServiceUnavailable
 	}
 
-	// 判断计费模式
-	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
+	// 判断计费模式（不再依赖 group.subscription_type，直接看有没有订阅）
+	hasSubscription := subscription != nil
 	useRequestQuotaBilling := apiKey != nil && apiKey.HasRemainingEffectiveRequestQuota()
 
-	if isSubscriptionMode && subscription.HasRequestQuota() {
+	if hasSubscription && subscription.HasRequestQuota() {
 		// 按次订阅：检查次数未耗尽（不检查 USD 限额和余额）
 		if subscription.IsRequestQuotaExhausted() {
 			return ErrSubscriptionRequestQuotaExhausted
 		}
 	} else if !useRequestQuotaBilling {
-		if isSubscriptionMode {
+		if hasSubscription {
 			if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
 				return err
 			}

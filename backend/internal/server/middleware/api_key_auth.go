@@ -143,24 +143,18 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		skipBilling := c.Request.URL.Path == "/v1/usage"
 		hasRemainingRequestQuota := apiKey.HasRemainingEffectiveRequestQuota()
 
+		// 尝试加载订阅（不再依赖 group.subscription_type）
 		var subscription *service.UserSubscription
-		isSubscriptionType := apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
-
-		if isSubscriptionType && subscriptionService != nil {
+		if subscriptionService != nil && apiKey.Group != nil {
 			sub, subErr := subscriptionService.GetActiveSubscription(
 				c.Request.Context(),
 				apiKey.User.ID,
 				apiKey.Group.ID,
 			)
-			if subErr != nil {
-				if !skipBilling && !hasRemainingRequestQuota {
-					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", "No active subscription found for this group")
-					return
-				}
-				// skipBilling 或按次配额可用时：订阅不存在也放行，handler 会返回可用的数据
-			} else {
+			if subErr == nil {
 				subscription = sub
 			}
+			// 订阅不存在不拦截，后续由计费逻辑决定走余额还是拒绝
 		}
 
 		// ── 6. 计费执行（skipBilling 时整块跳过） ────────────────────

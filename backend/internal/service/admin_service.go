@@ -2270,13 +2270,9 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		if input.GroupID == nil {
 			return nil, errors.New("group_id is required for subscription type")
 		}
-		// 验证分组存在且为订阅类型
-		group, err := s.groupRepo.GetByID(ctx, *input.GroupID)
-		if err != nil {
+		// 验证分组存在（不再要求 subscription_type）
+		if _, err := s.groupRepo.GetByID(ctx, *input.GroupID); err != nil {
 			return nil, fmt.Errorf("group not found: %w", err)
-		}
-		if !group.IsSubscriptionType() {
-			return nil, errors.New("group must be subscription type")
 		}
 	}
 	if input.Type == RedeemTypeGroupRequestQuota {

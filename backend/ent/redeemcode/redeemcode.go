@@ -34,10 +34,14 @@ const (
 	FieldGroupID = "group_id"
 	// FieldValidityDays holds the string denoting the validity_days field in the database.
 	FieldValidityDays = "validity_days"
+	// FieldPlanID holds the string denoting the plan_id field in the database.
+	FieldPlanID = "plan_id"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
 	EdgeGroup = "group"
+	// EdgePlan holds the string denoting the plan edge name in mutations.
+	EdgePlan = "plan"
 	// Table holds the table name of the redeemcode in the database.
 	Table = "redeem_codes"
 	// UserTable is the table that holds the user relation/edge.
@@ -54,6 +58,13 @@ const (
 	GroupInverseTable = "groups"
 	// GroupColumn is the table column denoting the group relation/edge.
 	GroupColumn = "group_id"
+	// PlanTable is the table that holds the plan relation/edge.
+	PlanTable = "redeem_codes"
+	// PlanInverseTable is the table name for the SubscriptionPlan entity.
+	// It exists in this package in order to avoid circular dependency with the "subscriptionplan" package.
+	PlanInverseTable = "subscription_plans"
+	// PlanColumn is the table column denoting the plan relation/edge.
+	PlanColumn = "plan_id"
 )
 
 // Columns holds all SQL columns for redeemcode fields.
@@ -69,6 +80,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldGroupID,
 	FieldValidityDays,
+	FieldPlanID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -158,6 +170,11 @@ func ByValidityDays(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldValidityDays, opts...).ToFunc()
 }
 
+// ByPlanID orders the results by the plan_id field.
+func ByPlanID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPlanID, opts...).ToFunc()
+}
+
 // ByUserField orders the results by user field.
 func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -169,6 +186,13 @@ func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 func ByGroupField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newGroupStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByPlanField orders the results by plan field.
+func ByPlanField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPlanStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newUserStep() *sqlgraph.Step {
@@ -183,5 +207,12 @@ func newGroupStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(GroupInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, GroupTable, GroupColumn),
+	)
+}
+func newPlanStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PlanInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, PlanTable, PlanColumn),
 	)
 }

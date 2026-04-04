@@ -46,6 +46,8 @@ type AccountThrottleRule struct {
 	ActionDuration int `json:"action_duration,omitempty"`
 	// ActionRecoverHour holds the value of the "action_recover_hour" field.
 	ActionRecoverHour int `json:"action_recover_hour,omitempty"`
+	// RecoveryCheckInterval holds the value of the "recovery_check_interval" field.
+	RecoveryCheckInterval int `json:"recovery_check_interval,omitempty"`
 	// Platforms holds the value of the "platforms" field.
 	Platforms []string `json:"platforms,omitempty"`
 	// Description holds the value of the "description" field.
@@ -62,7 +64,7 @@ func (*AccountThrottleRule) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case accountthrottlerule.FieldEnabled:
 			values[i] = new(sql.NullBool)
-		case accountthrottlerule.FieldID, accountthrottlerule.FieldPriority, accountthrottlerule.FieldAccumulatedCount, accountthrottlerule.FieldAccumulatedWindow, accountthrottlerule.FieldActionDuration, accountthrottlerule.FieldActionRecoverHour:
+		case accountthrottlerule.FieldID, accountthrottlerule.FieldPriority, accountthrottlerule.FieldAccumulatedCount, accountthrottlerule.FieldAccumulatedWindow, accountthrottlerule.FieldActionDuration, accountthrottlerule.FieldActionRecoverHour, accountthrottlerule.FieldRecoveryCheckInterval:
 			values[i] = new(sql.NullInt64)
 		case accountthrottlerule.FieldName, accountthrottlerule.FieldMatchMode, accountthrottlerule.FieldTriggerMode, accountthrottlerule.FieldActionType, accountthrottlerule.FieldDescription:
 			values[i] = new(sql.NullString)
@@ -177,6 +179,12 @@ func (_m *AccountThrottleRule) assignValues(columns []string, values []any) erro
 			} else if value.Valid {
 				_m.ActionRecoverHour = int(value.Int64)
 			}
+		case accountthrottlerule.FieldRecoveryCheckInterval:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field recovery_check_interval", values[i])
+			} else if value.Valid {
+				_m.RecoveryCheckInterval = int(value.Int64)
+			}
 		case accountthrottlerule.FieldPlatforms:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field platforms", values[i])
@@ -269,6 +277,9 @@ func (_m *AccountThrottleRule) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("action_recover_hour=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ActionRecoverHour))
+	builder.WriteString(", ")
+	builder.WriteString("recovery_check_interval=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RecoveryCheckInterval))
 	builder.WriteString(", ")
 	builder.WriteString("platforms=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Platforms))

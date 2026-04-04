@@ -21,6 +21,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/schema"
 	"github.com/Wei-Shaw/sub2api/ent/securitysecret"
 	"github.com/Wei-Shaw/sub2api/ent/setting"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
 	"github.com/Wei-Shaw/sub2api/ent/tlsfingerprintprofile"
 	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -853,6 +854,61 @@ func init() {
 	setting.DefaultUpdatedAt = settingDescUpdatedAt.Default.(func() time.Time)
 	// setting.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	setting.UpdateDefaultUpdatedAt = settingDescUpdatedAt.UpdateDefault.(func() time.Time)
+	subscriptionplanMixin := schema.SubscriptionPlan{}.Mixin()
+	subscriptionplanMixinHooks1 := subscriptionplanMixin[1].Hooks()
+	subscriptionplan.Hooks[0] = subscriptionplanMixinHooks1[0]
+	subscriptionplanMixinInters1 := subscriptionplanMixin[1].Interceptors()
+	subscriptionplan.Interceptors[0] = subscriptionplanMixinInters1[0]
+	subscriptionplanMixinFields0 := subscriptionplanMixin[0].Fields()
+	_ = subscriptionplanMixinFields0
+	subscriptionplanFields := schema.SubscriptionPlan{}.Fields()
+	_ = subscriptionplanFields
+	// subscriptionplanDescCreatedAt is the schema descriptor for created_at field.
+	subscriptionplanDescCreatedAt := subscriptionplanMixinFields0[0].Descriptor()
+	// subscriptionplan.DefaultCreatedAt holds the default value on creation for the created_at field.
+	subscriptionplan.DefaultCreatedAt = subscriptionplanDescCreatedAt.Default.(func() time.Time)
+	// subscriptionplanDescUpdatedAt is the schema descriptor for updated_at field.
+	subscriptionplanDescUpdatedAt := subscriptionplanMixinFields0[1].Descriptor()
+	// subscriptionplan.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	subscriptionplan.DefaultUpdatedAt = subscriptionplanDescUpdatedAt.Default.(func() time.Time)
+	// subscriptionplan.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	subscriptionplan.UpdateDefaultUpdatedAt = subscriptionplanDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// subscriptionplanDescName is the schema descriptor for name field.
+	subscriptionplanDescName := subscriptionplanFields[0].Descriptor()
+	// subscriptionplan.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	subscriptionplan.NameValidator = subscriptionplanDescName.Validators[0].(func(string) error)
+	// subscriptionplanDescBillingMode is the schema descriptor for billing_mode field.
+	subscriptionplanDescBillingMode := subscriptionplanFields[3].Descriptor()
+	// subscriptionplan.DefaultBillingMode holds the default value on creation for the billing_mode field.
+	subscriptionplan.DefaultBillingMode = subscriptionplanDescBillingMode.Default.(string)
+	// subscriptionplan.BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
+	subscriptionplan.BillingModeValidator = subscriptionplanDescBillingMode.Validators[0].(func(string) error)
+	// subscriptionplanDescRequestQuota is the schema descriptor for request_quota field.
+	subscriptionplanDescRequestQuota := subscriptionplanFields[4].Descriptor()
+	// subscriptionplan.DefaultRequestQuota holds the default value on creation for the request_quota field.
+	subscriptionplan.DefaultRequestQuota = subscriptionplanDescRequestQuota.Default.(int64)
+	// subscriptionplanDescDailyLimitUsd is the schema descriptor for daily_limit_usd field.
+	subscriptionplanDescDailyLimitUsd := subscriptionplanFields[5].Descriptor()
+	// subscriptionplan.DefaultDailyLimitUsd holds the default value on creation for the daily_limit_usd field.
+	subscriptionplan.DefaultDailyLimitUsd = subscriptionplanDescDailyLimitUsd.Default.(float64)
+	// subscriptionplanDescWeeklyLimitUsd is the schema descriptor for weekly_limit_usd field.
+	subscriptionplanDescWeeklyLimitUsd := subscriptionplanFields[6].Descriptor()
+	// subscriptionplan.DefaultWeeklyLimitUsd holds the default value on creation for the weekly_limit_usd field.
+	subscriptionplan.DefaultWeeklyLimitUsd = subscriptionplanDescWeeklyLimitUsd.Default.(float64)
+	// subscriptionplanDescMonthlyLimitUsd is the schema descriptor for monthly_limit_usd field.
+	subscriptionplanDescMonthlyLimitUsd := subscriptionplanFields[7].Descriptor()
+	// subscriptionplan.DefaultMonthlyLimitUsd holds the default value on creation for the monthly_limit_usd field.
+	subscriptionplan.DefaultMonthlyLimitUsd = subscriptionplanDescMonthlyLimitUsd.Default.(float64)
+	// subscriptionplanDescValidityDays is the schema descriptor for validity_days field.
+	subscriptionplanDescValidityDays := subscriptionplanFields[8].Descriptor()
+	// subscriptionplan.DefaultValidityDays holds the default value on creation for the validity_days field.
+	subscriptionplan.DefaultValidityDays = subscriptionplanDescValidityDays.Default.(int)
+	// subscriptionplanDescStatus is the schema descriptor for status field.
+	subscriptionplanDescStatus := subscriptionplanFields[9].Descriptor()
+	// subscriptionplan.DefaultStatus holds the default value on creation for the status field.
+	subscriptionplan.DefaultStatus = subscriptionplanDescStatus.Default.(string)
+	// subscriptionplan.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	subscriptionplan.StatusValidator = subscriptionplanDescStatus.Validators[0].(func(string) error)
 	tlsfingerprintprofileMixin := schema.TLSFingerprintProfile{}.Mixin()
 	tlsfingerprintprofileMixinFields0 := tlsfingerprintprofileMixin[0].Fields()
 	_ = tlsfingerprintprofileMixinFields0

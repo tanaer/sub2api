@@ -114,6 +114,11 @@ func ActionRecoverHour(v int) predicate.AccountThrottleRule {
 	return predicate.AccountThrottleRule(sql.FieldEQ(FieldActionRecoverHour, v))
 }
 
+// RecoveryCheckInterval applies equality check predicate on the "recovery_check_interval" field. It's identical to RecoveryCheckIntervalEQ.
+func RecoveryCheckInterval(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldEQ(FieldRecoveryCheckInterval, v))
+}
+
 // Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
 func Description(v string) predicate.AccountThrottleRule {
 	return predicate.AccountThrottleRule(sql.FieldEQ(FieldDescription, v))
@@ -687,6 +692,46 @@ func ActionRecoverHourLT(v int) predicate.AccountThrottleRule {
 // ActionRecoverHourLTE applies the LTE predicate on the "action_recover_hour" field.
 func ActionRecoverHourLTE(v int) predicate.AccountThrottleRule {
 	return predicate.AccountThrottleRule(sql.FieldLTE(FieldActionRecoverHour, v))
+}
+
+// RecoveryCheckIntervalEQ applies the EQ predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalEQ(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldEQ(FieldRecoveryCheckInterval, v))
+}
+
+// RecoveryCheckIntervalNEQ applies the NEQ predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalNEQ(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldNEQ(FieldRecoveryCheckInterval, v))
+}
+
+// RecoveryCheckIntervalIn applies the In predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalIn(vs ...int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldIn(FieldRecoveryCheckInterval, vs...))
+}
+
+// RecoveryCheckIntervalNotIn applies the NotIn predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalNotIn(vs ...int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldNotIn(FieldRecoveryCheckInterval, vs...))
+}
+
+// RecoveryCheckIntervalGT applies the GT predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalGT(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldGT(FieldRecoveryCheckInterval, v))
+}
+
+// RecoveryCheckIntervalGTE applies the GTE predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalGTE(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldGTE(FieldRecoveryCheckInterval, v))
+}
+
+// RecoveryCheckIntervalLT applies the LT predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalLT(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldLT(FieldRecoveryCheckInterval, v))
+}
+
+// RecoveryCheckIntervalLTE applies the LTE predicate on the "recovery_check_interval" field.
+func RecoveryCheckIntervalLTE(v int) predicate.AccountThrottleRule {
+	return predicate.AccountThrottleRule(sql.FieldLTE(FieldRecoveryCheckInterval, v))
 }
 
 // PlatformsIsNil applies the IsNil predicate on the "platforms" field.

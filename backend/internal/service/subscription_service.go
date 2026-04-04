@@ -168,13 +168,10 @@ func (s *SubscriptionService) AssignSubscription(ctx context.Context, input *Ass
 //
 // 如果没有订阅：创建新订阅
 func (s *SubscriptionService) AssignOrExtendSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error) {
-	// 检查分组是否存在且为订阅类型
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	// 检查分组是否存在（不再要求 subscription_type）
+	_, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, false, fmt.Errorf("group not found: %w", err)
-	}
-	if !group.IsSubscriptionType() {
-		return nil, false, ErrGroupNotSubscriptionType
 	}
 
 	// 查询是否已有订阅
@@ -337,14 +334,10 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 // CreateRequestQuotaSubscription 创建独立的按次配额订阅。
 // 与 AssignOrExtendSubscription 不同，每次调用总是创建新订阅（允许同一分组多个按次配额订阅并存）。
 func (s *SubscriptionService) CreateRequestQuotaSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, error) {
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	_, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, fmt.Errorf("group not found: %w", err)
 	}
-	if !group.IsSubscriptionType() {
-		return nil, ErrGroupNotSubscriptionType
-	}
-
 	sub, err := s.createSubscription(ctx, input)
 	if err != nil {
 		return nil, err
@@ -420,13 +413,10 @@ func (s *SubscriptionService) BulkAssignSubscription(ctx context.Context, input 
 }
 
 func (s *SubscriptionService) assignSubscriptionWithReuse(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, bool, error) {
-	// 检查分组是否存在且为订阅类型
-	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	// 检查分组是否存在（不再要求 subscription_type）
+	_, err := s.groupRepo.GetByID(ctx, input.GroupID)
 	if err != nil {
 		return nil, false, fmt.Errorf("group not found: %w", err)
-	}
-	if !group.IsSubscriptionType() {
-		return nil, false, ErrGroupNotSubscriptionType
 	}
 
 	// 检查是否已存在订阅；若已存在，则按幂等成功返回现有订阅

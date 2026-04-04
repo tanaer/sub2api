@@ -303,6 +303,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/subscription-plans',
+    name: 'AdminSubscriptionPlans',
+    component: () => import('@/views/admin/SubscriptionPlansView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Subscription Plans',
+      titleKey: 'admin.subscriptionPlans.title',
+    }
+  },
+  {
     path: '/admin/accounts',
     name: 'AdminAccounts',
     component: () => import('@/views/admin/AccountsView.vue'),

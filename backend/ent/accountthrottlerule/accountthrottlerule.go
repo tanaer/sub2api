@@ -41,6 +41,8 @@ const (
 	FieldActionDuration = "action_duration"
 	// FieldActionRecoverHour holds the string denoting the action_recover_hour field in the database.
 	FieldActionRecoverHour = "action_recover_hour"
+	// FieldRecoveryCheckInterval holds the string denoting the recovery_check_interval field in the database.
+	FieldRecoveryCheckInterval = "recovery_check_interval"
 	// FieldPlatforms holds the string denoting the platforms field in the database.
 	FieldPlatforms = "platforms"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -66,6 +68,7 @@ var Columns = []string{
 	FieldActionType,
 	FieldActionDuration,
 	FieldActionRecoverHour,
+	FieldRecoveryCheckInterval,
 	FieldPlatforms,
 	FieldDescription,
 }
@@ -113,6 +116,8 @@ var (
 	DefaultActionDuration int
 	// DefaultActionRecoverHour holds the default value on creation for the "action_recover_hour" field.
 	DefaultActionRecoverHour int
+	// DefaultRecoveryCheckInterval holds the default value on creation for the "recovery_check_interval" field.
+	DefaultRecoveryCheckInterval int
 )
 
 // OrderOption defines the ordering options for the AccountThrottleRule queries.
@@ -181,6 +186,11 @@ func ByActionDuration(opts ...sql.OrderTermOption) OrderOption {
 // ByActionRecoverHour orders the results by the action_recover_hour field.
 func ByActionRecoverHour(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldActionRecoverHour, opts...).ToFunc()
+}
+
+// ByRecoveryCheckInterval orders the results by the recovery_check_interval field.
+func ByRecoveryCheckInterval(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRecoveryCheckInterval, opts...).ToFunc()
 }
 
 // ByDescription orders the results by the description field.

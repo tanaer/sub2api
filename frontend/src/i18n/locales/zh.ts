@@ -341,6 +341,7 @@ export default {
     users: '用户管理',
     groups: '分组管理',
     subscriptions: '订阅管理',
+    subscriptionPlans: '订阅计划',
     accounts: '账号管理',
     proxies: 'IP管理',
     redeemCodes: '兑换码',
@@ -1876,6 +1877,39 @@ export default {
         geminiImage: 'Gemini Image',
         hint: '至少选择一个模型系列'
       }
+    },
+
+    // Subscription Plans
+    subscriptionPlans: {
+      title: '订阅计划',
+      description: '定义订阅套餐（次数包、USD限额等），用于兑换码和未来直接购买',
+      create: '创建计划',
+      createPlan: '创建订阅计划',
+      editPlan: '编辑订阅计划',
+      planName: '计划名称',
+      planDescription: '描述',
+      group: '绑定分组',
+      noGroup: '不绑定分组',
+      billingMode: '限额模式',
+      perRequest: '次数包',
+      perUsd: 'USD限额',
+      requestQuota: '请求次数',
+      requests: '次',
+      dailyLimit: '每日限额 (USD)',
+      weeklyLimit: '每周限额 (USD)',
+      monthlyLimit: '每月限额 (USD)',
+      validityDays: '有效期',
+      days: '天',
+      active: '有效',
+      archived: '已归档',
+      daily: '日',
+      weekly: '周',
+      monthly: '月',
+      empty: '暂无订阅计划，点击"创建计划"开始',
+      created: '计划创建成功',
+      updated: '计划更新成功',
+      deleted: '计划已删除',
+      confirmDelete: '确定删除计划「{name}」？',
     },
 
     // Subscriptions Management

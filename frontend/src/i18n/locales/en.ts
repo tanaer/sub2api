@@ -341,6 +341,7 @@ export default {
     users: 'Users',
     groups: 'Groups',
     subscriptions: 'Subscriptions',
+    subscriptionPlans: 'Plans',
     accounts: 'Accounts',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
@@ -1796,6 +1797,39 @@ export default {
         geminiImage: 'Gemini Image',
         hint: 'Select at least one model family'
       }
+    },
+
+    // Subscription Plans
+    subscriptionPlans: {
+      title: 'Subscription Plans',
+      description: 'Define subscription packages for redeem codes and future purchases',
+      create: 'Create Plan',
+      createPlan: 'Create Subscription Plan',
+      editPlan: 'Edit Subscription Plan',
+      planName: 'Plan Name',
+      planDescription: 'Description',
+      group: 'Bind to Group',
+      noGroup: 'No group binding',
+      billingMode: 'Billing Mode',
+      perRequest: 'Request Pack',
+      perUsd: 'USD Limit',
+      requestQuota: 'Request Count',
+      requests: 'requests',
+      dailyLimit: 'Daily Limit (USD)',
+      weeklyLimit: 'Weekly Limit (USD)',
+      monthlyLimit: 'Monthly Limit (USD)',
+      validityDays: 'Validity',
+      days: 'days',
+      active: 'Active',
+      archived: 'Archived',
+      daily: 'Daily',
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+      empty: 'No subscription plans yet. Click "Create Plan" to start.',
+      created: 'Plan created successfully',
+      updated: 'Plan updated successfully',
+      deleted: 'Plan deleted',
+      confirmDelete: 'Delete plan "{name}"?',
     },
 
     // Subscriptions

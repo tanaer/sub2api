@@ -77,6 +77,7 @@ type RedeemService struct {
 	redeemRepo           RedeemCodeRepository
 	userRepo             UserRepository
 	subscriptionService  *SubscriptionService
+	planRepo             SubscriptionPlanRepository
 	cache                RedeemCache
 	billingCacheService  *BillingCacheService
 	entClient            *dbent.Client
@@ -89,6 +90,7 @@ func NewRedeemService(
 	redeemRepo RedeemCodeRepository,
 	userRepo UserRepository,
 	subscriptionService *SubscriptionService,
+	planRepo SubscriptionPlanRepository,
 	cache RedeemCache,
 	billingCacheService *BillingCacheService,
 	entClient *dbent.Client,
@@ -99,6 +101,7 @@ func NewRedeemService(
 		redeemRepo:           redeemRepo,
 		userRepo:             userRepo,
 		subscriptionService:  subscriptionService,
+		planRepo:             planRepo,
 		cache:                cache,
 		billingCacheService:  billingCacheService,
 		entClient:            entClient,
@@ -365,19 +368,8 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		}
 
 	case RedeemTypeSubscription:
-		validityDays := redeemCode.ValidityDays
-		if validityDays <= 0 {
-			validityDays = 30
-		}
-		_, _, err := s.subscriptionService.AssignOrExtendSubscription(txCtx, &AssignSubscriptionInput{
-			UserID:       userID,
-			GroupID:      *redeemCode.GroupID,
-			ValidityDays: validityDays,
-			AssignedBy:   0, // 系统分配
-			Notes:        fmt.Sprintf("通过兑换码 %s 兑换", redeemCode.Code),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("assign or extend subscription: %w", err)
+		if err := s.redeemSubscription(txCtx, userID, redeemCode); err != nil {
+			return nil, err
 		}
 
 	case RedeemTypeGroupRequestQuota:
@@ -536,4 +528,66 @@ func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, limit 
 		return nil, fmt.Errorf("get user redeem history: %w", err)
 	}
 	return codes, nil
+}
+
+// redeemSubscription 处理 subscription 类型兑换码：
+// 有 plan_id → 按计划创建订阅（按次/USD）
+// 无 plan_id → 旧逻辑（续期时间）
+func (s *RedeemService) redeemSubscription(ctx context.Context, userID int64, redeemCode *RedeemCode) error {
+	// 有 plan_id：按计划创建订阅
+	if redeemCode.PlanID != nil && s.planRepo != nil {
+		plan, err := s.planRepo.GetByID(ctx, *redeemCode.PlanID)
+		if err != nil {
+			return fmt.Errorf("subscription plan not found: %w", err)
+		}
+
+		groupID := plan.GroupID
+		if groupID == nil {
+			groupID = redeemCode.GroupID
+		}
+		if groupID == nil {
+			return fmt.Errorf("subscription plan has no group_id and redeem code has no group_id")
+		}
+
+		if err := s.userRepo.AddGroupToAllowedGroups(ctx, userID, *groupID); err != nil {
+			return fmt.Errorf("add group to user allowed groups: %w", err)
+		}
+
+		if plan.IsPerRequest() {
+			// 按次模式：创建独立订阅
+			_, err := s.subscriptionService.CreateRequestQuotaSubscription(ctx, &AssignSubscriptionInput{
+				UserID:       userID,
+				GroupID:      *groupID,
+				ValidityDays: plan.ValidityDays,
+				Notes:        fmt.Sprintf("通过兑换码 %s 兑换计划「%s」(%d 次)", redeemCode.Code, plan.Name, plan.RequestQuota),
+				RequestQuota: plan.RequestQuota,
+			})
+			return err
+		}
+
+		// USD 模式：创建/续期订阅
+		_, _, err = s.subscriptionService.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
+			UserID:       userID,
+			GroupID:      *groupID,
+			ValidityDays: plan.ValidityDays,
+			Notes:        fmt.Sprintf("通过兑换码 %s 兑换计划「%s」", redeemCode.Code, plan.Name),
+		})
+		return err
+	}
+
+	// 无 plan_id：旧兑换逻辑（纯续期时间）
+	if redeemCode.GroupID == nil {
+		return fmt.Errorf("subscription redeem code missing group_id")
+	}
+	validityDays := redeemCode.ValidityDays
+	if validityDays <= 0 {
+		validityDays = 30
+	}
+	_, _, err := s.subscriptionService.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
+		UserID:       userID,
+		GroupID:      *redeemCode.GroupID,
+		ValidityDays: validityDays,
+		Notes:        fmt.Sprintf("通过兑换码 %s 兑换", redeemCode.Code),
+	})
+	return err
 }

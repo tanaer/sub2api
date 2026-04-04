@@ -540,6 +540,15 @@ func registerSubscriptionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 
 	// 用户下的订阅列表
 	admin.GET("/users/:id/subscriptions", h.Admin.Subscription.ListByUser)
+
+	// 订阅计划管理
+	plans := admin.Group("/subscription-plans")
+	{
+		plans.GET("", h.Admin.SubscriptionPlan.List)
+		plans.POST("", h.Admin.SubscriptionPlan.Create)
+		plans.PUT("/:id", h.Admin.SubscriptionPlan.Update)
+		plans.DELETE("/:id", h.Admin.SubscriptionPlan.Delete)
+	}
 }
 
 func registerUsageRoutes(admin *gin.RouterGroup, h *handler.Handlers) {

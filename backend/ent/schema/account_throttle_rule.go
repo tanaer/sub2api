@@ -87,6 +87,10 @@ func (AccountThrottleRule) Fields() []ent.Field {
 		field.Int("action_recover_hour").
 			Default(0),
 
+		// recovery_check_interval: 恢复探测间隔（秒），0=不探测
+		field.Int("recovery_check_interval").
+			Default(0),
+
 		// platforms: 适用平台列表，空表示所有平台
 		field.JSON("platforms", []string{}).
 			Optional().

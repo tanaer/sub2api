@@ -30,6 +30,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/redeemcode"
 	"github.com/Wei-Shaw/sub2api/ent/securitysecret"
 	"github.com/Wei-Shaw/sub2api/ent/setting"
+	"github.com/Wei-Shaw/sub2api/ent/subscriptionplan"
 	"github.com/Wei-Shaw/sub2api/ent/tlsfingerprintprofile"
 	"github.com/Wei-Shaw/sub2api/ent/usagecleanuptask"
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
@@ -77,6 +78,8 @@ type Client struct {
 	SecuritySecret *SecuritySecretClient
 	// Setting is the client for interacting with the Setting builders.
 	Setting *SettingClient
+	// SubscriptionPlan is the client for interacting with the SubscriptionPlan builders.
+	SubscriptionPlan *SubscriptionPlanClient
 	// TLSFingerprintProfile is the client for interacting with the TLSFingerprintProfile builders.
 	TLSFingerprintProfile *TLSFingerprintProfileClient
 	// UsageCleanupTask is the client for interacting with the UsageCleanupTask builders.
@@ -119,6 +122,7 @@ func (c *Client) init() {
 	c.RedeemCode = NewRedeemCodeClient(c.config)
 	c.SecuritySecret = NewSecuritySecretClient(c.config)
 	c.Setting = NewSettingClient(c.config)
+	c.SubscriptionPlan = NewSubscriptionPlanClient(c.config)
 	c.TLSFingerprintProfile = NewTLSFingerprintProfileClient(c.config)
 	c.UsageCleanupTask = NewUsageCleanupTaskClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
@@ -234,6 +238,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		RedeemCode:              NewRedeemCodeClient(cfg),
 		SecuritySecret:          NewSecuritySecretClient(cfg),
 		Setting:                 NewSettingClient(cfg),
+		SubscriptionPlan:        NewSubscriptionPlanClient(cfg),
 		TLSFingerprintProfile:   NewTLSFingerprintProfileClient(cfg),
 		UsageCleanupTask:        NewUsageCleanupTaskClient(cfg),
 		UsageLog:                NewUsageLogClient(cfg),
@@ -276,6 +281,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		RedeemCode:              NewRedeemCodeClient(cfg),
 		SecuritySecret:          NewSecuritySecretClient(cfg),
 		Setting:                 NewSettingClient(cfg),
+		SubscriptionPlan:        NewSubscriptionPlanClient(cfg),
 		TLSFingerprintProfile:   NewTLSFingerprintProfileClient(cfg),
 		UsageCleanupTask:        NewUsageCleanupTaskClient(cfg),
 		UsageLog:                NewUsageLogClient(cfg),
@@ -316,9 +322,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.APIKey, c.Account, c.AccountGroup, c.AccountThrottleRule, c.Announcement,
 		c.AnnouncementRead, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
 		c.PromoCode, c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret,
-		c.Setting, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserSubscription,
+		c.Setting, c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask,
+		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
+		c.UserAttributeValue, c.UserSubscription,
 	} {
 		n.Use(hooks...)
 	}
@@ -331,9 +337,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.APIKey, c.Account, c.AccountGroup, c.AccountThrottleRule, c.Announcement,
 		c.AnnouncementRead, c.ErrorPassthroughRule, c.Group, c.IdempotencyRecord,
 		c.PromoCode, c.PromoCodeUsage, c.Proxy, c.RedeemCode, c.SecuritySecret,
-		c.Setting, c.TLSFingerprintProfile, c.UsageCleanupTask, c.UsageLog, c.User,
-		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserSubscription,
+		c.Setting, c.SubscriptionPlan, c.TLSFingerprintProfile, c.UsageCleanupTask,
+		c.UsageLog, c.User, c.UserAllowedGroup, c.UserAttributeDefinition,
+		c.UserAttributeValue, c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -372,6 +378,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.SecuritySecret.mutate(ctx, m)
 	case *SettingMutation:
 		return c.Setting.mutate(ctx, m)
+	case *SubscriptionPlanMutation:
+		return c.SubscriptionPlan.mutate(ctx, m)
 	case *TLSFingerprintProfileMutation:
 		return c.TLSFingerprintProfile.mutate(ctx, m)
 	case *UsageCleanupTaskMutation:
@@ -1643,6 +1651,22 @@ func (c *GroupClient) QueryUsageLogs(_m *Group) *UsageLogQuery {
 	return query
 }
 
+// QuerySubscriptionPlans queries the subscription_plans edge of a Group.
+func (c *GroupClient) QuerySubscriptionPlans(_m *Group) *SubscriptionPlanQuery {
+	query := (&SubscriptionPlanClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(subscriptionplan.Table, subscriptionplan.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, group.SubscriptionPlansTable, group.SubscriptionPlansColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAccounts queries the accounts edge of a Group.
 func (c *GroupClient) QueryAccounts(_m *Group) *AccountQuery {
 	query := (&AccountClient{config: c.config}).Query()
@@ -2472,6 +2496,22 @@ func (c *RedeemCodeClient) QueryGroup(_m *RedeemCode) *GroupQuery {
 	return query
 }
 
+// QueryPlan queries the plan edge of a RedeemCode.
+func (c *RedeemCodeClient) QueryPlan(_m *RedeemCode) *SubscriptionPlanQuery {
+	query := (&SubscriptionPlanClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(redeemcode.Table, redeemcode.FieldID, id),
+			sqlgraph.To(subscriptionplan.Table, subscriptionplan.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, redeemcode.PlanTable, redeemcode.PlanColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RedeemCodeClient) Hooks() []Hook {
 	return c.hooks.RedeemCode
@@ -2760,6 +2800,173 @@ func (c *SettingClient) mutate(ctx context.Context, m *SettingMutation) (Value, 
 		return (&SettingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Setting mutation op: %q", m.Op())
+	}
+}
+
+// SubscriptionPlanClient is a client for the SubscriptionPlan schema.
+type SubscriptionPlanClient struct {
+	config
+}
+
+// NewSubscriptionPlanClient returns a client for the SubscriptionPlan from the given config.
+func NewSubscriptionPlanClient(c config) *SubscriptionPlanClient {
+	return &SubscriptionPlanClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `subscriptionplan.Hooks(f(g(h())))`.
+func (c *SubscriptionPlanClient) Use(hooks ...Hook) {
+	c.hooks.SubscriptionPlan = append(c.hooks.SubscriptionPlan, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `subscriptionplan.Intercept(f(g(h())))`.
+func (c *SubscriptionPlanClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SubscriptionPlan = append(c.inters.SubscriptionPlan, interceptors...)
+}
+
+// Create returns a builder for creating a SubscriptionPlan entity.
+func (c *SubscriptionPlanClient) Create() *SubscriptionPlanCreate {
+	mutation := newSubscriptionPlanMutation(c.config, OpCreate)
+	return &SubscriptionPlanCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SubscriptionPlan entities.
+func (c *SubscriptionPlanClient) CreateBulk(builders ...*SubscriptionPlanCreate) *SubscriptionPlanCreateBulk {
+	return &SubscriptionPlanCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SubscriptionPlanClient) MapCreateBulk(slice any, setFunc func(*SubscriptionPlanCreate, int)) *SubscriptionPlanCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SubscriptionPlanCreateBulk{err: fmt.Errorf("calling to SubscriptionPlanClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SubscriptionPlanCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SubscriptionPlanCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SubscriptionPlan.
+func (c *SubscriptionPlanClient) Update() *SubscriptionPlanUpdate {
+	mutation := newSubscriptionPlanMutation(c.config, OpUpdate)
+	return &SubscriptionPlanUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SubscriptionPlanClient) UpdateOne(_m *SubscriptionPlan) *SubscriptionPlanUpdateOne {
+	mutation := newSubscriptionPlanMutation(c.config, OpUpdateOne, withSubscriptionPlan(_m))
+	return &SubscriptionPlanUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SubscriptionPlanClient) UpdateOneID(id int64) *SubscriptionPlanUpdateOne {
+	mutation := newSubscriptionPlanMutation(c.config, OpUpdateOne, withSubscriptionPlanID(id))
+	return &SubscriptionPlanUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SubscriptionPlan.
+func (c *SubscriptionPlanClient) Delete() *SubscriptionPlanDelete {
+	mutation := newSubscriptionPlanMutation(c.config, OpDelete)
+	return &SubscriptionPlanDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SubscriptionPlanClient) DeleteOne(_m *SubscriptionPlan) *SubscriptionPlanDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SubscriptionPlanClient) DeleteOneID(id int64) *SubscriptionPlanDeleteOne {
+	builder := c.Delete().Where(subscriptionplan.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SubscriptionPlanDeleteOne{builder}
+}
+
+// Query returns a query builder for SubscriptionPlan.
+func (c *SubscriptionPlanClient) Query() *SubscriptionPlanQuery {
+	return &SubscriptionPlanQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSubscriptionPlan},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SubscriptionPlan entity by its id.
+func (c *SubscriptionPlanClient) Get(ctx context.Context, id int64) (*SubscriptionPlan, error) {
+	return c.Query().Where(subscriptionplan.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SubscriptionPlanClient) GetX(ctx context.Context, id int64) *SubscriptionPlan {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryGroup queries the group edge of a SubscriptionPlan.
+func (c *SubscriptionPlanClient) QueryGroup(_m *SubscriptionPlan) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(subscriptionplan.Table, subscriptionplan.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, subscriptionplan.GroupTable, subscriptionplan.GroupColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRedeemCodes queries the redeem_codes edge of a SubscriptionPlan.
+func (c *SubscriptionPlanClient) QueryRedeemCodes(_m *SubscriptionPlan) *RedeemCodeQuery {
+	query := (&RedeemCodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(subscriptionplan.Table, subscriptionplan.FieldID, id),
+			sqlgraph.To(redeemcode.Table, redeemcode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, subscriptionplan.RedeemCodesTable, subscriptionplan.RedeemCodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SubscriptionPlanClient) Hooks() []Hook {
+	hooks := c.hooks.SubscriptionPlan
+	return append(hooks[:len(hooks):len(hooks)], subscriptionplan.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *SubscriptionPlanClient) Interceptors() []Interceptor {
+	inters := c.inters.SubscriptionPlan
+	return append(inters[:len(inters):len(inters)], subscriptionplan.Interceptors[:]...)
+}
+
+func (c *SubscriptionPlanClient) mutate(ctx context.Context, m *SubscriptionPlanMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SubscriptionPlanCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SubscriptionPlanUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SubscriptionPlanUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SubscriptionPlanDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SubscriptionPlan mutation op: %q", m.Op())
 	}
 }
 
@@ -4173,14 +4380,14 @@ type (
 	hooks struct {
 		APIKey, Account, AccountGroup, AccountThrottleRule, Announcement,
 		AnnouncementRead, ErrorPassthroughRule, Group, IdempotencyRecord, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting,
+		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserSubscription []ent.Hook
 	}
 	inters struct {
 		APIKey, Account, AccountGroup, AccountThrottleRule, Announcement,
 		AnnouncementRead, ErrorPassthroughRule, Group, IdempotencyRecord, PromoCode,
-		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting,
+		PromoCodeUsage, Proxy, RedeemCode, SecuritySecret, Setting, SubscriptionPlan,
 		TLSFingerprintProfile, UsageCleanupTask, UsageLog, User, UserAllowedGroup,
 		UserAttributeDefinition, UserAttributeValue, UserSubscription []ent.Interceptor
 	}

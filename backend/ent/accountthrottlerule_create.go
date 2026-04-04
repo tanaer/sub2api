@@ -194,6 +194,20 @@ func (_c *AccountThrottleRuleCreate) SetNillableActionRecoverHour(v *int) *Accou
 	return _c
 }
 
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (_c *AccountThrottleRuleCreate) SetRecoveryCheckInterval(v int) *AccountThrottleRuleCreate {
+	_c.mutation.SetRecoveryCheckInterval(v)
+	return _c
+}
+
+// SetNillableRecoveryCheckInterval sets the "recovery_check_interval" field if the given value is not nil.
+func (_c *AccountThrottleRuleCreate) SetNillableRecoveryCheckInterval(v *int) *AccountThrottleRuleCreate {
+	if v != nil {
+		_c.SetRecoveryCheckInterval(*v)
+	}
+	return _c
+}
+
 // SetPlatforms sets the "platforms" field.
 func (_c *AccountThrottleRuleCreate) SetPlatforms(v []string) *AccountThrottleRuleCreate {
 	_c.mutation.SetPlatforms(v)
@@ -293,6 +307,10 @@ func (_c *AccountThrottleRuleCreate) defaults() {
 		v := accountthrottlerule.DefaultActionRecoverHour
 		_c.mutation.SetActionRecoverHour(v)
 	}
+	if _, ok := _c.mutation.RecoveryCheckInterval(); !ok {
+		v := accountthrottlerule.DefaultRecoveryCheckInterval
+		_c.mutation.SetRecoveryCheckInterval(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -352,6 +370,9 @@ func (_c *AccountThrottleRuleCreate) check() error {
 	}
 	if _, ok := _c.mutation.ActionRecoverHour(); !ok {
 		return &ValidationError{Name: "action_recover_hour", err: errors.New(`ent: missing required field "AccountThrottleRule.action_recover_hour"`)}
+	}
+	if _, ok := _c.mutation.RecoveryCheckInterval(); !ok {
+		return &ValidationError{Name: "recovery_check_interval", err: errors.New(`ent: missing required field "AccountThrottleRule.recovery_check_interval"`)}
 	}
 	return nil
 }
@@ -435,6 +456,10 @@ func (_c *AccountThrottleRuleCreate) createSpec() (*AccountThrottleRule, *sqlgra
 	if value, ok := _c.mutation.ActionRecoverHour(); ok {
 		_spec.SetField(accountthrottlerule.FieldActionRecoverHour, field.TypeInt, value)
 		_node.ActionRecoverHour = value
+	}
+	if value, ok := _c.mutation.RecoveryCheckInterval(); ok {
+		_spec.SetField(accountthrottlerule.FieldRecoveryCheckInterval, field.TypeInt, value)
+		_node.RecoveryCheckInterval = value
 	}
 	if value, ok := _c.mutation.Platforms(); ok {
 		_spec.SetField(accountthrottlerule.FieldPlatforms, field.TypeJSON, value)
@@ -691,6 +716,24 @@ func (u *AccountThrottleRuleUpsert) UpdateActionRecoverHour() *AccountThrottleRu
 // AddActionRecoverHour adds v to the "action_recover_hour" field.
 func (u *AccountThrottleRuleUpsert) AddActionRecoverHour(v int) *AccountThrottleRuleUpsert {
 	u.Add(accountthrottlerule.FieldActionRecoverHour, v)
+	return u
+}
+
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsert) SetRecoveryCheckInterval(v int) *AccountThrottleRuleUpsert {
+	u.Set(accountthrottlerule.FieldRecoveryCheckInterval, v)
+	return u
+}
+
+// UpdateRecoveryCheckInterval sets the "recovery_check_interval" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsert) UpdateRecoveryCheckInterval() *AccountThrottleRuleUpsert {
+	u.SetExcluded(accountthrottlerule.FieldRecoveryCheckInterval)
+	return u
+}
+
+// AddRecoveryCheckInterval adds v to the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsert) AddRecoveryCheckInterval(v int) *AccountThrottleRuleUpsert {
+	u.Add(accountthrottlerule.FieldRecoveryCheckInterval, v)
 	return u
 }
 
@@ -1003,6 +1046,27 @@ func (u *AccountThrottleRuleUpsertOne) AddActionRecoverHour(v int) *AccountThrot
 func (u *AccountThrottleRuleUpsertOne) UpdateActionRecoverHour() *AccountThrottleRuleUpsertOne {
 	return u.Update(func(s *AccountThrottleRuleUpsert) {
 		s.UpdateActionRecoverHour()
+	})
+}
+
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsertOne) SetRecoveryCheckInterval(v int) *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.SetRecoveryCheckInterval(v)
+	})
+}
+
+// AddRecoveryCheckInterval adds v to the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsertOne) AddRecoveryCheckInterval(v int) *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.AddRecoveryCheckInterval(v)
+	})
+}
+
+// UpdateRecoveryCheckInterval sets the "recovery_check_interval" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsertOne) UpdateRecoveryCheckInterval() *AccountThrottleRuleUpsertOne {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.UpdateRecoveryCheckInterval()
 	})
 }
 
@@ -1487,6 +1551,27 @@ func (u *AccountThrottleRuleUpsertBulk) AddActionRecoverHour(v int) *AccountThro
 func (u *AccountThrottleRuleUpsertBulk) UpdateActionRecoverHour() *AccountThrottleRuleUpsertBulk {
 	return u.Update(func(s *AccountThrottleRuleUpsert) {
 		s.UpdateActionRecoverHour()
+	})
+}
+
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsertBulk) SetRecoveryCheckInterval(v int) *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.SetRecoveryCheckInterval(v)
+	})
+}
+
+// AddRecoveryCheckInterval adds v to the "recovery_check_interval" field.
+func (u *AccountThrottleRuleUpsertBulk) AddRecoveryCheckInterval(v int) *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.AddRecoveryCheckInterval(v)
+	})
+}
+
+// UpdateRecoveryCheckInterval sets the "recovery_check_interval" field to the value that was provided on create.
+func (u *AccountThrottleRuleUpsertBulk) UpdateRecoveryCheckInterval() *AccountThrottleRuleUpsertBulk {
+	return u.Update(func(s *AccountThrottleRuleUpsert) {
+		s.UpdateRecoveryCheckInterval()
 	})
 }
 

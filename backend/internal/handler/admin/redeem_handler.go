@@ -38,6 +38,7 @@ type GenerateRedeemCodesRequest struct {
 	Type         string  `json:"type" binding:"required,oneof=balance concurrency subscription invitation group_request_quota"`
 	Value        float64 `json:"value" binding:"min=0"`
 	GroupID      *int64  `json:"group_id"`                                    // 订阅/分组次数类型必填
+	PlanID       *int64  `json:"plan_id"`                                     // 订阅计划 ID（subscription 类型使用）
 	ValidityDays int     `json:"validity_days" binding:"omitempty,max=36500"` // 订阅类型使用，默认30天，最大100年
 }
 

@@ -370,7 +370,8 @@ func TestDetectAssignSemanticConflictCases(t *testing.T) {
 	require.Equal(t, "notes_mismatch", reason)
 }
 
-func TestAssignSubscriptionGroupTypeValidation(t *testing.T) {
+func TestAssignSubscriptionGroupTypeValidation_NoLongerRejectsStandard(t *testing.T) {
+	// subscription_type 限制已移除，standard 分组也可以创建订阅
 	groupRepo := &subscriptionGroupRepoStub{
 		group: &Group{ID: 1, SubscriptionType: SubscriptionTypeStandard},
 	}
@@ -382,8 +383,7 @@ func TestAssignSubscriptionGroupTypeValidation(t *testing.T) {
 		GroupID:      1,
 		ValidityDays: 30,
 	})
-	require.Error(t, err)
-	require.Equal(t, infraerrors.Code(ErrGroupNotSubscriptionType), infraerrors.Code(err))
+	require.NoError(t, err)
 }
 
 func strconvFormatInt(v int64) string {

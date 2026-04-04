@@ -68,6 +68,10 @@ func (RedeemCode) Fields() []ent.Field {
 			Nillable(),
 		field.Int("validity_days").
 			Default(30),
+		field.Int64("plan_id").
+			Optional().
+			Nillable().
+			Comment("关联的订阅计划 ID"),
 	}
 }
 
@@ -81,6 +85,10 @@ func (RedeemCode) Edges() []ent.Edge {
 			Ref("redeem_codes").
 			Field("group_id").
 			Unique(),
+		edge.From("plan", SubscriptionPlan.Type).
+			Ref("redeem_codes").
+			Field("plan_id").
+			Unique(),
 	}
 }
 
@@ -90,5 +98,6 @@ func (RedeemCode) Indexes() []ent.Index {
 		index.Fields("status"),
 		index.Fields("used_by"),
 		index.Fields("group_id"),
+		index.Fields("plan_id"),
 	}
 }
