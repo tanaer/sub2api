@@ -177,4 +177,33 @@ describe('OpsRequestDetailsModal', () => {
       end_time: '2026-04-04T03:00:00.000Z',
     }))
   })
+
+  it('初始挂载时如果弹窗已打开也会立即拉取 request trace', async () => {
+    mount(OpsRequestDetailsModal, {
+      props: {
+        modelValue: true,
+        timeRange: 'custom',
+        customStartTime: '2026-04-04T08:00:00.000Z',
+        customEndTime: '2026-04-04T09:00:00.000Z',
+        preset: {
+          title: 'Request Trace',
+          request_id: 'req-temp-ui-mounted',
+        } as any,
+      },
+      global: {
+        stubs: {
+          BaseDialog: BaseDialogStub,
+          Pagination: PaginationStub,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(mockListRequestDetails).toHaveBeenCalledWith(expect.objectContaining({
+      request_id: 'req-temp-ui-mounted',
+      start_time: '2026-04-04T08:00:00.000Z',
+      end_time: '2026-04-04T09:00:00.000Z',
+    }))
+  })
 })

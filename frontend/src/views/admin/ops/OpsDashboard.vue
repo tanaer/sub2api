@@ -786,7 +786,7 @@ async function fetchData() {
 }
 
 watch(
-  () => [timeRange.value, platform.value, groupId.value, queryMode.value] as const,
+  () => [timeRange.value, platform.value, groupId.value, queryMode.value, customStartTime.value, customEndTime.value] as const,
   () => {
     if (isApplyingRouteQuery.value) return
     if (opsEnabled.value) {
@@ -804,13 +804,21 @@ watch(
     const prevTimeRange = timeRange.value
     const prevPlatform = platform.value
     const prevGroupId = groupId.value
+    const prevQueryMode = queryMode.value
+    const prevCustomStartTime = customStartTime.value
+    const prevCustomEndTime = customEndTime.value
 
     isApplyingRouteQuery.value = true
     applyRouteQueryToState()
     isApplyingRouteQuery.value = false
 
     const changed =
-      prevTimeRange !== timeRange.value || prevPlatform !== platform.value || prevGroupId !== groupId.value
+      prevTimeRange !== timeRange.value ||
+      prevPlatform !== platform.value ||
+      prevGroupId !== groupId.value ||
+      prevQueryMode !== queryMode.value ||
+      prevCustomStartTime !== customStartTime.value ||
+      prevCustomEndTime !== customEndTime.value
     if (changed) {
       if (opsEnabled.value) {
         fetchData()
@@ -818,6 +826,25 @@ watch(
     }
   }
 )
+
+watch(showRequestDetails, async (open) => {
+  if (open) return
+
+  const hasRequestDetailsDeepLink =
+    Boolean(readQueryString(QUERY_KEYS.openRequestDetails)) || Boolean(readQueryString(QUERY_KEYS.requestId))
+  if (!hasRequestDetailsDeepLink) return
+
+  const nextQuery = { ...route.query }
+  delete nextQuery[QUERY_KEYS.openRequestDetails]
+  delete nextQuery[QUERY_KEYS.requestId]
+
+  try {
+    isSyncingRouteQuery.value = true
+    await router.replace({ query: nextQuery })
+  } finally {
+    isSyncingRouteQuery.value = false
+  }
+})
 
 onMounted(async () => {
   // Fullscreen mode: listen for ESC key

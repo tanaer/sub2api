@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -48,6 +48,13 @@ const pageSize = ref(10)
 const close = () => emit('update:modelValue', false)
 
 const rangeLabel = computed(() => {
+  if (props.timeRange === 'custom' && props.customStartTime && props.customEndTime) {
+    const startLabel = formatDateTime(props.customStartTime)
+    const endLabel = formatDateTime(props.customEndTime)
+    if (startLabel && endLabel) return `${startLabel} ~ ${endLabel}`
+    return t('admin.ops.timeRange.custom')
+  }
+
   const minutes = parseTimeRangeMinutes(props.timeRange)
   if (minutes >= 60) return t('admin.ops.requestDetails.rangeHours', { n: Math.round(minutes / 60) })
   return t('admin.ops.requestDetails.rangeMinutes', { n: minutes })
@@ -105,6 +112,13 @@ const fetchData = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  if (!props.modelValue) return
+  page.value = 1
+  pageSize.value = 10
+  fetchData()
+})
 
 watch(
   () => props.modelValue,
