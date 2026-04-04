@@ -381,26 +381,24 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		}
 
 	case RedeemTypeGroupRequestQuota:
-		groupID := *redeemCode.GroupID
+		// 按次配额兑换码：每次创建独立的新订阅（各自有独立到期时间）
 		addedQuota, _ := requestQuotaUnitsFromValue(redeemCode.Value)
 		validityDays := redeemCode.ValidityDays
 		if validityDays <= 0 {
 			validityDays = 30
 		}
-		if err := s.userRepo.AddGroupToAllowedGroups(txCtx, userID, groupID); err != nil {
+		if err := s.userRepo.AddGroupToAllowedGroups(txCtx, userID, *redeemCode.GroupID); err != nil {
 			return nil, fmt.Errorf("add group to user allowed groups: %w", err)
 		}
-		expiresAt := time.Now().Add(time.Duration(validityDays) * 24 * time.Hour)
-		grant := &UserGroupRequestQuotaGrant{
-			UserID:            userID,
-			GroupID:           groupID,
-			RedeemCodeID:      &redeemCode.ID,
-			RequestQuotaTotal: addedQuota,
-			RequestQuotaUsed:  0,
-			ExpiresAt:         expiresAt,
-		}
-		if err := s.userGroupRateRepo.CreateRequestQuotaGrant(txCtx, grant); err != nil {
-			return nil, fmt.Errorf("create user group request quota grant: %w", err)
+		_, err := s.subscriptionService.CreateRequestQuotaSubscription(txCtx, &AssignSubscriptionInput{
+			UserID:       userID,
+			GroupID:      *redeemCode.GroupID,
+			ValidityDays: validityDays,
+			Notes:        fmt.Sprintf("通过按次配额兑换码 %s 兑换 (%d 次)", redeemCode.Code, addedQuota),
+			RequestQuota: addedQuota,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create request quota subscription: %w", err)
 		}
 
 	default:

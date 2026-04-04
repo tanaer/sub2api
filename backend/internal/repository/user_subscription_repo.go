@@ -35,7 +35,9 @@ func (r *userSubscriptionRepository) Create(ctx context.Context, sub *service.Us
 		SetDailyUsageUsd(sub.DailyUsageUSD).
 		SetWeeklyUsageUsd(sub.WeeklyUsageUSD).
 		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
-		SetNillableAssignedBy(sub.AssignedBy)
+		SetNillableAssignedBy(sub.AssignedBy).
+		SetRequestQuota(sub.RequestQuota).
+		SetRequestQuotaUsed(sub.RequestQuotaUsed)
 
 	if sub.StartsAt.IsZero() {
 		builder.SetStartsAt(time.Now())
@@ -74,19 +76,27 @@ func (r *userSubscriptionRepository) GetByID(ctx context.Context, id int64) (*se
 
 func (r *userSubscriptionRepository) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
 	client := clientFromContext(ctx, r.client)
-	m, err := client.UserSubscription.Query().
+	// 允许多条记录存在，返回最新创建的
+	subs, err := client.UserSubscription.Query().
 		Where(usersubscription.UserIDEQ(userID), usersubscription.GroupIDEQ(groupID)).
 		WithGroup().
-		Only(ctx)
+		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
+		Limit(1).
+		All(ctx)
 	if err != nil {
 		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
 	}
-	return userSubscriptionEntityToService(m), nil
+	if len(subs) == 0 {
+		return nil, service.ErrSubscriptionNotFound
+	}
+	return userSubscriptionEntityToService(subs[0]), nil
 }
 
 func (r *userSubscriptionRepository) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
 	client := clientFromContext(ctx, r.client)
-	m, err := client.UserSubscription.Query().
+	// 允许同一 user+group 有多个活跃订阅（按次配额订阅独立创建）。
+	// 优先返回有剩余按次配额的订阅，其次返回最近创建的。
+	subs, err := client.UserSubscription.Query().
 		Where(
 			usersubscription.UserIDEQ(userID),
 			usersubscription.GroupIDEQ(groupID),
@@ -94,11 +104,23 @@ func (r *userSubscriptionRepository) GetActiveByUserIDAndGroupID(ctx context.Con
 			usersubscription.ExpiresAtGT(time.Now()),
 		).
 		WithGroup().
-		Only(ctx)
+		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
+		All(ctx)
 	if err != nil {
 		return nil, translatePersistenceError(err, service.ErrSubscriptionNotFound, nil)
 	}
-	return userSubscriptionEntityToService(m), nil
+	if len(subs) == 0 {
+		return nil, service.ErrSubscriptionNotFound
+	}
+	// 优先返回有剩余按次配额的订阅
+	for _, m := range subs {
+		s := userSubscriptionEntityToService(m)
+		if s != nil && s.HasRequestQuota() && !s.IsRequestQuotaExhausted() {
+			return s, nil
+		}
+	}
+	// 没有按次配额的，返回最新的
+	return userSubscriptionEntityToService(subs[0]), nil
 }
 
 func (r *userSubscriptionRepository) Update(ctx context.Context, sub *service.UserSubscription) error {
@@ -121,6 +143,8 @@ func (r *userSubscriptionRepository) Update(ctx context.Context, sub *service.Us
 		SetMonthlyUsageUsd(sub.MonthlyUsageUSD).
 		SetNillableAssignedBy(sub.AssignedBy).
 		SetAssignedAt(sub.AssignedAt).
+		SetRequestQuota(sub.RequestQuota).
+		SetRequestQuotaUsed(sub.RequestQuotaUsed).
 		SetNotes(sub.Notes)
 
 	updated, err := builder.Save(ctx)
@@ -373,6 +397,59 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 	return service.ErrSubscriptionNotFound
 }
 
+// IncrementRequestQuotaUsed 原子性地递增订阅的按次配额计数器。
+// 仅当 request_quota > 0 且 request_quota_used < request_quota 时才更新。
+// 返回 true 表示成功消耗。
+func (r *userSubscriptionRepository) IncrementRequestQuotaUsed(ctx context.Context, id int64, amount int64) (bool, error) {
+	const updateSQL = `
+		UPDATE user_subscriptions
+		SET request_quota_used = request_quota_used + $1,
+			updated_at = NOW()
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND request_quota > 0
+			AND request_quota_used + $1 <= request_quota
+		RETURNING TRUE
+	`
+
+	client := clientFromContext(ctx, r.client)
+	rows, err := client.QueryContext(ctx, updateSQL, amount, id)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	if rows.Next() {
+		return true, nil
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+// AddRequestQuota 在订阅上累加按次配额（用于兑换码续期）。
+func (r *userSubscriptionRepository) AddRequestQuota(ctx context.Context, id int64, amount int64) error {
+	client := clientFromContext(ctx, r.client)
+	result, err := client.ExecContext(ctx, `
+		UPDATE user_subscriptions
+		SET request_quota = request_quota + $1,
+			updated_at = NOW()
+		WHERE id = $2 AND deleted_at IS NULL
+	`, amount, id)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return service.ErrSubscriptionNotFound
+	}
+	return nil
+}
+
 func (r *userSubscriptionRepository) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	client := clientFromContext(ctx, r.client)
 	n, err := client.UserSubscription.Update().
@@ -442,6 +519,8 @@ func userSubscriptionEntityToService(m *dbent.UserSubscription) *service.UserSub
 		DailyUsageUSD:      m.DailyUsageUsd,
 		WeeklyUsageUSD:     m.WeeklyUsageUsd,
 		MonthlyUsageUSD:    m.MonthlyUsageUsd,
+		RequestQuota:       m.RequestQuota,
+		RequestQuotaUsed:   m.RequestQuotaUsed,
 		AssignedBy:         m.AssignedBy,
 		AssignedAt:         m.AssignedAt,
 		Notes:              derefString(m.Notes),

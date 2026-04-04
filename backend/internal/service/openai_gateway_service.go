@@ -340,6 +340,7 @@ type OpenAIGatewayService struct {
 	codexSnapshotThrottle *accountWriteThrottle
 	settingService        *SettingService
 	failoverPolicy        *FailoverPolicy
+	providerRegistry      *ProviderRegistry
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService
@@ -362,6 +363,7 @@ func NewOpenAIGatewayService(
 	openAITokenProvider *OpenAITokenProvider,
 	failoverPolicy *FailoverPolicy,
 	settingService *SettingService,
+	providerRegistry *ProviderRegistry,
 ) *OpenAIGatewayService {
 	svc := &OpenAIGatewayService{
 		accountRepo:         accountRepo,
@@ -393,6 +395,7 @@ func NewOpenAIGatewayService(
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
 		settingService:        settingService,
 		failoverPolicy:        failoverPolicy,
+		providerRegistry:      providerRegistry,
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc

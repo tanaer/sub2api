@@ -189,6 +189,34 @@ func (_c *UserSubscriptionCreate) SetNillableMonthlyUsageUsd(v *float64) *UserSu
 	return _c
 }
 
+// SetRequestQuota sets the "request_quota" field.
+func (_c *UserSubscriptionCreate) SetRequestQuota(v int64) *UserSubscriptionCreate {
+	_c.mutation.SetRequestQuota(v)
+	return _c
+}
+
+// SetNillableRequestQuota sets the "request_quota" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableRequestQuota(v *int64) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetRequestQuota(*v)
+	}
+	return _c
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (_c *UserSubscriptionCreate) SetRequestQuotaUsed(v int64) *UserSubscriptionCreate {
+	_c.mutation.SetRequestQuotaUsed(v)
+	return _c
+}
+
+// SetNillableRequestQuotaUsed sets the "request_quota_used" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableRequestQuotaUsed(v *int64) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetRequestQuotaUsed(*v)
+	}
+	return _c
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (_c *UserSubscriptionCreate) SetAssignedBy(v int64) *UserSubscriptionCreate {
 	_c.mutation.SetAssignedBy(v)
@@ -342,6 +370,14 @@ func (_c *UserSubscriptionCreate) defaults() error {
 		v := usersubscription.DefaultMonthlyUsageUsd
 		_c.mutation.SetMonthlyUsageUsd(v)
 	}
+	if _, ok := _c.mutation.RequestQuota(); !ok {
+		v := usersubscription.DefaultRequestQuota
+		_c.mutation.SetRequestQuota(v)
+	}
+	if _, ok := _c.mutation.RequestQuotaUsed(); !ok {
+		v := usersubscription.DefaultRequestQuotaUsed
+		_c.mutation.SetRequestQuotaUsed(v)
+	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		if usersubscription.DefaultAssignedAt == nil {
 			return fmt.Errorf("ent: uninitialized usersubscription.DefaultAssignedAt (forgotten import ent/runtime?)")
@@ -388,6 +424,12 @@ func (_c *UserSubscriptionCreate) check() error {
 	}
 	if _, ok := _c.mutation.MonthlyUsageUsd(); !ok {
 		return &ValidationError{Name: "monthly_usage_usd", err: errors.New(`ent: missing required field "UserSubscription.monthly_usage_usd"`)}
+	}
+	if _, ok := _c.mutation.RequestQuota(); !ok {
+		return &ValidationError{Name: "request_quota", err: errors.New(`ent: missing required field "UserSubscription.request_quota"`)}
+	}
+	if _, ok := _c.mutation.RequestQuotaUsed(); !ok {
+		return &ValidationError{Name: "request_quota_used", err: errors.New(`ent: missing required field "UserSubscription.request_quota_used"`)}
 	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		return &ValidationError{Name: "assigned_at", err: errors.New(`ent: missing required field "UserSubscription.assigned_at"`)}
@@ -472,6 +514,14 @@ func (_c *UserSubscriptionCreate) createSpec() (*UserSubscription, *sqlgraph.Cre
 	if value, ok := _c.mutation.MonthlyUsageUsd(); ok {
 		_spec.SetField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
 		_node.MonthlyUsageUsd = value
+	}
+	if value, ok := _c.mutation.RequestQuota(); ok {
+		_spec.SetField(usersubscription.FieldRequestQuota, field.TypeInt64, value)
+		_node.RequestQuota = value
+	}
+	if value, ok := _c.mutation.RequestQuotaUsed(); ok {
+		_spec.SetField(usersubscription.FieldRequestQuotaUsed, field.TypeInt64, value)
+		_node.RequestQuotaUsed = value
 	}
 	if value, ok := _c.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)
@@ -798,6 +848,42 @@ func (u *UserSubscriptionUpsert) AddMonthlyUsageUsd(v float64) *UserSubscription
 	return u
 }
 
+// SetRequestQuota sets the "request_quota" field.
+func (u *UserSubscriptionUpsert) SetRequestQuota(v int64) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldRequestQuota, v)
+	return u
+}
+
+// UpdateRequestQuota sets the "request_quota" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateRequestQuota() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldRequestQuota)
+	return u
+}
+
+// AddRequestQuota adds v to the "request_quota" field.
+func (u *UserSubscriptionUpsert) AddRequestQuota(v int64) *UserSubscriptionUpsert {
+	u.Add(usersubscription.FieldRequestQuota, v)
+	return u
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (u *UserSubscriptionUpsert) SetRequestQuotaUsed(v int64) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldRequestQuotaUsed, v)
+	return u
+}
+
+// UpdateRequestQuotaUsed sets the "request_quota_used" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateRequestQuotaUsed() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldRequestQuotaUsed)
+	return u
+}
+
+// AddRequestQuotaUsed adds v to the "request_quota_used" field.
+func (u *UserSubscriptionUpsert) AddRequestQuotaUsed(v int64) *UserSubscriptionUpsert {
+	u.Add(usersubscription.FieldRequestQuotaUsed, v)
+	return u
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (u *UserSubscriptionUpsert) SetAssignedBy(v int64) *UserSubscriptionUpsert {
 	u.Set(usersubscription.FieldAssignedBy, v)
@@ -1119,6 +1205,48 @@ func (u *UserSubscriptionUpsertOne) AddMonthlyUsageUsd(v float64) *UserSubscript
 func (u *UserSubscriptionUpsertOne) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertOne {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetRequestQuota sets the "request_quota" field.
+func (u *UserSubscriptionUpsertOne) SetRequestQuota(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetRequestQuota(v)
+	})
+}
+
+// AddRequestQuota adds v to the "request_quota" field.
+func (u *UserSubscriptionUpsertOne) AddRequestQuota(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddRequestQuota(v)
+	})
+}
+
+// UpdateRequestQuota sets the "request_quota" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateRequestQuota() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateRequestQuota()
+	})
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (u *UserSubscriptionUpsertOne) SetRequestQuotaUsed(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetRequestQuotaUsed(v)
+	})
+}
+
+// AddRequestQuotaUsed adds v to the "request_quota_used" field.
+func (u *UserSubscriptionUpsertOne) AddRequestQuotaUsed(v int64) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddRequestQuotaUsed(v)
+	})
+}
+
+// UpdateRequestQuotaUsed sets the "request_quota_used" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateRequestQuotaUsed() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateRequestQuotaUsed()
 	})
 }
 
@@ -1617,6 +1745,48 @@ func (u *UserSubscriptionUpsertBulk) AddMonthlyUsageUsd(v float64) *UserSubscrip
 func (u *UserSubscriptionUpsertBulk) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertBulk {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetRequestQuota sets the "request_quota" field.
+func (u *UserSubscriptionUpsertBulk) SetRequestQuota(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetRequestQuota(v)
+	})
+}
+
+// AddRequestQuota adds v to the "request_quota" field.
+func (u *UserSubscriptionUpsertBulk) AddRequestQuota(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddRequestQuota(v)
+	})
+}
+
+// UpdateRequestQuota sets the "request_quota" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateRequestQuota() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateRequestQuota()
+	})
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (u *UserSubscriptionUpsertBulk) SetRequestQuotaUsed(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetRequestQuotaUsed(v)
+	})
+}
+
+// AddRequestQuotaUsed adds v to the "request_quota_used" field.
+func (u *UserSubscriptionUpsertBulk) AddRequestQuotaUsed(v int64) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddRequestQuotaUsed(v)
+	})
+}
+
+// UpdateRequestQuotaUsed sets the "request_quota_used" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateRequestQuotaUsed() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateRequestQuotaUsed()
 	})
 }
 

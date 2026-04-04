@@ -708,6 +708,12 @@ func (r *stubUserSubscriptionRepo) ResetMonthlyUsage(ctx context.Context, id int
 func (r *stubUserSubscriptionRepo) IncrementUsage(ctx context.Context, id int64, costUSD float64) error {
 	return errors.New("not implemented")
 }
+func (r *stubUserSubscriptionRepo) IncrementRequestQuotaUsed(context.Context, int64, int64) (bool, error) {
+	return false, errors.New("not implemented")
+}
+func (r *stubUserSubscriptionRepo) AddRequestQuota(context.Context, int64, int64) error {
+	return errors.New("not implemented")
+}
 
 func (r *stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")

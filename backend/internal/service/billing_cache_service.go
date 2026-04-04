@@ -18,8 +18,9 @@ import (
 // 注：ErrInsufficientBalance在redeem_service.go中定义
 // 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义
 var (
-	ErrSubscriptionInvalid       = infraerrors.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
-	ErrBillingServiceUnavailable = infraerrors.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
+	ErrSubscriptionInvalid              = infraerrors.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
+	ErrSubscriptionRequestQuotaExhausted = infraerrors.TooManyRequests("SUBSCRIPTION_REQUEST_QUOTA_EXHAUSTED", "subscription request quota exhausted")
+	ErrBillingServiceUnavailable        = infraerrors.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
 )
 
 // subscriptionCacheData 订阅缓存数据结构（内部使用）
@@ -648,7 +649,12 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 	isSubscriptionMode := group != nil && group.IsSubscriptionType() && subscription != nil
 	useRequestQuotaBilling := apiKey != nil && apiKey.HasRemainingEffectiveRequestQuota()
 
-	if !useRequestQuotaBilling {
+	if isSubscriptionMode && subscription.HasRequestQuota() {
+		// 按次订阅：检查次数未耗尽（不检查 USD 限额和余额）
+		if subscription.IsRequestQuotaExhausted() {
+			return ErrSubscriptionRequestQuotaExhausted
+		}
+	} else if !useRequestQuotaBilling {
 		if isSubscriptionMode {
 			if err := s.checkSubscriptionEligibility(ctx, user.ID, group, subscription); err != nil {
 				return err

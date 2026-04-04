@@ -322,12 +322,32 @@
                 </div>
               </div>
 
+              <!-- Request Quota Usage -->
+              <div v-if="row.request_quota && row.request_quota > 0" class="usage-row">
+                <div class="flex items-center gap-2">
+                  <span class="usage-label">{{ t('admin.subscriptions.requestQuota') || '按次' }}</span>
+                  <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+                    <div
+                      class="h-1.5 rounded-full transition-all"
+                      :class="getProgressClass(row.request_quota_used, row.request_quota)"
+                      :style="{ width: getProgressWidth(row.request_quota_used, row.request_quota) }"
+                    ></div>
+                  </div>
+                  <span class="usage-amount">
+                    {{ (row.request_quota_used || 0).toLocaleString() }}
+                    <span class="text-gray-400">/</span>
+                    {{ row.request_quota.toLocaleString() }}
+                  </span>
+                </div>
+              </div>
+
               <!-- No Limits - Unlimited badge -->
               <div
                 v-if="
                   !row.group?.daily_limit_usd &&
                   !row.group?.weekly_limit_usd &&
-                  !row.group?.monthly_limit_usd
+                  !row.group?.monthly_limit_usd &&
+                  !(row.request_quota && row.request_quota > 0)
                 "
                 class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-2 dark:from-emerald-900/20 dark:to-teal-900/20"
               >
@@ -612,6 +632,35 @@
             />
           </div>
           <p class="input-hint">{{ t('admin.subscriptions.adjustHint') }}</p>
+        </div>
+
+        <!-- Request Quota Adjustment (only show if subscription has request quota) -->
+        <div v-if="extendingSubscription.request_quota && extendingSubscription.request_quota > 0" class="space-y-3 border-t pt-4 dark:border-dark-600">
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.subscriptions.requestQuotaAdjust') || '按次配额调整' }}</p>
+          <div class="rounded-lg bg-gray-50 p-3 dark:bg-dark-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.subscriptions.currentRequestQuota') || '当前配额' }}:
+              {{ (extendingSubscription.request_quota_used || 0).toLocaleString() }} / {{ extendingSubscription.request_quota.toLocaleString() }}
+            </p>
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.subscriptions.newRequestQuota') || '新总配额' }}</label>
+            <input
+              v-model.number="extendForm.request_quota"
+              type="number"
+              min="0"
+              class="input"
+            />
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.subscriptions.newRequestQuotaUsed') || '已使用次数' }}</label>
+            <input
+              v-model.number="extendForm.request_quota_used"
+              type="number"
+              min="0"
+              class="input"
+            />
+          </div>
         </div>
       </form>
       <template #footer>
@@ -951,7 +1000,9 @@ const assignForm = reactive({
 })
 
 const extendForm = reactive({
-  days: 30
+  days: 30,
+  request_quota: undefined as number | undefined,
+  request_quota_used: undefined as number | undefined,
 })
 
 // Group options for filter (all groups)
@@ -1202,6 +1253,8 @@ const handleAssignSubscription = async () => {
 const handleExtend = (subscription: UserSubscription) => {
   extendingSubscription.value = subscription
   extendForm.days = 30
+  extendForm.request_quota = subscription.request_quota || undefined
+  extendForm.request_quota_used = subscription.request_quota_used || undefined
   showExtendModal.value = true
 }
 
@@ -1226,7 +1279,9 @@ const handleExtendSubscription = async () => {
   submitting.value = true
   try {
     await adminAPI.subscriptions.extend(extendingSubscription.value.id, {
-      days: extendForm.days
+      days: extendForm.days,
+      request_quota: extendForm.request_quota,
+      request_quota_used: extendForm.request_quota_used,
     })
     appStore.showSuccess(t('admin.subscriptions.subscriptionAdjusted'))
     closeExtendModal()

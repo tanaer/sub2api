@@ -125,6 +125,16 @@ func MonthlyUsageUsd(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldMonthlyUsageUsd, v))
 }
 
+// RequestQuota applies equality check predicate on the "request_quota" field. It's identical to RequestQuotaEQ.
+func RequestQuota(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldRequestQuota, v))
+}
+
+// RequestQuotaUsed applies equality check predicate on the "request_quota_used" field. It's identical to RequestQuotaUsedEQ.
+func RequestQuotaUsed(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldRequestQuotaUsed, v))
+}
+
 // AssignedBy applies equality check predicate on the "assigned_by" field. It's identical to AssignedByEQ.
 func AssignedBy(v int64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldAssignedBy, v))
@@ -723,6 +733,86 @@ func MonthlyUsageUsdLT(v float64) predicate.UserSubscription {
 // MonthlyUsageUsdLTE applies the LTE predicate on the "monthly_usage_usd" field.
 func MonthlyUsageUsdLTE(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldLTE(FieldMonthlyUsageUsd, v))
+}
+
+// RequestQuotaEQ applies the EQ predicate on the "request_quota" field.
+func RequestQuotaEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldRequestQuota, v))
+}
+
+// RequestQuotaNEQ applies the NEQ predicate on the "request_quota" field.
+func RequestQuotaNEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldRequestQuota, v))
+}
+
+// RequestQuotaIn applies the In predicate on the "request_quota" field.
+func RequestQuotaIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldRequestQuota, vs...))
+}
+
+// RequestQuotaNotIn applies the NotIn predicate on the "request_quota" field.
+func RequestQuotaNotIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldRequestQuota, vs...))
+}
+
+// RequestQuotaGT applies the GT predicate on the "request_quota" field.
+func RequestQuotaGT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldRequestQuota, v))
+}
+
+// RequestQuotaGTE applies the GTE predicate on the "request_quota" field.
+func RequestQuotaGTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldRequestQuota, v))
+}
+
+// RequestQuotaLT applies the LT predicate on the "request_quota" field.
+func RequestQuotaLT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldRequestQuota, v))
+}
+
+// RequestQuotaLTE applies the LTE predicate on the "request_quota" field.
+func RequestQuotaLTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldRequestQuota, v))
+}
+
+// RequestQuotaUsedEQ applies the EQ predicate on the "request_quota_used" field.
+func RequestQuotaUsedEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldRequestQuotaUsed, v))
+}
+
+// RequestQuotaUsedNEQ applies the NEQ predicate on the "request_quota_used" field.
+func RequestQuotaUsedNEQ(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldRequestQuotaUsed, v))
+}
+
+// RequestQuotaUsedIn applies the In predicate on the "request_quota_used" field.
+func RequestQuotaUsedIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldRequestQuotaUsed, vs...))
+}
+
+// RequestQuotaUsedNotIn applies the NotIn predicate on the "request_quota_used" field.
+func RequestQuotaUsedNotIn(vs ...int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldRequestQuotaUsed, vs...))
+}
+
+// RequestQuotaUsedGT applies the GT predicate on the "request_quota_used" field.
+func RequestQuotaUsedGT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldRequestQuotaUsed, v))
+}
+
+// RequestQuotaUsedGTE applies the GTE predicate on the "request_quota_used" field.
+func RequestQuotaUsedGTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldRequestQuotaUsed, v))
+}
+
+// RequestQuotaUsedLT applies the LT predicate on the "request_quota_used" field.
+func RequestQuotaUsedLT(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldRequestQuotaUsed, v))
+}
+
+// RequestQuotaUsedLTE applies the LTE predicate on the "request_quota_used" field.
+func RequestQuotaUsedLTE(v int64) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldRequestQuotaUsed, v))
 }
 
 // AssignedByEQ applies the EQ predicate on the "assigned_by" field.

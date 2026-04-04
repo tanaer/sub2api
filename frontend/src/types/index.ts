@@ -1394,6 +1394,8 @@ export interface UserSubscription {
   daily_window_start: string | null
   weekly_window_start: string | null
   monthly_window_start: string | null
+  request_quota: number
+  request_quota_used: number
   created_at: string
   updated_at: string
   expires_at: string | null
@@ -1421,6 +1423,12 @@ export interface SubscriptionProgress {
     percentage: number
     reset_in_seconds: number | null
   } | null
+  request_quota: {
+    limit: number
+    used: number
+    remaining: number
+    percentage: number
+  } | null
   expires_at: string | null
   days_remaining: number | null
 }
@@ -1439,6 +1447,8 @@ export interface BulkAssignSubscriptionRequest {
 
 export interface ExtendSubscriptionRequest {
   days: number
+  request_quota?: number
+  request_quota_used?: number
 }
 
 // ==================== Query Parameters ====================

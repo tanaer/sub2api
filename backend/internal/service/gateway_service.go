@@ -637,6 +637,7 @@ type GatewayService struct {
 	tlsFPProfileService   *TLSFingerprintProfileService
 	miniMaxAPI            *MiniMaxAPIClient
 	failoverPolicy        *FailoverPolicy
+	providerRegistry      *ProviderRegistry
 }
 
 // NewGatewayService creates a new GatewayService
@@ -665,6 +666,7 @@ func NewGatewayService(
 	settingService *SettingService,
 	tlsFPProfileService *TLSFingerprintProfileService,
 	failoverPolicy *FailoverPolicy,
+	providerRegistry *ProviderRegistry,
 ) *GatewayService {
 	userGroupRateTTL := resolveUserGroupRateCacheTTL(cfg)
 	modelsListTTL := resolveModelsListCacheTTL(cfg)
@@ -699,6 +701,7 @@ func NewGatewayService(
 		tlsFPProfileService:  tlsFPProfileService,
 		miniMaxAPI:           NewMiniMaxAPIClient(),
 		failoverPolicy:       failoverPolicy,
+		providerRegistry:     providerRegistry,
 	}
 	svc.userGroupRateResolver = newUserGroupRateResolver(
 		userGroupRateRepo,
@@ -8060,6 +8063,11 @@ func (p *postUsageBillingParams) usesUserGroupRequestQuotaBilling() bool {
 	return p != nil && p.APIKey != nil && p.APIKey.EffectiveRequestQuotaSource() == "user_group" && p.APIKey.HasRemainingEffectiveRequestQuota()
 }
 
+// usesSubscriptionRequestQuotaBilling 判断是否使用订阅的按次配额计费。
+func (p *postUsageBillingParams) usesSubscriptionRequestQuotaBilling() bool {
+	return p != nil && p.IsSubscriptionBill && p.Subscription != nil && p.Subscription.HasRequestQuota() && !p.Subscription.IsRequestQuotaExhausted()
+}
+
 // postUsageBilling 统一处理使用量记录后的扣费逻辑：
 //   - 订阅/余额扣费
 //   - API Key 配额更新
@@ -8201,7 +8209,16 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		cmd.BalanceCost = p.Cost.ActualCost
 	}
 
-	if p.usesRequestQuotaBilling() {
+	if p.usesSubscriptionRequestQuotaBilling() {
+		// 订阅按次配额：只扣次数，不走 USD 限额/余额
+		cmd.BalanceCost = 0
+		cmd.SubscriptionCost = 0
+		cmd.APIKeyQuotaCost = 0
+		cmd.APIKeyRateLimitCost = 0
+		cmd.AccountQuotaCost = 0
+		cmd.SubscriptionID = &p.Subscription.ID
+		cmd.SubscriptionRequestQuotaCount = 1
+	} else if p.usesRequestQuotaBilling() {
 		cmd.BalanceCost = 0
 		cmd.SubscriptionCost = 0
 		cmd.APIKeyQuotaCost = 0
@@ -8253,7 +8270,7 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		return false, nil
 	}
 
-	if result.APIKeyQuotaExhausted || result.APIKeyRequestQuotaConsumed || result.UserGroupRequestQuotaConsumed {
+	if result.APIKeyQuotaExhausted || result.APIKeyRequestQuotaConsumed || result.UserGroupRequestQuotaConsumed || result.SubscriptionRequestQuotaConsumed {
 		if invalidator, ok := p.APIKeyService.(apiKeyAuthCacheInvalidator); ok && p.APIKey != nil && p.APIKey.Key != "" {
 			invalidator.InvalidateAuthCacheByKey(billingCtx, p.APIKey.Key)
 		}

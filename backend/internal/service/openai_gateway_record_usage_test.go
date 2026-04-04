@@ -81,6 +81,12 @@ func (s *openAIRecordUsageSubRepoStub) IncrementUsage(ctx context.Context, id in
 	s.lastCtxErr = ctx.Err()
 	return s.incrementErr
 }
+func (s *openAIRecordUsageSubRepoStub) IncrementRequestQuotaUsed(context.Context, int64, int64) (bool, error) {
+	return true, nil
+}
+func (s *openAIRecordUsageSubRepoStub) AddRequestQuota(context.Context, int64, int64) error {
+	return nil
+}
 
 type openAIRecordUsageAPIKeyQuotaStub struct {
 	quotaCalls             int
@@ -156,6 +162,7 @@ func newOpenAIRecordUsageServiceForTest(usageRepo UsageLogRepository, userRepo U
 		&DeferredService{},
 		nil,
 		testFailoverPolicy(),
+		nil,
 		nil,
 	)
 	svc.userGroupRateResolver = newUserGroupRateResolver(

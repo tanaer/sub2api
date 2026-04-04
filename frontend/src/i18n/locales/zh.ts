@@ -1893,6 +1893,11 @@ export default {
       monthly: '每月',
       noLimits: '未配置限额',
       unlimited: '无限制',
+      requestQuota: '按次',
+      requestQuotaAdjust: '按次配额调整',
+      currentRequestQuota: '当前配额',
+      newRequestQuota: '新总配额',
+      newRequestQuotaUsed: '已使用次数',
       resetNow: '即将重置',
       windowNotActive: '窗口未激活',
       resetInMinutes: '{minutes} 分钟后重置',
@@ -5094,8 +5099,11 @@ export default {
 
       actionType: {
         duration: '时长限流',
-        scheduledRecovery: '定期恢复'
+        scheduledRecovery: '定期恢复',
+        extractRecovery: '智能提取恢复时间'
       },
+
+      recoveryProbe: '恢复探测',
 
       form: {
         name: '规则名称',
@@ -5124,7 +5132,12 @@ export default {
         actionConfig: '限流动作',
         actionDuration: '限流时长',
         actionDurationUnit: '秒',
-        actionRecoverHour: '恢复时刻'
+        actionRecoverHour: '恢复时刻',
+        recoveryCheckInterval: '恢复探测间隔',
+        recoveryCheckIntervalHint: '秒，0=不探测。每隔指定秒数发送探测请求，成功则自动解除限流',
+        extractRecoveryHint: '自动从错误消息中提取恢复时间（如"您的限额将在 2026-04-04 19:28:20 重置"），提取失败则回退到下方设置的时长',
+        fallbackDuration: '回退限流时长',
+        fallbackDurationHint: '秒，提取恢复时间失败时使用此时长'
       },
 
       createSuccess: '规则创建成功',
@@ -5204,7 +5217,8 @@ export default {
     expiresTomorrow: '明天到期',
     viewAll: '查看全部订阅',
     noSubscriptions: '暂无有效订阅',
-    unlimited: '无限制'
+    unlimited: '无限制',
+    requests: '次数'
   },
 
   // Version Badge
@@ -5300,7 +5314,9 @@ export default {
     expiresOn: '{date} 到期',
     resetIn: '{time} 后重置',
     windowNotActive: '等待首次使用',
-    usageOf: '已用 {used} / {limit}'
+    usageOf: '已用 {used} / {limit}',
+    requestQuota: '按次配额',
+    requestQuotaRemaining: '剩余次数'
   },
 
   // Onboarding Tour

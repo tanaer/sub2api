@@ -1813,6 +1813,11 @@ export default {
       monthly: 'Monthly',
       noLimits: 'No limits configured',
       unlimited: 'Unlimited',
+      requestQuota: 'Req',
+      requestQuotaAdjust: 'Request Quota Adjustment',
+      currentRequestQuota: 'Current Quota',
+      newRequestQuota: 'New Total Quota',
+      newRequestQuotaUsed: 'Used Count',
       resetNow: 'Resetting soon',
       windowNotActive: 'Window not active',
       resetInMinutes: 'Resets in {minutes}m',
@@ -4934,8 +4939,11 @@ export default {
 
       actionType: {
         duration: 'Duration',
-        scheduledRecovery: 'Scheduled Recovery'
+        scheduledRecovery: 'Scheduled Recovery',
+        extractRecovery: 'Smart Extract Recovery Time'
       },
+
+      recoveryProbe: 'Recovery Probe',
 
       form: {
         name: 'Rule Name',
@@ -4964,7 +4972,12 @@ export default {
         actionConfig: 'Throttle Action',
         actionDuration: 'Duration',
         actionDurationUnit: 'seconds',
-        actionRecoverHour: 'Recovery Hour'
+        actionRecoverHour: 'Recovery Hour',
+        recoveryCheckInterval: 'Recovery Check Interval',
+        recoveryCheckIntervalHint: 'seconds, 0=disabled. Sends probe requests at this interval; auto-clears throttle on success',
+        extractRecoveryHint: 'Automatically extracts recovery time from error messages (e.g., "Your quota will reset at 2026-04-04 19:28:20"). Falls back to duration below if extraction fails.',
+        fallbackDuration: 'Fallback Duration',
+        fallbackDurationHint: 'seconds, used when recovery time extraction fails'
       },
 
       createSuccess: 'Rule created successfully',
@@ -5044,7 +5057,8 @@ export default {
     expiresTomorrow: 'Expires tomorrow',
     viewAll: 'View all subscriptions',
     noSubscriptions: 'No active subscriptions',
-    unlimited: 'Unlimited'
+    unlimited: 'Unlimited',
+    requests: 'Req'
   },
 
   // Version Badge
@@ -5142,7 +5156,9 @@ export default {
     expiresOn: 'Expires on {date}',
     resetIn: 'Resets in {time}',
     windowNotActive: 'Awaiting first use',
-    usageOf: '{used} of {limit}'
+    usageOf: '{used} of {limit}',
+    requestQuota: 'Request Quota',
+    requestQuotaRemaining: 'Remaining'
   },
 
   // Onboarding Tour

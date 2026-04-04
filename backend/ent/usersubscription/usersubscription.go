@@ -43,6 +43,10 @@ const (
 	FieldWeeklyUsageUsd = "weekly_usage_usd"
 	// FieldMonthlyUsageUsd holds the string denoting the monthly_usage_usd field in the database.
 	FieldMonthlyUsageUsd = "monthly_usage_usd"
+	// FieldRequestQuota holds the string denoting the request_quota field in the database.
+	FieldRequestQuota = "request_quota"
+	// FieldRequestQuotaUsed holds the string denoting the request_quota_used field in the database.
+	FieldRequestQuotaUsed = "request_quota_used"
 	// FieldAssignedBy holds the string denoting the assigned_by field in the database.
 	FieldAssignedBy = "assigned_by"
 	// FieldAssignedAt holds the string denoting the assigned_at field in the database.
@@ -106,6 +110,8 @@ var Columns = []string{
 	FieldDailyUsageUsd,
 	FieldWeeklyUsageUsd,
 	FieldMonthlyUsageUsd,
+	FieldRequestQuota,
+	FieldRequestQuotaUsed,
 	FieldAssignedBy,
 	FieldAssignedAt,
 	FieldNotes,
@@ -145,6 +151,10 @@ var (
 	DefaultWeeklyUsageUsd float64
 	// DefaultMonthlyUsageUsd holds the default value on creation for the "monthly_usage_usd" field.
 	DefaultMonthlyUsageUsd float64
+	// DefaultRequestQuota holds the default value on creation for the "request_quota" field.
+	DefaultRequestQuota int64
+	// DefaultRequestQuotaUsed holds the default value on creation for the "request_quota_used" field.
+	DefaultRequestQuotaUsed int64
 	// DefaultAssignedAt holds the default value on creation for the "assigned_at" field.
 	DefaultAssignedAt func() time.Time
 )
@@ -225,6 +235,16 @@ func ByWeeklyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 // ByMonthlyUsageUsd orders the results by the monthly_usage_usd field.
 func ByMonthlyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMonthlyUsageUsd, opts...).ToFunc()
+}
+
+// ByRequestQuota orders the results by the request_quota field.
+func ByRequestQuota(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestQuota, opts...).ToFunc()
+}
+
+// ByRequestQuotaUsed orders the results by the request_quota_used field.
+func ByRequestQuotaUsed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestQuotaUsed, opts...).ToFunc()
 }
 
 // ByAssignedBy orders the results by the assigned_by field.

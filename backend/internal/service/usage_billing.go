@@ -34,14 +34,15 @@ type UsageBillingCommand struct {
 	ImageCount          int
 	MediaType           string
 
-	BalanceCost                  float64
-	SubscriptionCost             float64
-	APIKeyQuotaCost              float64
-	APIKeyRequestQuotaCount      int64
-	UserGroupRequestQuotaGroupID int64
-	UserGroupRequestQuotaCount   int64
-	APIKeyRateLimitCost          float64
-	AccountQuotaCost             float64
+	BalanceCost                       float64
+	SubscriptionCost                  float64
+	APIKeyQuotaCost                   float64
+	APIKeyRequestQuotaCount           int64
+	UserGroupRequestQuotaGroupID      int64
+	UserGroupRequestQuotaCount        int64
+	SubscriptionRequestQuotaCount     int64 // 订阅按次配额扣减数量
+	APIKeyRateLimitCost               float64
+	AccountQuotaCost                  float64
 }
 
 func (c *UsageBillingCommand) Normalize() {
@@ -59,7 +60,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		return ""
 	}
 	raw := fmt.Sprintf(
-		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%0.10f|%0.10f|%0.10f|%d|%d|%d|%0.10f|%0.10f",
+		"%d|%d|%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d|%s|%d|%0.10f|%0.10f|%0.10f|%d|%d|%d|%d|%0.10f|%0.10f",
 		c.UserID,
 		c.AccountID,
 		c.APIKeyID,
@@ -81,6 +82,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		c.APIKeyRequestQuotaCount,
 		c.UserGroupRequestQuotaGroupID,
 		c.UserGroupRequestQuotaCount,
+		c.SubscriptionRequestQuotaCount,
 		c.APIKeyRateLimitCost,
 		c.AccountQuotaCost,
 	)
@@ -107,10 +109,11 @@ func valueOrZero(v *int64) int64 {
 }
 
 type UsageBillingApplyResult struct {
-	Applied                       bool
-	APIKeyQuotaExhausted          bool
-	APIKeyRequestQuotaConsumed    bool
-	UserGroupRequestQuotaConsumed bool
+	Applied                            bool
+	APIKeyQuotaExhausted               bool
+	APIKeyRequestQuotaConsumed         bool
+	UserGroupRequestQuotaConsumed      bool
+	SubscriptionRequestQuotaConsumed   bool
 }
 
 type UsageBillingRepository interface {

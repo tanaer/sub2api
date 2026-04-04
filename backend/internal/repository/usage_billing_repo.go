@@ -142,6 +142,17 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 		result.UserGroupRequestQuotaConsumed = consumed
 	}
 
+	if cmd.SubscriptionRequestQuotaCount > 0 && cmd.SubscriptionID != nil {
+		consumed, err := incrementUsageBillingSubscriptionRequestQuota(ctx, tx, *cmd.SubscriptionID, cmd.SubscriptionRequestQuotaCount)
+		if err != nil {
+			return err
+		}
+		result.SubscriptionRequestQuotaConsumed = consumed
+		if !consumed {
+			return service.ErrSubscriptionRequestQuotaExhausted
+		}
+	}
+
 	if cmd.APIKeyRateLimitCost > 0 {
 		if err := incrementUsageBillingAPIKeyRateLimit(ctx, tx, cmd.APIKeyID, cmd.APIKeyRateLimitCost); err != nil {
 			return err
@@ -269,6 +280,40 @@ func incrementUsageBillingAPIKeyRequestQuota(ctx context.Context, tx *sql.Tx, ap
 
 func incrementUsageBillingUserGroupRequestQuota(ctx context.Context, tx *sql.Tx, userID, groupID, amount int64) (bool, error) {
 	return incrementUserGroupRequestQuotaWithExecutor(ctx, tx, userID, groupID, amount)
+}
+
+func incrementUsageBillingSubscriptionRequestQuota(ctx context.Context, tx *sql.Tx, subscriptionID, amount int64) (bool, error) {
+	var consumed bool
+	err := tx.QueryRowContext(ctx, `
+		UPDATE user_subscriptions
+		SET request_quota_used = request_quota_used + $1,
+			updated_at = NOW()
+		WHERE id = $2
+			AND deleted_at IS NULL
+			AND request_quota > 0
+			AND request_quota_used + $1 <= request_quota
+		RETURNING TRUE
+	`, amount, subscriptionID).Scan(&consumed)
+	if err == nil {
+		return consumed, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, err
+	}
+	// 检查是订阅不存在还是配额已满
+	var exists bool
+	err = tx.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM user_subscriptions WHERE id = $1 AND deleted_at IS NULL
+		)
+	`, subscriptionID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, service.ErrSubscriptionNotFound
+	}
+	return false, nil // 配额已满
 }
 
 func incrementUsageBillingAPIKeyRateLimit(ctx context.Context, tx *sql.Tx, apiKeyID int64, cost float64) error {

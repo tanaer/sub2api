@@ -149,6 +149,7 @@ type AssignSubscriptionInput struct {
 	ValidityDays int
 	AssignedBy   int64
 	Notes        string
+	RequestQuota int64 // 按次配额数量（0 = 不设按次配额）
 }
 
 // AssignSubscription 分配订阅给用户（不允许重复分配）
@@ -230,6 +231,14 @@ func (s *SubscriptionService) AssignOrExtendSubscription(ctx context.Context, in
 			}
 		}
 
+		// 累加按次配额
+		if input.RequestQuota > 0 {
+			if err := s.userSubRepo.AddRequestQuota(txCtx, existingSub.ID, input.RequestQuota); err != nil {
+				_ = tx.Rollback()
+				return nil, false, fmt.Errorf("add request quota: %w", err)
+			}
+		}
+
 		// 追加备注
 		if input.Notes != "" {
 			newNotes := existingSub.Notes
@@ -301,15 +310,16 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 	}
 
 	sub := &UserSubscription{
-		UserID:     input.UserID,
-		GroupID:    input.GroupID,
-		StartsAt:   now,
-		ExpiresAt:  expiresAt,
-		Status:     SubscriptionStatusActive,
-		AssignedAt: now,
-		Notes:      input.Notes,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		UserID:       input.UserID,
+		GroupID:      input.GroupID,
+		StartsAt:     now,
+		ExpiresAt:    expiresAt,
+		Status:       SubscriptionStatusActive,
+		RequestQuota: input.RequestQuota,
+		AssignedAt:   now,
+		Notes:        input.Notes,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	// 只有当 AssignedBy > 0 时才设置（0 表示系统分配，如兑换码）
 	if input.AssignedBy > 0 {
@@ -322,6 +332,35 @@ func (s *SubscriptionService) createSubscription(ctx context.Context, input *Ass
 
 	// 重新获取完整订阅信息（包含关联）
 	return s.userSubRepo.GetByID(ctx, sub.ID)
+}
+
+// CreateRequestQuotaSubscription 创建独立的按次配额订阅。
+// 与 AssignOrExtendSubscription 不同，每次调用总是创建新订阅（允许同一分组多个按次配额订阅并存）。
+func (s *SubscriptionService) CreateRequestQuotaSubscription(ctx context.Context, input *AssignSubscriptionInput) (*UserSubscription, error) {
+	group, err := s.groupRepo.GetByID(ctx, input.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("group not found: %w", err)
+	}
+	if !group.IsSubscriptionType() {
+		return nil, ErrGroupNotSubscriptionType
+	}
+
+	sub, err := s.createSubscription(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	s.InvalidateSubCache(input.UserID, input.GroupID)
+	if s.billingCacheService != nil {
+		userID, groupID := input.UserID, input.GroupID
+		go func() {
+			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = s.billingCacheService.InvalidateSubscription(cacheCtx, userID, groupID)
+		}()
+	}
+
+	return sub, nil
 }
 
 // BulkAssignSubscriptionInput 批量分配订阅输入
@@ -552,6 +591,27 @@ func (s *SubscriptionService) ExtendSubscription(ctx context.Context, subscripti
 		}()
 	}
 
+	return s.userSubRepo.GetByID(ctx, subscriptionID)
+}
+
+// AdminUpdateRequestQuota 管理员修改订阅的按次配额和已使用量。
+func (s *SubscriptionService) AdminUpdateRequestQuota(ctx context.Context, subscriptionID int64, requestQuota *int64, requestQuotaUsed *int64) (*UserSubscription, error) {
+	sub, err := s.userSubRepo.GetByID(ctx, subscriptionID)
+	if err != nil {
+		return nil, ErrSubscriptionNotFound
+	}
+
+	if requestQuota != nil {
+		sub.RequestQuota = *requestQuota
+	}
+	if requestQuotaUsed != nil {
+		sub.RequestQuotaUsed = *requestQuotaUsed
+	}
+	if err := s.userSubRepo.Update(ctx, sub); err != nil {
+		return nil, err
+	}
+
+	s.InvalidateSubCache(sub.UserID, sub.GroupID)
 	return s.userSubRepo.GetByID(ctx, subscriptionID)
 }
 
@@ -831,7 +891,15 @@ func (s *SubscriptionService) ValidateAndCheckLimits(sub *UserSubscription, grou
 		needsMaintenance = true
 	}
 
-	// 3. 检查用量限额
+	// 3. 按次配额订阅：只检查状态和过期，不检查 USD 窗口限额
+	if sub.HasRequestQuota() {
+		if sub.IsRequestQuotaExhausted() {
+			return needsMaintenance, ErrSubscriptionRequestQuotaExhausted
+		}
+		return needsMaintenance, nil
+	}
+
+	// 4. USD 订阅：检查用量限额
 	if !sub.CheckDailyLimit(group, 0) {
 		return needsMaintenance, ErrDailyLimitExceeded
 	}
@@ -894,13 +962,22 @@ func (s *SubscriptionService) RecordUsage(ctx context.Context, subscriptionID in
 
 // SubscriptionProgress 订阅进度
 type SubscriptionProgress struct {
-	ID            int64                `json:"id"`
-	GroupName     string               `json:"group_name"`
-	ExpiresAt     time.Time            `json:"expires_at"`
-	ExpiresInDays int                  `json:"expires_in_days"`
-	Daily         *UsageWindowProgress `json:"daily,omitempty"`
-	Weekly        *UsageWindowProgress `json:"weekly,omitempty"`
-	Monthly       *UsageWindowProgress `json:"monthly,omitempty"`
+	ID               int64                       `json:"id"`
+	GroupName        string                      `json:"group_name"`
+	ExpiresAt        time.Time                   `json:"expires_at"`
+	ExpiresInDays    int                         `json:"expires_in_days"`
+	Daily            *UsageWindowProgress        `json:"daily,omitempty"`
+	Weekly           *UsageWindowProgress        `json:"weekly,omitempty"`
+	Monthly          *UsageWindowProgress        `json:"monthly,omitempty"`
+	RequestQuota     *RequestQuotaProgress       `json:"request_quota,omitempty"`
+}
+
+// RequestQuotaProgress 按次配额进度
+type RequestQuotaProgress struct {
+	Limit      int64   `json:"limit"`
+	Used       int64   `json:"used"`
+	Remaining  int64   `json:"remaining"`
+	Percentage float64 `json:"percentage"`
 }
 
 // UsageWindowProgress 使用窗口进度
@@ -1010,6 +1087,21 @@ func (s *SubscriptionService) calculateProgress(sub *UserSubscription, group *Gr
 		}
 		if progress.Monthly.ResetsInSeconds < 0 {
 			progress.Monthly.ResetsInSeconds = 0
+		}
+	}
+
+	// 按次配额进度
+	if sub.HasRequestQuota() {
+		remaining := sub.GetRemainingRequestQuota()
+		pct := float64(sub.RequestQuotaUsed) / float64(sub.RequestQuota) * 100
+		if pct > 100 {
+			pct = 100
+		}
+		progress.RequestQuota = &RequestQuotaProgress{
+			Limit:      sub.RequestQuota,
+			Used:       sub.RequestQuotaUsed,
+			Remaining:  remaining,
+			Percentage: pct,
 		}
 	}
 

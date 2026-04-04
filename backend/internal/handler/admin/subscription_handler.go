@@ -56,7 +56,9 @@ type BulkAssignSubscriptionRequest struct {
 
 // AdjustSubscriptionRequest represents adjust subscription request (extend or shorten)
 type AdjustSubscriptionRequest struct {
-	Days int `json:"days" binding:"required,min=-36500,max=36500"` // negative to shorten, positive to extend
+	Days             int    `json:"days" binding:"required,min=-36500,max=36500"` // negative to shorten, positive to extend
+	RequestQuota     *int64 `json:"request_quota"`                                // 按次配额总量（nil = 不修改）
+	RequestQuotaUsed *int64 `json:"request_quota_used"`                           // 已使用次数（nil = 不修改）
 }
 
 // List handles listing all subscriptions with pagination and filters
@@ -212,6 +214,13 @@ func (h *SubscriptionHandler) Extend(c *gin.Context) {
 		subscription, execErr := h.subscriptionService.ExtendSubscription(ctx, subscriptionID, req.Days)
 		if execErr != nil {
 			return nil, execErr
+		}
+		// 按次配额调整
+		if req.RequestQuota != nil || req.RequestQuotaUsed != nil {
+			subscription, execErr = h.subscriptionService.AdminUpdateRequestQuota(ctx, subscriptionID, req.RequestQuota, req.RequestQuotaUsed)
+			if execErr != nil {
+				return nil, execErr
+			}
 		}
 		return dto.UserSubscriptionFromServiceAdmin(subscription), nil
 	})

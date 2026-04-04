@@ -69,6 +69,13 @@ func (UserSubscription) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
 			Default(0),
 
+		field.Int64("request_quota").
+			Default(0).
+			Comment("按次配额总量（0 = 不启用按次计费）"),
+		field.Int64("request_quota_used").
+			Default(0).
+			Comment("已使用按次配额"),
+
 		field.Int64("assigned_by").
 			Optional().
 			Nillable(),

@@ -5412,37 +5412,39 @@ func (m *AccountGroupMutation) ResetEdge(name string) error {
 // AccountThrottleRuleMutation represents an operation that mutates the AccountThrottleRule nodes in the graph.
 type AccountThrottleRuleMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *int64
-	created_at             *time.Time
-	updated_at             *time.Time
-	name                   *string
-	enabled                *bool
-	priority               *int
-	addpriority            *int
-	error_codes            *[]int
-	appenderror_codes      []int
-	keywords               *[]string
-	appendkeywords         []string
-	match_mode             *string
-	trigger_mode           *string
-	accumulated_count      *int
-	addaccumulated_count   *int
-	accumulated_window     *int
-	addaccumulated_window  *int
-	action_type            *string
-	action_duration        *int
-	addaction_duration     *int
-	action_recover_hour    *int
-	addaction_recover_hour *int
-	platforms              *[]string
-	appendplatforms        []string
-	description            *string
-	clearedFields          map[string]struct{}
-	done                   bool
-	oldValue               func(context.Context) (*AccountThrottleRule, error)
-	predicates             []predicate.AccountThrottleRule
+	op                         Op
+	typ                        string
+	id                         *int64
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	name                       *string
+	enabled                    *bool
+	priority                   *int
+	addpriority                *int
+	error_codes                *[]int
+	appenderror_codes          []int
+	keywords                   *[]string
+	appendkeywords             []string
+	match_mode                 *string
+	trigger_mode               *string
+	accumulated_count          *int
+	addaccumulated_count       *int
+	accumulated_window         *int
+	addaccumulated_window      *int
+	action_type                *string
+	action_duration            *int
+	addaction_duration         *int
+	action_recover_hour        *int
+	addaction_recover_hour     *int
+	recovery_check_interval    *int
+	addrecovery_check_interval *int
+	platforms                  *[]string
+	appendplatforms            []string
+	description                *string
+	clearedFields              map[string]struct{}
+	done                       bool
+	oldValue                   func(context.Context) (*AccountThrottleRule, error)
+	predicates                 []predicate.AccountThrottleRule
 }
 
 var _ ent.Mutation = (*AccountThrottleRuleMutation)(nil)
@@ -6205,6 +6207,62 @@ func (m *AccountThrottleRuleMutation) ResetActionRecoverHour() {
 	m.addaction_recover_hour = nil
 }
 
+// SetRecoveryCheckInterval sets the "recovery_check_interval" field.
+func (m *AccountThrottleRuleMutation) SetRecoveryCheckInterval(i int) {
+	m.recovery_check_interval = &i
+	m.addrecovery_check_interval = nil
+}
+
+// RecoveryCheckInterval returns the value of the "recovery_check_interval" field in the mutation.
+func (m *AccountThrottleRuleMutation) RecoveryCheckInterval() (r int, exists bool) {
+	v := m.recovery_check_interval
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecoveryCheckInterval returns the old "recovery_check_interval" field's value of the AccountThrottleRule entity.
+// If the AccountThrottleRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AccountThrottleRuleMutation) OldRecoveryCheckInterval(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecoveryCheckInterval is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecoveryCheckInterval requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecoveryCheckInterval: %w", err)
+	}
+	return oldValue.RecoveryCheckInterval, nil
+}
+
+// AddRecoveryCheckInterval adds i to the "recovery_check_interval" field.
+func (m *AccountThrottleRuleMutation) AddRecoveryCheckInterval(i int) {
+	if m.addrecovery_check_interval != nil {
+		*m.addrecovery_check_interval += i
+	} else {
+		m.addrecovery_check_interval = &i
+	}
+}
+
+// AddedRecoveryCheckInterval returns the value that was added to the "recovery_check_interval" field in this mutation.
+func (m *AccountThrottleRuleMutation) AddedRecoveryCheckInterval() (r int, exists bool) {
+	v := m.addrecovery_check_interval
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRecoveryCheckInterval resets all changes to the "recovery_check_interval" field.
+func (m *AccountThrottleRuleMutation) ResetRecoveryCheckInterval() {
+	m.recovery_check_interval = nil
+	m.addrecovery_check_interval = nil
+}
+
 // SetPlatforms sets the "platforms" field.
 func (m *AccountThrottleRuleMutation) SetPlatforms(s []string) {
 	m.platforms = &s
@@ -6353,7 +6411,7 @@ func (m *AccountThrottleRuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AccountThrottleRuleMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.created_at != nil {
 		fields = append(fields, accountthrottlerule.FieldCreatedAt)
 	}
@@ -6395,6 +6453,9 @@ func (m *AccountThrottleRuleMutation) Fields() []string {
 	}
 	if m.action_recover_hour != nil {
 		fields = append(fields, accountthrottlerule.FieldActionRecoverHour)
+	}
+	if m.recovery_check_interval != nil {
+		fields = append(fields, accountthrottlerule.FieldRecoveryCheckInterval)
 	}
 	if m.platforms != nil {
 		fields = append(fields, accountthrottlerule.FieldPlatforms)
@@ -6438,6 +6499,8 @@ func (m *AccountThrottleRuleMutation) Field(name string) (ent.Value, bool) {
 		return m.ActionDuration()
 	case accountthrottlerule.FieldActionRecoverHour:
 		return m.ActionRecoverHour()
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		return m.RecoveryCheckInterval()
 	case accountthrottlerule.FieldPlatforms:
 		return m.Platforms()
 	case accountthrottlerule.FieldDescription:
@@ -6479,6 +6542,8 @@ func (m *AccountThrottleRuleMutation) OldField(ctx context.Context, name string)
 		return m.OldActionDuration(ctx)
 	case accountthrottlerule.FieldActionRecoverHour:
 		return m.OldActionRecoverHour(ctx)
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		return m.OldRecoveryCheckInterval(ctx)
 	case accountthrottlerule.FieldPlatforms:
 		return m.OldPlatforms(ctx)
 	case accountthrottlerule.FieldDescription:
@@ -6590,6 +6655,13 @@ func (m *AccountThrottleRuleMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetActionRecoverHour(v)
 		return nil
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecoveryCheckInterval(v)
+		return nil
 	case accountthrottlerule.FieldPlatforms:
 		v, ok := value.([]string)
 		if !ok {
@@ -6627,6 +6699,9 @@ func (m *AccountThrottleRuleMutation) AddedFields() []string {
 	if m.addaction_recover_hour != nil {
 		fields = append(fields, accountthrottlerule.FieldActionRecoverHour)
 	}
+	if m.addrecovery_check_interval != nil {
+		fields = append(fields, accountthrottlerule.FieldRecoveryCheckInterval)
+	}
 	return fields
 }
 
@@ -6645,6 +6720,8 @@ func (m *AccountThrottleRuleMutation) AddedField(name string) (ent.Value, bool) 
 		return m.AddedActionDuration()
 	case accountthrottlerule.FieldActionRecoverHour:
 		return m.AddedActionRecoverHour()
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		return m.AddedRecoveryCheckInterval()
 	}
 	return nil, false
 }
@@ -6688,6 +6765,13 @@ func (m *AccountThrottleRuleMutation) AddField(name string, value ent.Value) err
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddActionRecoverHour(v)
+		return nil
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRecoveryCheckInterval(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AccountThrottleRule numeric field %s", name)
@@ -6784,6 +6868,9 @@ func (m *AccountThrottleRuleMutation) ResetField(name string) error {
 		return nil
 	case accountthrottlerule.FieldActionRecoverHour:
 		m.ResetActionRecoverHour()
+		return nil
+	case accountthrottlerule.FieldRecoveryCheckInterval:
+		m.ResetRecoveryCheckInterval()
 		return nil
 	case accountthrottlerule.FieldPlatforms:
 		m.ResetPlatforms()
@@ -29154,6 +29241,10 @@ type UserSubscriptionMutation struct {
 	addweekly_usage_usd     *float64
 	monthly_usage_usd       *float64
 	addmonthly_usage_usd    *float64
+	request_quota           *int64
+	addrequest_quota        *int64
+	request_quota_used      *int64
+	addrequest_quota_used   *int64
 	assigned_at             *time.Time
 	notes                   *string
 	clearedFields           map[string]struct{}
@@ -29885,6 +29976,118 @@ func (m *UserSubscriptionMutation) ResetMonthlyUsageUsd() {
 	m.addmonthly_usage_usd = nil
 }
 
+// SetRequestQuota sets the "request_quota" field.
+func (m *UserSubscriptionMutation) SetRequestQuota(i int64) {
+	m.request_quota = &i
+	m.addrequest_quota = nil
+}
+
+// RequestQuota returns the value of the "request_quota" field in the mutation.
+func (m *UserSubscriptionMutation) RequestQuota() (r int64, exists bool) {
+	v := m.request_quota
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestQuota returns the old "request_quota" field's value of the UserSubscription entity.
+// If the UserSubscription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserSubscriptionMutation) OldRequestQuota(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestQuota is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestQuota requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestQuota: %w", err)
+	}
+	return oldValue.RequestQuota, nil
+}
+
+// AddRequestQuota adds i to the "request_quota" field.
+func (m *UserSubscriptionMutation) AddRequestQuota(i int64) {
+	if m.addrequest_quota != nil {
+		*m.addrequest_quota += i
+	} else {
+		m.addrequest_quota = &i
+	}
+}
+
+// AddedRequestQuota returns the value that was added to the "request_quota" field in this mutation.
+func (m *UserSubscriptionMutation) AddedRequestQuota() (r int64, exists bool) {
+	v := m.addrequest_quota
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRequestQuota resets all changes to the "request_quota" field.
+func (m *UserSubscriptionMutation) ResetRequestQuota() {
+	m.request_quota = nil
+	m.addrequest_quota = nil
+}
+
+// SetRequestQuotaUsed sets the "request_quota_used" field.
+func (m *UserSubscriptionMutation) SetRequestQuotaUsed(i int64) {
+	m.request_quota_used = &i
+	m.addrequest_quota_used = nil
+}
+
+// RequestQuotaUsed returns the value of the "request_quota_used" field in the mutation.
+func (m *UserSubscriptionMutation) RequestQuotaUsed() (r int64, exists bool) {
+	v := m.request_quota_used
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestQuotaUsed returns the old "request_quota_used" field's value of the UserSubscription entity.
+// If the UserSubscription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserSubscriptionMutation) OldRequestQuotaUsed(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestQuotaUsed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestQuotaUsed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestQuotaUsed: %w", err)
+	}
+	return oldValue.RequestQuotaUsed, nil
+}
+
+// AddRequestQuotaUsed adds i to the "request_quota_used" field.
+func (m *UserSubscriptionMutation) AddRequestQuotaUsed(i int64) {
+	if m.addrequest_quota_used != nil {
+		*m.addrequest_quota_used += i
+	} else {
+		m.addrequest_quota_used = &i
+	}
+}
+
+// AddedRequestQuotaUsed returns the value that was added to the "request_quota_used" field in this mutation.
+func (m *UserSubscriptionMutation) AddedRequestQuotaUsed() (r int64, exists bool) {
+	v := m.addrequest_quota_used
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRequestQuotaUsed resets all changes to the "request_quota_used" field.
+func (m *UserSubscriptionMutation) ResetRequestQuotaUsed() {
+	m.request_quota_used = nil
+	m.addrequest_quota_used = nil
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (m *UserSubscriptionMutation) SetAssignedBy(i int64) {
 	m.assigned_by_user = &i
@@ -30201,7 +30404,7 @@ func (m *UserSubscriptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserSubscriptionMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, usersubscription.FieldCreatedAt)
 	}
@@ -30243,6 +30446,12 @@ func (m *UserSubscriptionMutation) Fields() []string {
 	}
 	if m.monthly_usage_usd != nil {
 		fields = append(fields, usersubscription.FieldMonthlyUsageUsd)
+	}
+	if m.request_quota != nil {
+		fields = append(fields, usersubscription.FieldRequestQuota)
+	}
+	if m.request_quota_used != nil {
+		fields = append(fields, usersubscription.FieldRequestQuotaUsed)
 	}
 	if m.assigned_by_user != nil {
 		fields = append(fields, usersubscription.FieldAssignedBy)
@@ -30289,6 +30498,10 @@ func (m *UserSubscriptionMutation) Field(name string) (ent.Value, bool) {
 		return m.WeeklyUsageUsd()
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.MonthlyUsageUsd()
+	case usersubscription.FieldRequestQuota:
+		return m.RequestQuota()
+	case usersubscription.FieldRequestQuotaUsed:
+		return m.RequestQuotaUsed()
 	case usersubscription.FieldAssignedBy:
 		return m.AssignedBy()
 	case usersubscription.FieldAssignedAt:
@@ -30332,6 +30545,10 @@ func (m *UserSubscriptionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldWeeklyUsageUsd(ctx)
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.OldMonthlyUsageUsd(ctx)
+	case usersubscription.FieldRequestQuota:
+		return m.OldRequestQuota(ctx)
+	case usersubscription.FieldRequestQuotaUsed:
+		return m.OldRequestQuotaUsed(ctx)
 	case usersubscription.FieldAssignedBy:
 		return m.OldAssignedBy(ctx)
 	case usersubscription.FieldAssignedAt:
@@ -30445,6 +30662,20 @@ func (m *UserSubscriptionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMonthlyUsageUsd(v)
 		return nil
+	case usersubscription.FieldRequestQuota:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestQuota(v)
+		return nil
+	case usersubscription.FieldRequestQuotaUsed:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestQuotaUsed(v)
+		return nil
 	case usersubscription.FieldAssignedBy:
 		v, ok := value.(int64)
 		if !ok {
@@ -30483,6 +30714,12 @@ func (m *UserSubscriptionMutation) AddedFields() []string {
 	if m.addmonthly_usage_usd != nil {
 		fields = append(fields, usersubscription.FieldMonthlyUsageUsd)
 	}
+	if m.addrequest_quota != nil {
+		fields = append(fields, usersubscription.FieldRequestQuota)
+	}
+	if m.addrequest_quota_used != nil {
+		fields = append(fields, usersubscription.FieldRequestQuotaUsed)
+	}
 	return fields
 }
 
@@ -30497,6 +30734,10 @@ func (m *UserSubscriptionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedWeeklyUsageUsd()
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.AddedMonthlyUsageUsd()
+	case usersubscription.FieldRequestQuota:
+		return m.AddedRequestQuota()
+	case usersubscription.FieldRequestQuotaUsed:
+		return m.AddedRequestQuotaUsed()
 	}
 	return nil, false
 }
@@ -30526,6 +30767,20 @@ func (m *UserSubscriptionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddMonthlyUsageUsd(v)
+		return nil
+	case usersubscription.FieldRequestQuota:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRequestQuota(v)
+		return nil
+	case usersubscription.FieldRequestQuotaUsed:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRequestQuotaUsed(v)
 		return nil
 	}
 	return fmt.Errorf("unknown UserSubscription numeric field %s", name)
@@ -30634,6 +30889,12 @@ func (m *UserSubscriptionMutation) ResetField(name string) error {
 		return nil
 	case usersubscription.FieldMonthlyUsageUsd:
 		m.ResetMonthlyUsageUsd()
+		return nil
+	case usersubscription.FieldRequestQuota:
+		m.ResetRequestQuota()
+		return nil
+	case usersubscription.FieldRequestQuotaUsed:
+		m.ResetRequestQuotaUsed()
 		return nil
 	case usersubscription.FieldAssignedBy:
 		m.ResetAssignedBy()

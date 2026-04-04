@@ -122,6 +122,12 @@ func (userSubRepoNoop) ResetMonthlyUsage(context.Context, int64, time.Time) erro
 func (userSubRepoNoop) IncrementUsage(context.Context, int64, float64) error {
 	panic("unexpected IncrementUsage call")
 }
+func (userSubRepoNoop) IncrementRequestQuotaUsed(context.Context, int64, int64) (bool, error) {
+	panic("unexpected IncrementRequestQuotaUsed call")
+}
+func (userSubRepoNoop) AddRequestQuota(context.Context, int64, int64) error {
+	panic("unexpected AddRequestQuota call")
+}
 func (userSubRepoNoop) BatchUpdateExpiredStatus(context.Context) (int64, error) {
 	panic("unexpected BatchUpdateExpiredStatus call")
 }

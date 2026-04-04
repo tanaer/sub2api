@@ -158,6 +158,20 @@
                     }}
                   </span>
                 </div>
+
+                <div v-if="subscription.request_quota && subscription.request_quota > 0" class="flex items-center gap-2">
+                  <span class="w-8 flex-shrink-0 text-[10px] text-gray-500">{{ t('subscriptionProgress.requests') || '次数' }}</span>
+                  <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
+                    <div
+                      class="h-1.5 rounded-full transition-all"
+                      :class="getProgressBarClass(subscription.request_quota_used, subscription.request_quota)"
+                      :style="{ width: getProgressWidth(subscription.request_quota_used, subscription.request_quota) }"
+                    ></div>
+                  </div>
+                  <span class="w-24 flex-shrink-0 text-right text-[10px] text-gray-500">
+                    {{ (subscription.request_quota_used || 0) }}/{{ subscription.request_quota }}
+                  </span>
+                </div>
               </template>
             </div>
           </div>
@@ -215,6 +229,9 @@ function getMaxUsagePercentage(sub: UserSubscription): number {
   if (sub.group?.monthly_limit_usd) {
     percentages.push(((sub.monthly_usage_usd || 0) / sub.group.monthly_limit_usd) * 100)
   }
+  if (sub.request_quota && sub.request_quota > 0) {
+    percentages.push(((sub.request_quota_used || 0) / sub.request_quota) * 100)
+  }
   return percentages.length > 0 ? Math.max(...percentages) : 0
 }
 
@@ -222,7 +239,8 @@ function isUnlimited(sub: UserSubscription): boolean {
   return (
     !sub.group?.daily_limit_usd &&
     !sub.group?.weekly_limit_usd &&
-    !sub.group?.monthly_limit_usd
+    !sub.group?.monthly_limit_usd &&
+    !(sub.request_quota && sub.request_quota > 0)
   )
 }
 

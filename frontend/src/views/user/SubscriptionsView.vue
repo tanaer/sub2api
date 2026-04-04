@@ -206,12 +206,35 @@
               </p>
             </div>
 
+            <!-- Request Quota Usage -->
+            <div v-if="subscription.request_quota && subscription.request_quota > 0" class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('userSubscriptions.requestQuota') || '按次配额' }}
+                </span>
+                <span class="text-sm text-gray-500 dark:text-dark-400">
+                  {{ (subscription.request_quota_used || 0).toLocaleString() }} / {{ subscription.request_quota.toLocaleString() }}
+                </span>
+              </div>
+              <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
+                <div
+                  class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                  :class="getProgressBarClass(subscription.request_quota_used, subscription.request_quota)"
+                  :style="{ width: getProgressWidth(subscription.request_quota_used, subscription.request_quota) }"
+                ></div>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-dark-400">
+                {{ t('userSubscriptions.requestQuotaRemaining') || '剩余次数' }}: {{ Math.max((subscription.request_quota || 0) - (subscription.request_quota_used || 0), 0).toLocaleString() }}
+              </p>
+            </div>
+
             <!-- No limits configured - Unlimited badge -->
             <div
               v-if="
                 !subscription.group?.daily_limit_usd &&
                 !subscription.group?.weekly_limit_usd &&
-                !subscription.group?.monthly_limit_usd
+                !subscription.group?.monthly_limit_usd &&
+                !(subscription.request_quota && subscription.request_quota > 0)
               "
               class="flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 py-6 dark:from-emerald-900/20 dark:to-teal-900/20"
             >

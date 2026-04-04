@@ -19,6 +19,9 @@ type UserSubscription struct {
 	WeeklyUsageUSD  float64
 	MonthlyUsageUSD float64
 
+	RequestQuota     int64
+	RequestQuotaUsed int64
+
 	AssignedBy *int64
 	AssignedAt time.Time
 	Notes      string
@@ -93,6 +96,28 @@ func (s *UserSubscription) MonthlyResetTime() *time.Time {
 	}
 	t := s.MonthlyWindowStart.Add(30 * 24 * time.Hour)
 	return &t
+}
+
+// HasRequestQuota returns true when the subscription has a request-count quota configured.
+func (s *UserSubscription) HasRequestQuota() bool {
+	return s != nil && s.RequestQuota > 0
+}
+
+// IsRequestQuotaExhausted returns true when the request quota is fully consumed.
+func (s *UserSubscription) IsRequestQuotaExhausted() bool {
+	return s.HasRequestQuota() && s.RequestQuotaUsed >= s.RequestQuota
+}
+
+// GetRemainingRequestQuota returns the remaining request count (0 when exhausted or disabled).
+func (s *UserSubscription) GetRemainingRequestQuota() int64 {
+	if !s.HasRequestQuota() {
+		return 0
+	}
+	remaining := s.RequestQuota - s.RequestQuotaUsed
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
 
 func (s *UserSubscription) CheckDailyLimit(group *Group, additionalCost float64) bool {

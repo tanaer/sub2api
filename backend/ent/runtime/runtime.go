@@ -336,6 +336,10 @@ func init() {
 	accountthrottleruleDescActionRecoverHour := accountthrottleruleFields[11].Descriptor()
 	// accountthrottlerule.DefaultActionRecoverHour holds the default value on creation for the action_recover_hour field.
 	accountthrottlerule.DefaultActionRecoverHour = accountthrottleruleDescActionRecoverHour.Default.(int)
+	// accountthrottleruleDescRecoveryCheckInterval is the schema descriptor for recovery_check_interval field.
+	accountthrottleruleDescRecoveryCheckInterval := accountthrottleruleFields[12].Descriptor()
+	// accountthrottlerule.DefaultRecoveryCheckInterval holds the default value on creation for the recovery_check_interval field.
+	accountthrottlerule.DefaultRecoveryCheckInterval = accountthrottleruleDescRecoveryCheckInterval.Default.(int)
 	announcementFields := schema.Announcement{}.Fields()
 	_ = announcementFields
 	// announcementDescTitle is the schema descriptor for title field.
@@ -1319,8 +1323,16 @@ func init() {
 	usersubscriptionDescMonthlyUsageUsd := usersubscriptionFields[10].Descriptor()
 	// usersubscription.DefaultMonthlyUsageUsd holds the default value on creation for the monthly_usage_usd field.
 	usersubscription.DefaultMonthlyUsageUsd = usersubscriptionDescMonthlyUsageUsd.Default.(float64)
+	// usersubscriptionDescRequestQuota is the schema descriptor for request_quota field.
+	usersubscriptionDescRequestQuota := usersubscriptionFields[11].Descriptor()
+	// usersubscription.DefaultRequestQuota holds the default value on creation for the request_quota field.
+	usersubscription.DefaultRequestQuota = usersubscriptionDescRequestQuota.Default.(int64)
+	// usersubscriptionDescRequestQuotaUsed is the schema descriptor for request_quota_used field.
+	usersubscriptionDescRequestQuotaUsed := usersubscriptionFields[12].Descriptor()
+	// usersubscription.DefaultRequestQuotaUsed holds the default value on creation for the request_quota_used field.
+	usersubscription.DefaultRequestQuotaUsed = usersubscriptionDescRequestQuotaUsed.Default.(int64)
 	// usersubscriptionDescAssignedAt is the schema descriptor for assigned_at field.
-	usersubscriptionDescAssignedAt := usersubscriptionFields[12].Descriptor()
+	usersubscriptionDescAssignedAt := usersubscriptionFields[14].Descriptor()
 	// usersubscription.DefaultAssignedAt holds the default value on creation for the assigned_at field.
 	usersubscription.DefaultAssignedAt = usersubscriptionDescAssignedAt.Default.(func() time.Time)
 }
