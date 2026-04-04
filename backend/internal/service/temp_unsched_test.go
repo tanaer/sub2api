@@ -3,10 +3,12 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/stretchr/testify/require"
 )
 
@@ -412,4 +414,61 @@ func TestTempUnschedState_MarshalTraceFields(t *testing.T) {
 	require.Contains(t, string(raw), `"request_id":"req-temp-1"`)
 	require.Contains(t, string(raw), `"upstream_status_code":404`)
 	require.Contains(t, string(raw), `"upstream_error_message":"Model Not Found"`)
+}
+
+func TestTempUnschedState_ApplyTempUnschedTrace(t *testing.T) {
+	tests := []struct {
+		name                    string
+		ctx                     context.Context
+		upstreamStatusCode      int
+		responseBody            []byte
+		wantRequestID           string
+		wantUpstreamStatusCode  int
+		wantUpstreamErrorMsg    string
+		wantUpstreamErrorDetail string
+	}{
+		{
+			name:                    "write_request_id_status_message_and_detail",
+			ctx:                     context.WithValue(context.Background(), ctxkey.RequestID, " req-temp-1 "),
+			upstreamStatusCode:      404,
+			responseBody:            []byte(`{"error":{"message":"Model Not Found?access_token=secret"}}`),
+			wantRequestID:           "req-temp-1",
+			wantUpstreamStatusCode:  404,
+			wantUpstreamErrorMsg:    "Model Not Found?access_token=***",
+			wantUpstreamErrorDetail: truncateTempUnschedMessage([]byte(`{"error":{"message":"Model Not Found?access_token=secret"}}`), tempUnschedMessageMaxBytes),
+		},
+		{
+			name:                    "keep_request_id_empty_when_missing_and_skip_non_positive_status",
+			ctx:                     context.Background(),
+			upstreamStatusCode:      0,
+			responseBody:            []byte(`{"error":{"message":"bad request"}}`),
+			wantRequestID:           "",
+			wantUpstreamStatusCode:  0,
+			wantUpstreamErrorMsg:    "bad request",
+			wantUpstreamErrorDetail: truncateTempUnschedMessage([]byte(`{"error":{"message":"bad request"}}`), tempUnschedMessageMaxBytes),
+		},
+		{
+			name:                    "skip_non_positive_negative_status",
+			ctx:                     context.Background(),
+			upstreamStatusCode:      -1,
+			responseBody:            []byte(`{"error":{"message":"still bad"}}`),
+			wantRequestID:           "",
+			wantUpstreamStatusCode:  0,
+			wantUpstreamErrorMsg:    "still bad",
+			wantUpstreamErrorDetail: truncateTempUnschedMessage([]byte(`{"error":{"message":"still bad"}}`), tempUnschedMessageMaxBytes),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &TempUnschedState{}
+
+			applyTempUnschedTrace(tt.ctx, state, tt.upstreamStatusCode, tt.responseBody)
+
+			require.Equal(t, tt.wantRequestID, state.RequestID)
+			require.Equal(t, tt.wantUpstreamStatusCode, state.UpstreamStatusCode)
+			require.Equal(t, tt.wantUpstreamErrorMsg, state.UpstreamErrorMessage)
+			require.Equal(t, tt.wantUpstreamErrorDetail, state.UpstreamErrorDetail)
+		})
+	}
 }
