@@ -101,7 +101,31 @@ describe('TempUnschedStatusModal', () => {
         open_request_details: '1',
         request_id: 'req-temp-ui-1',
         tr: 'custom',
+        start_time: expect.any(String),
+        end_time: expect.any(String),
       }),
     }))
+  })
+
+  it('点击复制按钮会调用 copyToClipboard', async () => {
+    const wrapper = mount(TempUnschedStatusModal, {
+      props: {
+        show: false,
+        account: { id: 7, name: 'xunfei-7', platform: 'anthropic' } as any,
+      },
+      global: {
+        stubs: { BaseDialog: BaseDialogStub },
+      },
+    })
+
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="temp-unsched-copy-request"]').trigger('click')
+
+    expect(mockCopyToClipboard).toHaveBeenCalledWith(
+      'req-temp-ui-1',
+      'admin.accounts.tempUnschedulable.requestIdCopied'
+    )
   })
 })
