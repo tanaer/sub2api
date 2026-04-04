@@ -107,13 +107,13 @@ export const buildOpenClawImportSpec = (
     case 'openai': {
       const modelId = customModels?.[0]?.trim() || 'gpt-5.4'
       const modelName = modelId
-      const providerId = 'sub2api-openai'
+      const providerId = 'muskai-openai'
       return {
         providerId,
         modelId,
         modelName,
         modelRef: `${providerId}/${modelId}`,
-        alias: `Sub2API ${modelName}`,
+        alias: `MuskAI ${modelName}`,
         provider: {
           api: 'openai-responses',
           apiKey,
@@ -133,13 +133,13 @@ export const buildOpenClawImportSpec = (
     case 'gemini': {
       const modelId = customModels?.[0]?.trim() || 'gemini-2.0-flash'
       const modelName = modelId
-      const providerId = 'sub2api-gemini'
+      const providerId = 'muskai-gemini'
       return {
         providerId,
         modelId,
         modelName,
         modelRef: `${providerId}/${modelId}`,
-        alias: `Sub2API ${modelName}`,
+        alias: `MuskAI ${modelName}`,
         provider: {
           api: 'google-generative-ai',
           apiKey,
@@ -158,13 +158,13 @@ export const buildOpenClawImportSpec = (
     case 'anthropic': {
       const modelId = customModels?.[0]?.trim() || 'claude-opus-4-6'
       const modelName = modelId
-      const providerId = 'sub2api-anthropic'
+      const providerId = 'muskai-anthropic'
       return {
         providerId,
         modelId,
         modelName,
         modelRef: `${providerId}/${modelId}`,
-        alias: `Sub2API ${modelName}`,
+        alias: `MuskAI ${modelName}`,
         provider: {
           api: 'anthropic-messages',
           apiKey,
@@ -184,13 +184,13 @@ export const buildOpenClawImportSpec = (
     case 'antigravity': {
       const modelId = customModels?.[0]?.trim() || 'claude-sonnet-4-6'
       const modelName = modelId
-      const providerId = 'sub2api-antigravity'
+      const providerId = 'muskai-antigravity'
       return {
         providerId,
         modelId,
         modelName,
         modelRef: `${providerId}/${modelId}`,
-        alias: `Sub2API ${modelName}`,
+        alias: `MuskAI ${modelName}`,
         provider: {
           api: 'anthropic-messages',
           apiKey,
