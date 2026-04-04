@@ -163,8 +163,41 @@ func (h *ProviderHandler) resolveBaseURL(c *gin.Context) string {
 	return scheme + "://" + c.Request.Host
 }
 
-// providerResolveModel 将 Claude 模型 ID 通过分组别名映射解析为目标模型
+// providerResolveModel 将 Claude 模型 ID 解析为目标模型。
+// 优先级：model_aliases 精确/通配符匹配 → config_templates 按位置 → fallback_model → 原始 ID。
 func providerResolveModel(group *service.Group, claudeModelID string) providerModelTarget {
+	// 1. model_aliases 匹配
+	if resolved := group.ResolveModelAlias(claudeModelID); resolved != claudeModelID {
+		return providerModelTarget{ID: resolved, DisplayName: resolved}
+	}
+
+	// 2. config_templates 按位置（opus=0, sonnet=1, haiku=2）
+	if name := resolveFromConfigTemplates(group.ConfigTemplates, claudeModelID); name != "" {
+		return providerModelTarget{ID: name, DisplayName: name}
+	}
+
+	// 3. fallback_model / 原始 ID（ResolveModelAlias 已处理）
 	resolved := group.ResolveModelAlias(claudeModelID)
 	return providerModelTarget{ID: resolved, DisplayName: resolved}
+}
+
+// resolveFromConfigTemplates 从 config_templates JSON 数组按位置读取模型名
+// config_templates 格式：["opus目标", "sonnet目标", "haiku目标"]
+func resolveFromConfigTemplates(configTemplates string, claudeModelID string) string {
+	if configTemplates == "" {
+		return ""
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(configTemplates), &names); err != nil {
+		return ""
+	}
+	switch {
+	case strings.Contains(claudeModelID, "opus") && len(names) > 0:
+		return names[0]
+	case strings.Contains(claudeModelID, "sonnet") && len(names) > 1:
+		return names[1]
+	case strings.Contains(claudeModelID, "haiku") && len(names) > 2:
+		return names[2]
+	}
+	return ""
 }
