@@ -1181,8 +1181,8 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingTimeoutAfterClientDi
 	go func() {
 		defer close(done)
 		_, _ = pw.Write([]byte(`data: {"type":"message_start","message":{"usage":{"input_tokens":9}}}` + "\n"))
-		// 保持上游连接静默，触发数据间隔超时分支。
-		time.Sleep(1500 * time.Millisecond)
+		// 保持上游连接静默，给 1s 的超时间隔留出足够裕量，避免整包测试下偶发先走 EOF 分支。
+		time.Sleep(2500 * time.Millisecond)
 		_ = pw.Close()
 	}()
 
