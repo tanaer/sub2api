@@ -3352,6 +3352,10 @@ export default {
       groupRequestQuotaGrantExpiryAt: '该笔次数额度将于 {time} 失效',
       groupRequestQuotaGrantExpiredAt: '该笔次数额度已于 {time} 失效',
       groupRequired: '请选择分组',
+      selectPlan: '选择订阅计划',
+      selectPlanPlaceholder: '请选择订阅计划',
+      managePlans: '管理订阅计划',
+      planRequired: '请选择订阅计划',
       days: '天',
       status: {
         unused: '未使用',
