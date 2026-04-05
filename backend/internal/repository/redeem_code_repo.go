@@ -278,6 +278,7 @@ func redeemCodeEntityToService(m *dbent.RedeemCode) *service.RedeemCode {
 		Notes:        derefString(m.Notes),
 		CreatedAt:    m.CreatedAt,
 		GroupID:      m.GroupID,
+		PlanID:       m.PlanID,
 		ValidityDays: m.ValidityDays,
 	}
 	if out.Type == service.RedeemTypeGroupRequestQuota && out.UsedAt != nil {

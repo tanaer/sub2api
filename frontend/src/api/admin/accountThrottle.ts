@@ -11,9 +11,10 @@ export interface AccountThrottleRule {
   trigger_mode: 'immediate' | 'accumulated'
   accumulated_count: number
   accumulated_window: number
-  action_type: 'duration' | 'scheduled_recovery'
+  action_type: 'duration' | 'scheduled_recovery' | 'extract_recovery'
   action_duration: number
   action_recover_hour: number
+  recovery_check_interval: number
   platforms: string[]
   description: string | null
   created_at: string
@@ -30,9 +31,10 @@ export interface CreateThrottleRuleRequest {
   trigger_mode?: 'immediate' | 'accumulated'
   accumulated_count?: number
   accumulated_window?: number
-  action_type?: 'duration' | 'scheduled_recovery'
+  action_type?: 'duration' | 'scheduled_recovery' | 'extract_recovery'
   action_duration?: number
   action_recover_hour?: number
+  recovery_check_interval?: number
   platforms?: string[]
   description?: string | null
 }
@@ -47,9 +49,10 @@ export interface UpdateThrottleRuleRequest {
   trigger_mode?: 'immediate' | 'accumulated'
   accumulated_count?: number
   accumulated_window?: number
-  action_type?: 'duration' | 'scheduled_recovery'
+  action_type?: 'duration' | 'scheduled_recovery' | 'extract_recovery'
   action_duration?: number
   action_recover_hour?: number
+  recovery_check_interval?: number
   platforms?: string[]
   description?: string | null
 }

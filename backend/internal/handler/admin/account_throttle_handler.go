@@ -21,38 +21,40 @@ func NewAccountThrottleHandler(service *service.AccountThrottleService) *Account
 
 // CreateAccountThrottleRuleRequest 创建规则请求
 type CreateAccountThrottleRuleRequest struct {
-	Name              string   `json:"name" binding:"required"`
-	Enabled           *bool    `json:"enabled"`
-	Priority          int      `json:"priority"`
-	ErrorCodes        []int    `json:"error_codes"`
-	Keywords          []string `json:"keywords"`
-	MatchMode         string   `json:"match_mode"`
-	TriggerMode       string   `json:"trigger_mode"`
-	AccumulatedCount  *int     `json:"accumulated_count"`
-	AccumulatedWindow *int     `json:"accumulated_window"`
-	ActionType        string   `json:"action_type"`
-	ActionDuration    *int     `json:"action_duration"`
-	ActionRecoverHour *int     `json:"action_recover_hour"`
-	Platforms         []string `json:"platforms"`
-	Description       *string  `json:"description"`
+	Name                  string   `json:"name" binding:"required"`
+	Enabled               *bool    `json:"enabled"`
+	Priority              int      `json:"priority"`
+	ErrorCodes            []int    `json:"error_codes"`
+	Keywords              []string `json:"keywords"`
+	MatchMode             string   `json:"match_mode"`
+	TriggerMode           string   `json:"trigger_mode"`
+	AccumulatedCount      *int     `json:"accumulated_count"`
+	AccumulatedWindow     *int     `json:"accumulated_window"`
+	ActionType            string   `json:"action_type"`
+	ActionDuration        *int     `json:"action_duration"`
+	ActionRecoverHour     *int     `json:"action_recover_hour"`
+	RecoveryCheckInterval *int     `json:"recovery_check_interval"`
+	Platforms             []string `json:"platforms"`
+	Description           *string  `json:"description"`
 }
 
 // UpdateAccountThrottleRuleRequest 更新规则请求
 type UpdateAccountThrottleRuleRequest struct {
-	Name              *string  `json:"name"`
-	Enabled           *bool    `json:"enabled"`
-	Priority          *int     `json:"priority"`
-	ErrorCodes        []int    `json:"error_codes"`
-	Keywords          []string `json:"keywords"`
-	MatchMode         *string  `json:"match_mode"`
-	TriggerMode       *string  `json:"trigger_mode"`
-	AccumulatedCount  *int     `json:"accumulated_count"`
-	AccumulatedWindow *int     `json:"accumulated_window"`
-	ActionType        *string  `json:"action_type"`
-	ActionDuration    *int     `json:"action_duration"`
-	ActionRecoverHour *int     `json:"action_recover_hour"`
-	Platforms         []string `json:"platforms"`
-	Description       *string  `json:"description"`
+	Name                  *string  `json:"name"`
+	Enabled               *bool    `json:"enabled"`
+	Priority              *int     `json:"priority"`
+	ErrorCodes            []int    `json:"error_codes"`
+	Keywords              []string `json:"keywords"`
+	MatchMode             *string  `json:"match_mode"`
+	TriggerMode           *string  `json:"trigger_mode"`
+	AccumulatedCount      *int     `json:"accumulated_count"`
+	AccumulatedWindow     *int     `json:"accumulated_window"`
+	ActionType            *string  `json:"action_type"`
+	ActionDuration        *int     `json:"action_duration"`
+	ActionRecoverHour     *int     `json:"action_recover_hour"`
+	RecoveryCheckInterval *int     `json:"recovery_check_interval"`
+	Platforms             []string `json:"platforms"`
+	Description           *string  `json:"description"`
 }
 
 // List 获取所有规则
@@ -141,6 +143,9 @@ func (h *AccountThrottleHandler) Create(c *gin.Context) {
 	}
 	if req.ActionRecoverHour != nil {
 		rule.ActionRecoverHour = *req.ActionRecoverHour
+	}
+	if req.RecoveryCheckInterval != nil {
+		rule.RecoveryCheckInterval = *req.RecoveryCheckInterval
 	}
 	if req.Platforms != nil {
 		rule.Platforms = req.Platforms
@@ -248,6 +253,9 @@ func (h *AccountThrottleHandler) Update(c *gin.Context) {
 	}
 	if req.ActionRecoverHour != nil {
 		rule.ActionRecoverHour = *req.ActionRecoverHour
+	}
+	if req.RecoveryCheckInterval != nil {
+		rule.RecoveryCheckInterval = *req.RecoveryCheckInterval
 	}
 	if req.Platforms != nil {
 		rule.Platforms = req.Platforms

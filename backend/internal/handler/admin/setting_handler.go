@@ -134,7 +134,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		BackendModeEnabled:                   settings.BackendModeEnabled,
 		EnableFingerprintUnification:         settings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:            settings.EnableMetadataPassthrough,
-		CustomModelList:                       settings.CustomModelList,
+		CustomModelList:                      settings.CustomModelList,
 	})
 }
 
@@ -738,7 +738,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		BackendModeEnabled:                   updatedSettings.BackendModeEnabled,
 		EnableFingerprintUnification:         updatedSettings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:            updatedSettings.EnableMetadataPassthrough,
-		CustomModelList:                       updatedSettings.CustomModelList,
+		CustomModelList:                      updatedSettings.CustomModelList,
 	})
 }
 

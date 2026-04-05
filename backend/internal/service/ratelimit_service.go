@@ -1743,12 +1743,14 @@ func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Acco
 
 	now := time.Now()
 	state := &TempUnschedState{
-		UntilUnix:       result.UntilTime.Unix(),
-		TriggeredAtUnix: now.Unix(),
-		StatusCode:      statusCode,
-		MatchedKeyword:  result.MatchedKeyword,
-		RuleIndex:       -1, // 全局规则，非 per-account 规则索引
-		ErrorMessage:    truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes),
+		UntilUnix:             result.UntilTime.Unix(),
+		TriggeredAtUnix:       now.Unix(),
+		StatusCode:            statusCode,
+		MatchedKeyword:        result.MatchedKeyword,
+		RuleIndex:             -1, // 全局规则，非 per-account 规则索引
+		ErrorMessage:          truncateTempUnschedMessage(responseBody, tempUnschedMessageMaxBytes),
+		RecoveryCheckInterval: result.Rule.RecoveryCheckInterval,
+		ThrottleRuleName:      result.Rule.Name,
 	}
 	applyTempUnschedTrace(ctx, state, statusCode, responseBody)
 
@@ -1771,7 +1773,7 @@ func (s *RateLimitService) tryAccountThrottle(ctx context.Context, account *Acco
 		}
 	}
 
-	slog.Info("account_throttled", "account_id", account.ID, "rule", result.Rule.Name, "keyword", result.MatchedKeyword, "until", result.UntilTime)
+	slog.Info("account_throttled", "account_id", account.ID, "rule", result.Rule.Name, "keyword", result.MatchedKeyword, "until", result.UntilTime, "recovery_check_interval", result.Rule.RecoveryCheckInterval)
 	return true
 }
 

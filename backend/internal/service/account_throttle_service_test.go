@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -179,5 +180,93 @@ func TestMatchAndThrottle_DefaultBillingCycle403Rule(t *testing.T) {
 	}
 	if !result.UntilTime.Equal(resetAt) {
 		t.Fatalf("until = %v, want %v", result.UntilTime, resetAt)
+	}
+}
+
+func TestExtractRecoveryTime(t *testing.T) {
+	// Use a future time for testing
+	futureYear := time.Now().Year() + 1
+
+	tests := []struct {
+		name      string
+		body      string
+		wantOK    bool
+		wantYear  int
+		wantMonth time.Month
+		wantDay   int
+		wantHour  int
+		wantMin   int
+	}{
+		{
+			name:      "zhipu Chinese format",
+			body:      `{"error":{"message":"已达到 5 小时的使用上限。您的限额将在 ` + fmt.Sprintf("%d", futureYear) + `-04-04 19:28:20 重置。"}}`,
+			wantOK:    true,
+			wantYear:  futureYear,
+			wantMonth: 4,
+			wantDay:   4,
+			wantHour:  19,
+			wantMin:   28,
+		},
+		{
+			name:      "slash date format",
+			body:      `{"error":{"message":"quota resets at ` + fmt.Sprintf("%d", futureYear) + `/06/15 08:00:00"}}`,
+			wantOK:    true,
+			wantYear:  futureYear,
+			wantMonth: 6,
+			wantDay:   15,
+			wantHour:  8,
+		},
+		{
+			name:      "ISO8601 T separator",
+			body:      `reset at ` + fmt.Sprintf("%d", futureYear) + `-12-25T10:30:00`,
+			wantOK:    true,
+			wantYear:  futureYear,
+			wantMonth: 12,
+			wantDay:   25,
+			wantHour:  10,
+			wantMin:   30,
+		},
+		{
+			name:   "past time - should not match",
+			body:   `{"error":{"message":"reset at 2020-01-01 00:00:00"}}`,
+			wantOK: false,
+		},
+		{
+			name:   "no time in body",
+			body:   `{"error":{"message":"rate limited"}}`,
+			wantOK: false,
+		},
+		{
+			name:   "empty body",
+			body:   "",
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := extractRecoveryTime([]byte(tt.body))
+			if ok != tt.wantOK {
+				t.Fatalf("extractRecoveryTime() ok = %v, want %v", ok, tt.wantOK)
+			}
+			if !ok {
+				return
+			}
+			if got.Year() != tt.wantYear {
+				t.Errorf("year = %d, want %d", got.Year(), tt.wantYear)
+			}
+			if got.Month() != tt.wantMonth {
+				t.Errorf("month = %v, want %v", got.Month(), tt.wantMonth)
+			}
+			if got.Day() != tt.wantDay {
+				t.Errorf("day = %d, want %d", got.Day(), tt.wantDay)
+			}
+			if got.Hour() != tt.wantHour {
+				t.Errorf("hour = %d, want %d", got.Hour(), tt.wantHour)
+			}
+			if tt.wantMin > 0 && got.Minute() != tt.wantMin {
+				t.Errorf("minute = %d, want %d", got.Minute(), tt.wantMin)
+			}
+		})
 	}
 }

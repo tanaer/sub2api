@@ -272,6 +272,13 @@ const (
 	// ContextKeyIdentityQuestion is the gin.Context key for the identity question flag.
 	// Set at Layer 1 detection, read at Layer 3 to choose strict vs loose detection mode.
 	ContextKeyIdentityQuestion = "identity_question"
+
+	// =========================
+	// Provider Adapter 配置
+	// =========================
+
+	// SettingKeyProviderAdapterConfigs 存储所有供应商适配器配置（JSON: map[string]ProviderConfig）
+	SettingKeyProviderAdapterConfigs = "provider_adapter_configs"
 )
 
 // AdminAPIKeyPrefix is the prefix for admin API keys (distinct from user "sk-" keys).

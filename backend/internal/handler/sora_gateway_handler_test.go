@@ -467,6 +467,7 @@ func TestSoraGatewayHandler_ChatCompletions(t *testing.T) {
 		nil,                            // settingService
 		nil,                            // tlsFPProfileService
 		service.NewFailoverPolicy(nil), // failoverPolicy
+		nil,                            // providerRegistry
 	)
 
 	soraClient := &stubSoraClient{imageURLs: []string{"https://example.com/a.png"}}

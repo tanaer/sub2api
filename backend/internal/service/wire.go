@@ -354,6 +354,18 @@ func ProvideScheduledTestService(
 	return NewScheduledTestService(planRepo, resultRepo)
 }
 
+// ProvideAccountThrottleRecoveryService creates and starts AccountThrottleRecoveryService.
+func ProvideAccountThrottleRecoveryService(
+	db *sql.DB,
+	accountTestSvc *AccountTestService,
+	rateLimitSvc *RateLimitService,
+	tempUnschedCache TempUnschedCache,
+) *AccountThrottleRecoveryService {
+	svc := NewAccountThrottleRecoveryService(db, accountTestSvc, rateLimitSvc, tempUnschedCache)
+	svc.Start()
+	return svc
+}
+
 // ProvideScheduledTestRunnerService creates and starts ScheduledTestRunnerService.
 func ProvideScheduledTestRunnerService(
 	planRepo ScheduledTestPlanRepository,
@@ -405,6 +417,11 @@ func ProvideSettingService(settingRepo SettingRepository, groupRepo GroupReposit
 	svc := NewSettingService(settingRepo, cfg)
 	svc.SetDefaultSubscriptionGroupReader(groupRepo)
 	return svc
+}
+
+// ProvideProviderRegistry 创建并初始化 ProviderRegistry，加载数据库中的供应商配置。
+func ProvideProviderRegistry(settingRepo SettingRepository) *ProviderRegistry {
+	return InitProviderRegistry(context.Background(), settingRepo)
 }
 
 // ProviderSet is the Wire provider set for all services
@@ -485,6 +502,7 @@ var ProviderSet = wire.NewSet(
 	NewTotpService,
 	NewErrorPassthroughService,
 	NewAccountThrottleService,
+	ProvideAccountThrottleRecoveryService,
 	NewTLSFingerprintProfileService,
 	NewDigestSessionStore,
 	ProvideIdempotencyCoordinator,
@@ -494,4 +512,5 @@ var ProviderSet = wire.NewSet(
 	ProvideScheduledTestRunnerService,
 	NewGroupCapacityService,
 	NewFailoverPolicy,
+	ProvideProviderRegistry,
 )

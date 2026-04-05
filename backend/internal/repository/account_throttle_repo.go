@@ -54,7 +54,8 @@ func (r *accountThrottleRepository) Create(ctx context.Context, rule *model.Acco
 		SetAccumulatedWindow(rule.AccumulatedWindow).
 		SetActionType(rule.ActionType).
 		SetActionDuration(rule.ActionDuration).
-		SetActionRecoverHour(rule.ActionRecoverHour)
+		SetActionRecoverHour(rule.ActionRecoverHour).
+		SetRecoveryCheckInterval(rule.RecoveryCheckInterval)
 
 	if len(rule.ErrorCodes) > 0 {
 		builder.SetErrorCodes(rule.ErrorCodes)
@@ -87,7 +88,8 @@ func (r *accountThrottleRepository) Update(ctx context.Context, rule *model.Acco
 		SetAccumulatedWindow(rule.AccumulatedWindow).
 		SetActionType(rule.ActionType).
 		SetActionDuration(rule.ActionDuration).
-		SetActionRecoverHour(rule.ActionRecoverHour)
+		SetActionRecoverHour(rule.ActionRecoverHour).
+		SetRecoveryCheckInterval(rule.RecoveryCheckInterval)
 
 	if len(rule.ErrorCodes) > 0 {
 		builder.SetErrorCodes(rule.ErrorCodes)
@@ -134,9 +136,10 @@ func (r *accountThrottleRepository) toModel(e *ent.AccountThrottleRule) *model.A
 		AccumulatedCount:  e.AccumulatedCount,
 		AccumulatedWindow: e.AccumulatedWindow,
 		ActionType:        e.ActionType,
-		ActionDuration:    e.ActionDuration,
-		ActionRecoverHour: e.ActionRecoverHour,
-		Platforms:         e.Platforms,
+		ActionDuration:        e.ActionDuration,
+		ActionRecoverHour:     e.ActionRecoverHour,
+		RecoveryCheckInterval: e.RecoveryCheckInterval,
+		Platforms:             e.Platforms,
 		CreatedAt:         e.CreatedAt,
 		UpdatedAt:         e.UpdatedAt,
 	}

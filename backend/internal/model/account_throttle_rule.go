@@ -4,23 +4,24 @@ import "time"
 
 // AccountThrottleRule 账户智能限流规则
 type AccountThrottleRule struct {
-	ID                int64     `json:"id"`
-	Name              string    `json:"name"`
-	Enabled           bool      `json:"enabled"`
-	Priority          int       `json:"priority"`
-	ErrorCodes        []int     `json:"error_codes"` // 触发的HTTP状态码列表，空=匹配所有
-	Keywords          []string  `json:"keywords"`
-	MatchMode         string    `json:"match_mode"`          // "contains" / "exact"
-	TriggerMode       string    `json:"trigger_mode"`        // "immediate" / "accumulated"
-	AccumulatedCount  int       `json:"accumulated_count"`   // 累计阈值
-	AccumulatedWindow int       `json:"accumulated_window"`  // 累计窗口（秒）
-	ActionType        string    `json:"action_type"`         // "duration" / "scheduled_recovery"
-	ActionDuration    int       `json:"action_duration"`     // 限流时长（秒）
-	ActionRecoverHour int       `json:"action_recover_hour"` // 恢复时刻（0-23）
-	Platforms         []string  `json:"platforms"`
-	Description       *string   `json:"description"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                    int64     `json:"id"`
+	Name                  string    `json:"name"`
+	Enabled               bool      `json:"enabled"`
+	Priority              int       `json:"priority"`
+	ErrorCodes            []int     `json:"error_codes"`             // 触发的HTTP状态码列表，空=匹配所有
+	Keywords              []string  `json:"keywords"`
+	MatchMode             string    `json:"match_mode"`              // "contains" / "exact"
+	TriggerMode           string    `json:"trigger_mode"`            // "immediate" / "accumulated"
+	AccumulatedCount      int       `json:"accumulated_count"`       // 累计阈值
+	AccumulatedWindow     int       `json:"accumulated_window"`      // 累计窗口（秒）
+	ActionType            string    `json:"action_type"`             // "duration" / "scheduled_recovery" / "extract_recovery"
+	ActionDuration        int       `json:"action_duration"`         // 限流时长（秒）
+	ActionRecoverHour     int       `json:"action_recover_hour"`     // 恢复时刻（0-23）
+	RecoveryCheckInterval int       `json:"recovery_check_interval"` // 恢复探测间隔（秒），0=不探测
+	Platforms             []string  `json:"platforms"`
+	Description           *string   `json:"description"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 const (
@@ -32,6 +33,7 @@ const (
 
 	ThrottleActionDuration          = "duration"
 	ThrottleActionScheduledRecovery = "scheduled_recovery"
+	ThrottleActionExtractRecovery   = "extract_recovery"
 )
 
 // Validate 验证规则配置的有效性
@@ -56,14 +58,17 @@ func (r *AccountThrottleRule) Validate() error {
 			return &ValidationError{Field: "accumulated_window", Message: "accumulated_window must be > 0"}
 		}
 	}
-	if r.ActionType != ThrottleActionDuration && r.ActionType != ThrottleActionScheduledRecovery {
-		return &ValidationError{Field: "action_type", Message: "action_type must be 'duration' or 'scheduled_recovery'"}
+	if r.ActionType != ThrottleActionDuration && r.ActionType != ThrottleActionScheduledRecovery && r.ActionType != ThrottleActionExtractRecovery {
+		return &ValidationError{Field: "action_type", Message: "action_type must be 'duration', 'scheduled_recovery' or 'extract_recovery'"}
 	}
-	if r.ActionType == ThrottleActionDuration && r.ActionDuration <= 0 {
+	if (r.ActionType == ThrottleActionDuration || r.ActionType == ThrottleActionExtractRecovery) && r.ActionDuration <= 0 {
 		return &ValidationError{Field: "action_duration", Message: "action_duration must be > 0"}
 	}
 	if r.ActionType == ThrottleActionScheduledRecovery && (r.ActionRecoverHour < 0 || r.ActionRecoverHour > 23) {
 		return &ValidationError{Field: "action_recover_hour", Message: "action_recover_hour must be 0-23"}
+	}
+	if r.RecoveryCheckInterval < 0 {
+		return &ValidationError{Field: "recovery_check_interval", Message: "recovery_check_interval must be >= 0"}
 	}
 	return nil
 }

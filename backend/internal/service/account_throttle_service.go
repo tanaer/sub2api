@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -218,7 +219,7 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, account *
 		}
 
 		// 触发限流，计算截止时间
-		until := s.calculateUntilTime(rule, account)
+		until := s.calculateUntilTime(rule, account, responseBody)
 
 		return &ThrottleMatchResult{
 			Matched:        true,
@@ -232,7 +233,7 @@ func (s *AccountThrottleService) MatchAndThrottle(ctx context.Context, account *
 }
 
 // calculateUntilTime 根据规则计算限流截止时间
-func (s *AccountThrottleService) calculateUntilTime(rule *cachedThrottleRule, account *Account) time.Time {
+func (s *AccountThrottleService) calculateUntilTime(rule *cachedThrottleRule, account *Account, responseBody []byte) time.Time {
 	now := time.Now()
 	if rule != nil && rule.builtinResetStrategy == builtinThrottleResetStrategyQuotaCycle {
 		if until, ok := nextQuotaCycleResetAt(account, now); ok {
@@ -244,7 +245,8 @@ func (s *AccountThrottleService) calculateUntilTime(rule *cachedThrottleRule, ac
 		return now.Add(24 * time.Hour)
 	}
 	modelRule := rule.AccountThrottleRule
-	if modelRule.ActionType == model.ThrottleActionScheduledRecovery {
+	switch modelRule.ActionType {
+	case model.ThrottleActionScheduledRecovery:
 		// 定期恢复：计算下一个恢复时刻
 		targetHour := modelRule.ActionRecoverHour
 		next := time.Date(now.Year(), now.Month(), now.Day(), targetHour, 0, 0, 0, now.Location())
@@ -252,9 +254,20 @@ func (s *AccountThrottleService) calculateUntilTime(rule *cachedThrottleRule, ac
 			next = next.Add(24 * time.Hour)
 		}
 		return next
+	case model.ThrottleActionExtractRecovery:
+		// 智能提取恢复时间
+		if t, ok := extractRecoveryTime(responseBody); ok {
+			return t
+		}
+		// 提取失败，回退到 action_duration
+		if modelRule.ActionDuration > 0 {
+			return now.Add(time.Duration(modelRule.ActionDuration) * time.Second)
+		}
+		return now.Add(24 * time.Hour)
+	default:
+		// 时长限流
+		return now.Add(time.Duration(modelRule.ActionDuration) * time.Second)
 	}
-	// 时长限流
-	return now.Add(time.Duration(modelRule.ActionDuration) * time.Second)
 }
 
 // matchKeywords 匹配关键词
@@ -529,6 +542,56 @@ func (s *AccountThrottleService) invalidateAndNotify(ctx context.Context) {
 			logger.LegacyPrintf("service.account_throttle", "[AccountThrottleService] Failed to notify cache update: %v", err)
 		}
 	}
+}
+
+// recoveryTimePattern 匹配错误消息中的恢复时间
+// 支持：2026-04-04 19:28:20, 2026/04/04 19:28:20, 2026-04-04T19:28:20
+var recoveryTimePattern = regexp.MustCompile(`(\d{4}[-/]\d{1,2}[-/]\d{1,2}[T ]\d{1,2}:\d{1,2}:\d{1,2})`)
+
+var recoveryTimeLayouts = []string{
+	"2006-01-02 15:04:05",
+	"2006/01/02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006/01/02T15:04:05",
+}
+
+// extractRecoveryTime 从错误响应中提取恢复时间
+// 支持如 "您的限额将在 2026-04-04 19:28:20 重置" 格式
+func extractRecoveryTime(body []byte) (time.Time, bool) {
+	if len(body) == 0 {
+		return time.Time{}, false
+	}
+
+	// 从 error message 和原始 body 中查找
+	msg := extractUpstreamErrorMessage(body)
+	candidates := make([]string, 0, 2)
+	if msg != "" {
+		candidates = append(candidates, msg)
+	}
+	if len(body) <= 4096 {
+		candidates = append(candidates, string(body))
+	} else {
+		candidates = append(candidates, string(body[:4096]))
+	}
+
+	now := time.Now()
+	for _, text := range candidates {
+		matches := recoveryTimePattern.FindAllStringSubmatch(text, -1)
+		for _, match := range matches {
+			if len(match) < 2 {
+				continue
+			}
+			// 统一分隔符以便解析
+			normalized := strings.ReplaceAll(match[1], "/", "-")
+			for _, layout := range recoveryTimeLayouts {
+				normalizedLayout := strings.ReplaceAll(layout, "/", "-")
+				if t, err := time.ParseInLocation(normalizedLayout, normalized, now.Location()); err == nil && t.After(now) {
+					return t, true
+				}
+			}
+		}
+	}
+	return time.Time{}, false
 }
 
 // FormatThrottleReason 格式化限流原因（用于存储到 TempUnschedState）

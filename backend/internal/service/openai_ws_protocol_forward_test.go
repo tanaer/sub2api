@@ -617,6 +617,7 @@ func TestNewOpenAIGatewayService_InitializesOpenAIWSResolver(t *testing.T) {
 		nil,
 		testFailoverPolicy(),
 		nil,
+		nil,
 	)
 
 	decision := svc.getOpenAIWSProtocolResolver().Resolve(nil)

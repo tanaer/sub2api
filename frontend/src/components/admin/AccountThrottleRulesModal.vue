@@ -138,9 +138,15 @@
                   <span v-if="rule.action_type === 'duration'" class="text-gray-700 dark:text-gray-300">
                     {{ t('admin.accountThrottle.actionType.duration') }}: {{ formatDuration(rule.action_duration) }}
                   </span>
+                  <span v-else-if="rule.action_type === 'extract_recovery'" class="text-gray-700 dark:text-gray-300">
+                    {{ t('admin.accountThrottle.actionType.extractRecovery') }}
+                  </span>
                   <span v-else class="text-gray-700 dark:text-gray-300">
                     {{ t('admin.accountThrottle.actionType.scheduledRecovery') }}: {{ rule.action_recover_hour }}:00
                   </span>
+                  <div v-if="rule.recovery_check_interval > 0" class="mt-0.5 text-gray-500 dark:text-gray-400">
+                    {{ t('admin.accountThrottle.recoveryProbe') }}: {{ formatDuration(rule.recovery_check_interval) }}
+                  </div>
                 </div>
               </td>
               <td class="px-3 py-2">
@@ -363,7 +369,7 @@
             {{ t('admin.accountThrottle.form.actionConfig') }}
           </h4>
 
-          <div class="flex gap-4">
+          <div class="flex flex-wrap gap-4">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -382,17 +388,38 @@
               />
               <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('admin.accountThrottle.actionType.scheduledRecovery') }}</span>
             </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                value="extract_recovery"
+                v-model="form.action_type"
+                class="h-3.5 w-3.5 border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('admin.accountThrottle.actionType.extractRecovery') }}</span>
+            </label>
           </div>
 
-          <div v-if="form.action_type === 'duration'" class="mt-3">
-            <label class="input-label text-xs">{{ t('admin.accountThrottle.form.actionDuration') }}</label>
-            <input
-              v-model.number="form.action_duration"
-              type="number"
-              min="1"
-              class="input text-sm"
-            />
-            <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.actionDurationUnit') }}</p>
+          <div v-if="form.action_type === 'duration'" class="mt-3 space-y-3">
+            <div>
+              <label class="input-label text-xs">{{ t('admin.accountThrottle.form.actionDuration') }}</label>
+              <input
+                v-model.number="form.action_duration"
+                type="number"
+                min="1"
+                class="input text-sm"
+              />
+              <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.actionDurationUnit') }}</p>
+            </div>
+            <div>
+              <label class="input-label text-xs">{{ t('admin.accountThrottle.form.recoveryCheckInterval') }}</label>
+              <input
+                v-model.number="form.recovery_check_interval"
+                type="number"
+                min="0"
+                class="input text-sm"
+              />
+              <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.recoveryCheckIntervalHint') }}</p>
+            </div>
           </div>
 
           <div v-if="form.action_type === 'scheduled_recovery'" class="mt-3">
@@ -400,6 +427,32 @@
             <select v-model.number="form.action_recover_hour" class="input text-sm">
               <option v-for="h in 24" :key="h - 1" :value="h - 1">{{ (h - 1).toString().padStart(2, '0') }}:00</option>
             </select>
+          </div>
+
+          <div v-if="form.action_type === 'extract_recovery'" class="mt-3 space-y-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-dark-700 p-2 rounded">
+              {{ t('admin.accountThrottle.form.extractRecoveryHint') }}
+            </p>
+            <div>
+              <label class="input-label text-xs">{{ t('admin.accountThrottle.form.fallbackDuration') }}</label>
+              <input
+                v-model.number="form.action_duration"
+                type="number"
+                min="1"
+                class="input text-sm"
+              />
+              <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.fallbackDurationHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label text-xs">{{ t('admin.accountThrottle.form.recoveryCheckInterval') }}</label>
+              <input
+                v-model.number="form.recovery_check_interval"
+                type="number"
+                min="0"
+                class="input text-sm"
+              />
+              <p class="input-hint text-xs">{{ t('admin.accountThrottle.form.recoveryCheckIntervalHint') }}</p>
+            </div>
           </div>
         </div>
       </form>
@@ -455,9 +508,10 @@ const form = reactive({
   trigger_mode: 'immediate' as 'immediate' | 'accumulated',
   accumulated_count: 3,
   accumulated_window: 60,
-  action_type: 'duration' as 'duration' | 'scheduled_recovery',
+  action_type: 'duration' as 'duration' | 'scheduled_recovery' | 'extract_recovery',
   action_duration: 300,
   action_recover_hour: 0,
+  recovery_check_interval: 0,
   platforms: [] as string[]
 })
 
@@ -511,6 +565,7 @@ function resetForm() {
   form.action_type = 'duration'
   form.action_duration = 300
   form.action_recover_hour = 0
+  form.recovery_check_interval = 0
   form.platforms = []
   keywordsInput.value = ''
   errorCodesInput.value = ''
@@ -537,6 +592,7 @@ function handleEdit(rule: AccountThrottleRule) {
   form.action_type = rule.action_type
   form.action_duration = rule.action_duration
   form.action_recover_hour = rule.action_recover_hour
+  form.recovery_check_interval = rule.recovery_check_interval || 0
   form.platforms = [...rule.platforms]
   keywordsInput.value = rule.keywords.join('\n')
   errorCodesInput.value = rule.error_codes.length > 0 ? rule.error_codes.join(', ') : ''
@@ -574,6 +630,7 @@ async function handleSubmit() {
       action_type: form.action_type,
       action_duration: form.action_duration,
       action_recover_hour: form.action_recover_hour,
+      recovery_check_interval: form.recovery_check_interval,
       platforms: form.platforms
     }
 
