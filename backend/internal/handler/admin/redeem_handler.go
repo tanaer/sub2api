@@ -141,6 +141,7 @@ func (h *RedeemHandler) Generate(c *gin.Context) {
 			Type:         req.Type,
 			Value:        req.Value,
 			GroupID:      req.GroupID,
+			PlanID:       req.PlanID,
 			ValidityDays: req.ValidityDays,
 		})
 		if execErr != nil {

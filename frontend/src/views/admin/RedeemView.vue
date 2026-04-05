@@ -226,15 +226,9 @@
               <Select v-model="generateForm.type" :options="typeOptions" />
             </div>
             <!-- 余额/并发类型：显示数值输入 -->
-            <div v-if="generateForm.type !== 'subscription' && generateForm.type !== 'invitation'">
+            <div v-if="generateForm.type === 'balance' || generateForm.type === 'concurrency'">
               <label class="input-label">
-                {{
-                  generateForm.type === 'balance'
-                    ? t('admin.redeem.amount')
-                    : generateForm.type === 'group_request_quota'
-                      ? t('admin.redeem.requestQuotaCount')
-                      : t('admin.redeem.columns.value')
-                }}
+                {{ generateForm.type === 'balance' ? t('admin.redeem.amount') : t('admin.redeem.columns.value') }}
               </label>
               <input
                 v-model.number="generateForm.value"
@@ -251,59 +245,37 @@
                 {{ t('admin.redeem.invitationHint') }}
               </p>
             </div>
-            <!-- 订阅/分组次数类型：显示分组选择 -->
-            <template v-if="generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'">
+            <!-- 订阅类型：选择订阅计划 -->
+            <template v-if="generateForm.type === 'subscription'">
               <div>
-                <label class="input-label">{{ t('admin.redeem.selectGroup') }}</label>
-                <Select
-                  v-model="generateForm.group_id"
-                  :options="
-                    generateForm.type === 'subscription'
-                      ? subscriptionGroupOptions
-                      : requestQuotaGroupOptions
-                  "
-                  :placeholder="t('admin.redeem.selectGroupPlaceholder')"
-                >
-                  <template #selected="{ option }">
-                    <GroupBadge
-                      v-if="option"
-                      :name="(option as unknown as GroupOption).label"
-                      :platform="(option as unknown as GroupOption).platform"
-                      :subscription-type="(option as unknown as GroupOption).subscriptionType"
-                      :rate-multiplier="(option as unknown as GroupOption).rate"
-                    />
-                    <span v-else class="text-gray-400">{{
-                      t('admin.redeem.selectGroupPlaceholder')
-                    }}</span>
-                  </template>
-                  <template #option="{ option, selected }">
-                    <GroupOptionItem
-                      :name="(option as unknown as GroupOption).label"
-                      :platform="(option as unknown as GroupOption).platform"
-                      :subscription-type="(option as unknown as GroupOption).subscriptionType"
-                      :rate-multiplier="(option as unknown as GroupOption).rate"
-                      :description="(option as unknown as GroupOption).description"
-                      :selected="selected"
-                    />
-                  </template>
-                </Select>
-              </div>
-              <div v-if="generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'">
-                <label class="input-label">{{ t('admin.redeem.validityDays') }}</label>
-                <input
-                  v-model.number="generateForm.validity_days"
-                  type="number"
-                  min="1"
-                  max="365"
-                  required
-                  class="input"
-                />
-                <p
-                  v-if="generateForm.type === 'group_request_quota'"
-                  class="mt-2 text-xs text-gray-500 dark:text-gray-400"
-                >
-                  {{ t('admin.redeem.groupRequestQuotaValidityHint') }}
+                <label class="input-label">{{ t('admin.redeem.selectPlan') || '选择订阅计划' }}</label>
+                <select v-model="generateForm.plan_id" class="input" required>
+                  <option :value="null" disabled>{{ t('admin.redeem.selectPlanPlaceholder') || '请选择订阅计划' }}</option>
+                  <option v-for="plan in subscriptionPlans" :key="plan.id" :value="plan.id">
+                    {{ plan.name }}
+                    ({{ plan.billing_mode === 'per_request' ? plan.request_quota + '次' : 'USD限额' }}
+                    / {{ plan.validity_days }}天{{ plan.group ? ' - ' + plan.group.name : '' }})
+                  </option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  <router-link to="/admin/subscription-plans" class="text-primary-500 hover:underline">
+                    {{ t('admin.redeem.managePlans') || '管理订阅计划' }}
+                  </router-link>
                 </p>
+              </div>
+              <!-- 选择计划后显示摘要 -->
+              <div v-if="selectedPlan" class="rounded-lg bg-gray-50 p-3 dark:bg-dark-700">
+                <div class="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  <p v-if="selectedPlan.group"><span class="font-medium">{{ t('admin.subscriptionPlans.group') }}:</span> {{ selectedPlan.group.name }}</p>
+                  <p><span class="font-medium">{{ t('admin.subscriptionPlans.billingMode') }}:</span> {{ selectedPlan.billing_mode === 'per_request' ? t('admin.subscriptionPlans.perRequest') : t('admin.subscriptionPlans.perUsd') }}</p>
+                  <p v-if="selectedPlan.billing_mode === 'per_request'"><span class="font-medium">{{ t('admin.subscriptionPlans.requestQuota') }}:</span> {{ selectedPlan.request_quota.toLocaleString() }}</p>
+                  <template v-else>
+                    <p v-if="selectedPlan.daily_limit_usd"><span class="font-medium">{{ t('admin.subscriptionPlans.dailyLimit') }}:</span> ${{ selectedPlan.daily_limit_usd }}</p>
+                    <p v-if="selectedPlan.weekly_limit_usd"><span class="font-medium">{{ t('admin.subscriptionPlans.weeklyLimit') }}:</span> ${{ selectedPlan.weekly_limit_usd }}</p>
+                    <p v-if="selectedPlan.monthly_limit_usd"><span class="font-medium">{{ t('admin.subscriptionPlans.monthlyLimit') }}:</span> ${{ selectedPlan.monthly_limit_usd }}</p>
+                  </template>
+                  <p><span class="font-medium">{{ t('admin.subscriptionPlans.validityDays') }}:</span> {{ selectedPlan.validity_days }} {{ t('admin.subscriptionPlans.days') }}</p>
+                </div>
               </div>
             </template>
             <div>
@@ -425,7 +397,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { adminAPI } from '@/api/admin'
 import { formatDateTime } from '@/utils/format'
-import type { RedeemCode, RedeemCodeType, Group, GroupPlatform, SubscriptionType } from '@/types'
+import type { RedeemCode, RedeemCodeType, Group } from '@/types'
 import type { Column } from '@/components/common/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -433,52 +405,27 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
-import GroupBadge from '@/components/common/GroupBadge.vue'
-import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
-interface GroupOption {
-  value: number
-  label: string
-  description: string | null
-  platform: GroupPlatform
-  subscriptionType: SubscriptionType
-  rate: number
-}
-
 const showGenerateDialog = ref(false)
 const showResultDialog = ref(false)
 const generatedCodes = ref<RedeemCode[]>([])
 const subscriptionGroups = ref<Group[]>([])
 
-// 订阅类型分组选项
-const subscriptionGroupOptions = computed(() => {
-  return subscriptionGroups.value
-    .filter((g) => g.subscription_type === 'subscription')
-    .map((g) => ({
-      value: g.id,
-      label: g.name,
-      description: g.description,
-      platform: g.platform,
-      subscriptionType: g.subscription_type,
-      rate: g.rate_multiplier
-    }))
+// 订阅计划
+import { subscriptionPlansAPI, type SubscriptionPlan } from '@/api/admin/subscriptionPlans'
+const subscriptionPlans = ref<SubscriptionPlan[]>([])
+
+const selectedPlan = computed(() => {
+  if (!generateForm.plan_id) return null
+  return subscriptionPlans.value.find(p => p.id === generateForm.plan_id) || null
 })
 
-const requestQuotaGroupOptions = computed(() => {
-  return subscriptionGroups.value.map((g) => ({
-    value: g.id,
-    label: g.name,
-    description: g.description,
-    platform: g.platform,
-    subscriptionType: g.subscription_type,
-    rate: g.rate_multiplier
-  }))
-})
+// subscriptionGroups 仍用于 filter 下拉（保留）
 
 const generatedCodesText = computed(() => {
   return generatedCodes.value.map((code) => code.code).join('\n')
@@ -543,7 +490,6 @@ const typeOptions = computed(() => [
   { value: 'balance', label: t('admin.redeem.balance') },
   { value: 'concurrency', label: t('admin.redeem.concurrency') },
   { value: 'subscription', label: t('admin.redeem.subscription') },
-  { value: 'group_request_quota', label: t('admin.redeem.groupRequestQuota') },
   { value: 'invitation', label: t('admin.redeem.invitation') }
 ])
 
@@ -590,6 +536,7 @@ const generateForm = reactive({
   value: 10,
   count: 1,
   group_id: null as number | null,
+  plan_id: null as number | null,
   validity_days: 30
 })
 
@@ -682,29 +629,28 @@ const formatGroupRequestQuotaExpiry = (expiresAt: string) => {
 }
 
 const handleGenerateCodes = async () => {
-  // 订阅/分组次数类型必须选择分组
-  if ((generateForm.type === 'subscription' || generateForm.type === 'group_request_quota') && !generateForm.group_id) {
-    appStore.showError(t('admin.redeem.groupRequired'))
+  // 订阅类型必须选择计划
+  if (generateForm.type === 'subscription' && !generateForm.plan_id) {
+    appStore.showError(t('admin.redeem.planRequired') || '请选择订阅计划')
     return
   }
 
   generating.value = true
   try {
+    const plan = selectedPlan.value
     const result = await adminAPI.redeem.generate(
       generateForm.count,
       generateForm.type,
-      generateForm.value,
-      generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'
-        ? generateForm.group_id
-        : undefined,
-      generateForm.type === 'subscription' || generateForm.type === 'group_request_quota'
-        ? generateForm.validity_days
-        : undefined
+      generateForm.type === 'subscription' ? 0 : generateForm.value,
+      plan?.group_id || undefined,
+      plan?.validity_days || undefined,
+      generateForm.plan_id
     )
     showGenerateDialog.value = false
     generatedCodes.value = result
     showResultDialog.value = true
     // 重置表单
+    generateForm.plan_id = null
     generateForm.group_id = null
     generateForm.validity_days = 30
     loadCodes()
@@ -805,6 +751,7 @@ const loadSubscriptionGroups = async () => {
 onMounted(() => {
   loadCodes()
   loadSubscriptionGroups()
+  subscriptionPlansAPI.list('active').then(plans => { subscriptionPlans.value = plans }).catch(() => {})
 })
 
 onUnmounted(() => {

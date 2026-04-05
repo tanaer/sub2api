@@ -90,5 +90,10 @@ func RegisterUserRoutes(
 			subscriptions.GET("/progress", h.Subscription.GetProgress)
 			subscriptions.GET("/summary", h.Subscription.GetSummary)
 		}
+
+		// 可购买的订阅计划（用户端）
+		if h.Admin.SubscriptionPlan != nil {
+			authenticated.GET("/subscription-plans", h.Admin.SubscriptionPlan.List)
+		}
 	}
 }

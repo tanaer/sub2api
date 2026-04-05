@@ -447,55 +447,6 @@
           </div>
         </div>
 
-        <!-- Subscription Configuration -->
-        <div class="mt-4 border-t pt-4">
-          <div>
-            <label class="input-label">{{ t('admin.groups.subscription.type') }}</label>
-            <Select v-model="createForm.subscription_type" :options="subscriptionTypeOptions" />
-            <p class="input-hint">{{ t('admin.groups.subscription.typeHint') }}</p>
-          </div>
-
-          <!-- Subscription limits (only show when subscription type is selected) -->
-          <div
-            v-if="createForm.subscription_type === 'subscription'"
-            class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
-          >
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.dailyLimit') }}</label>
-              <input
-                v-model.number="createForm.daily_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.weeklyLimit') }}</label>
-              <input
-                v-model.number="createForm.weekly_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.monthlyLimit') }}</label>
-              <input
-                v-model.number="createForm.monthly_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-          </div>
-        </div>
-
         <!-- 图片生成计费配置（antigravity 和 gemini 平台） -->
         <div v-if="createForm.platform === 'antigravity' || createForm.platform === 'gemini'" class="border-t pt-4">
           <label class="block mb-2 font-medium text-gray-700 dark:text-gray-300">
@@ -1294,57 +1245,6 @@
           <Select v-model="editForm.status" :options="editStatusOptions" />
         </div>
 
-        <!-- Subscription Configuration -->
-        <div class="mt-4 border-t pt-4">
-          <div>
-            <label class="input-label">{{ t('admin.groups.subscription.type') }}</label>
-            <Select
-              v-model="editForm.subscription_type"
-              :options="subscriptionTypeOptions"
-            />
-          </div>
-
-          <!-- Subscription limits (only show when subscription type is selected) -->
-          <div
-            v-if="editForm.subscription_type === 'subscription'"
-            class="space-y-4 border-l-2 border-primary-200 pl-4 dark:border-primary-800"
-          >
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.dailyLimit') }}</label>
-              <input
-                v-model.number="editForm.daily_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.weeklyLimit') }}</label>
-              <input
-                v-model.number="editForm.weekly_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.groups.subscription.monthlyLimit') }}</label>
-              <input
-                v-model.number="editForm.monthly_limit_usd"
-                type="number"
-                step="0.01"
-                min="0"
-                class="input"
-                :placeholder="t('admin.groups.subscription.noLimit')"
-              />
-            </div>
-          </div>
-        </div>
-
         <!-- 图片生成计费配置（antigravity 和 gemini 平台） -->
         <div v-if="editForm.platform === 'antigravity' || editForm.platform === 'gemini'" class="border-t pt-4">
           <label class="block mb-2 font-medium text-gray-700 dark:text-gray-300">
@@ -2137,11 +2037,6 @@ const platformFilterOptions = computed(() => [
 const editStatusOptions = computed(() => [
   { value: 'active', label: t('admin.accounts.status.active') },
   { value: 'inactive', label: t('admin.accounts.status.inactive') }
-])
-
-const subscriptionTypeOptions = computed(() => [
-  { value: 'standard', label: t('admin.groups.subscription.standard') },
-  { value: 'subscription', label: t('admin.groups.subscription.subscription') }
 ])
 
 // 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组

@@ -254,6 +254,58 @@
         </div>
       </div>
     </div>
+
+    <!-- Available Plans -->
+    <div v-if="availablePlans.length > 0" class="mt-8">
+      <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+        {{ t('userSubscriptions.availablePlans') || '可购买的订阅计划' }}
+      </h2>
+      <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+        {{ t('userSubscriptions.availablePlansDesc') || '使用兑换码激活以下订阅计划' }}
+      </p>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="plan in availablePlans"
+          :key="plan.id"
+          class="card overflow-hidden"
+        >
+          <div class="border-b bg-gradient-to-r from-primary-50 to-purple-50 p-4 dark:border-dark-700 dark:from-primary-900/20 dark:to-purple-900/20">
+            <h3 class="font-semibold text-gray-900 dark:text-white">{{ plan.name }}</h3>
+            <p v-if="plan.description" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
+          </div>
+          <div class="space-y-2 p-4">
+            <div v-if="plan.group" class="flex items-center gap-2 text-sm">
+              <span class="text-gray-500 dark:text-gray-400">{{ t('admin.subscriptionPlans.group') || '分组' }}:</span>
+              <span class="font-medium text-gray-700 dark:text-gray-300">{{ plan.group.name }}</span>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                {{ plan.billing_mode === 'per_request' ? (t('admin.subscriptionPlans.perRequest') || '次数包') : (t('admin.subscriptionPlans.perUsd') || 'USD限额') }}
+              </span>
+              <span v-if="plan.billing_mode === 'per_request'" class="text-gray-600 dark:text-gray-300">
+                {{ plan.request_quota.toLocaleString() }} {{ t('admin.subscriptionPlans.requests') || '次' }}
+              </span>
+              <span v-else class="text-gray-600 dark:text-gray-300">
+                <template v-if="plan.daily_limit_usd">${{ plan.daily_limit_usd }}/{{ t('admin.subscriptionPlans.daily') || '日' }}</template>
+                <template v-if="plan.weekly_limit_usd"> ${{ plan.weekly_limit_usd }}/{{ t('admin.subscriptionPlans.weekly') || '周' }}</template>
+                <template v-if="plan.monthly_limit_usd"> ${{ plan.monthly_limit_usd }}/{{ t('admin.subscriptionPlans.monthly') || '月' }}</template>
+              </span>
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.subscriptionPlans.validityDays') || '有效期' }}: {{ plan.validity_days }} {{ t('admin.subscriptionPlans.days') || '天' }}
+            </div>
+          </div>
+          <div class="border-t p-3 dark:border-dark-700">
+            <router-link
+              to="/redeem"
+              class="block w-full rounded-lg bg-primary-500 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-primary-600"
+            >
+              {{ t('userSubscriptions.redeemToActivate') || '使用兑换码激活' }}
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
   </AppLayout>
 </template>
 
@@ -262,7 +314,9 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import subscriptionsAPI from '@/api/subscriptions'
+import { listAvailablePlans } from '@/api/subscriptionPlans'
 import type { UserSubscription } from '@/types'
+import type { SubscriptionPlan } from '@/api/admin/subscriptionPlans'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateOnly } from '@/utils/format'
@@ -271,6 +325,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const subscriptions = ref<UserSubscription[]>([])
+const availablePlans = ref<SubscriptionPlan[]>([])
 const loading = ref(true)
 
 async function loadSubscriptions() {
@@ -283,6 +338,12 @@ async function loadSubscriptions() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadPlans() {
+  try {
+    availablePlans.value = await listAvailablePlans()
+  } catch { /* ignore - plans section just won't show */ }
 }
 
 function getProgressWidth(used: number | undefined, limit: number | null | undefined): string {
@@ -361,5 +422,6 @@ function formatResetTime(windowStart: string | null, windowHours: number): strin
 
 onMounted(() => {
   loadSubscriptions()
+  loadPlans()
 })
 </script>

@@ -1132,6 +1132,7 @@ export interface GenerateRedeemCodesRequest {
   type: RedeemCodeType
   value: number
   group_id?: number | null // 订阅/分组次数类型专用
+  plan_id?: number | null  // 订阅计划 ID
   validity_days?: number // 订阅类型专用
 }
 

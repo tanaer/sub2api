@@ -340,6 +340,7 @@ type GenerateRedeemCodesInput struct {
 	Type         string
 	Value        float64
 	GroupID      *int64 // 订阅/分组次数类型专用：关联的分组ID
+	PlanID       *int64 // 订阅计划 ID
 	ValidityDays int    // 订阅类型专用：有效天数
 }
 
@@ -2265,14 +2266,15 @@ func (s *adminServiceImpl) GetRedeemCode(ctx context.Context, id int64) (*Redeem
 }
 
 func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *GenerateRedeemCodesInput) ([]RedeemCode, error) {
-	// 如果是订阅类型，验证必须有 GroupID
+	// 如果是订阅类型，需要有 PlanID 或 GroupID
 	if input.Type == RedeemTypeSubscription {
-		if input.GroupID == nil {
-			return nil, errors.New("group_id is required for subscription type")
+		if input.PlanID == nil && input.GroupID == nil {
+			return nil, errors.New("plan_id or group_id is required for subscription type")
 		}
-		// 验证分组存在（不再要求 subscription_type）
-		if _, err := s.groupRepo.GetByID(ctx, *input.GroupID); err != nil {
-			return nil, fmt.Errorf("group not found: %w", err)
+		if input.GroupID != nil {
+			if _, err := s.groupRepo.GetByID(ctx, *input.GroupID); err != nil {
+				return nil, fmt.Errorf("group not found: %w", err)
+			}
 		}
 	}
 	if input.Type == RedeemTypeGroupRequestQuota {
@@ -2302,8 +2304,7 @@ func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *Gener
 		// 订阅/分组次数类型专用字段
 		if input.Type == RedeemTypeSubscription || input.Type == RedeemTypeGroupRequestQuota {
 			code.GroupID = input.GroupID
-		}
-		if input.Type == RedeemTypeSubscription || input.Type == RedeemTypeGroupRequestQuota {
+			code.PlanID = input.PlanID
 			code.ValidityDays = input.ValidityDays
 			if code.ValidityDays <= 0 {
 				code.ValidityDays = 30 // 默认30天
