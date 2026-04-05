@@ -575,7 +575,7 @@ func (s *RedeemService) redeemSubscription(ctx context.Context, userID int64, re
 		return err
 	}
 
-	// 无 plan_id：旧兑换逻辑（纯续期时间）
+	// 无 plan_id：旧兑换逻辑
 	if redeemCode.GroupID == nil {
 		return fmt.Errorf("subscription redeem code missing group_id")
 	}
@@ -583,6 +583,23 @@ func (s *RedeemService) redeemSubscription(ctx context.Context, userID int64, re
 	if validityDays <= 0 {
 		validityDays = 30
 	}
+
+	// 兼容旧的 group_request_quota 码（迁移后 type 变为 subscription，value 是次数）
+	if addedQuota, ok := requestQuotaUnitsFromValue(redeemCode.Value); ok && addedQuota > 0 {
+		if err := s.userRepo.AddGroupToAllowedGroups(ctx, userID, *redeemCode.GroupID); err != nil {
+			return fmt.Errorf("add group to user allowed groups: %w", err)
+		}
+		_, err := s.subscriptionService.CreateRequestQuotaSubscription(ctx, &AssignSubscriptionInput{
+			UserID:       userID,
+			GroupID:      *redeemCode.GroupID,
+			ValidityDays: validityDays,
+			Notes:        fmt.Sprintf("通过兑换码 %s 兑换 (%d 次)", redeemCode.Code, addedQuota),
+			RequestQuota: addedQuota,
+		})
+		return err
+	}
+
+	// 纯 USD 订阅续期
 	_, _, err := s.subscriptionService.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
 		UserID:       userID,
 		GroupID:      *redeemCode.GroupID,
